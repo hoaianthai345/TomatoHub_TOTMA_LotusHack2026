@@ -1,5 +1,5 @@
 from app.schemas.beneficiary import BeneficiaryCreate, BeneficiaryRead
-from app.schemas.campaign import CampaignCreate, CampaignRead
+from app.schemas.campaign import CampaignCreate, CampaignPublishResponse, CampaignRead, CampaignUpdate
 from app.schemas.common import HealthResponse
 from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
 from app.schemas.organization import OrganizationCreate, OrganizationRead
@@ -16,7 +16,9 @@ __all__ = [
     "OrganizationCreate",
     "OrganizationRead",
     "CampaignCreate",
+    "CampaignUpdate",
     "CampaignRead",
+    "CampaignPublishResponse",
     "BeneficiaryCreate",
     "BeneficiaryRead",
     "MonetaryDonationCreate",

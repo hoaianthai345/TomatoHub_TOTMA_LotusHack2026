@@ -19,7 +19,13 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    volunteer_status = sa.Enum("pending", "approved", "rejected", name="volunteer_status")
+    volunteer_status = postgresql.ENUM(
+        "pending",
+        "approved",
+        "rejected",
+        name="volunteer_status",
+        create_type=False,
+    )
     volunteer_status.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
@@ -131,7 +137,13 @@ def downgrade() -> None:
 
     op.drop_table("organizations")
 
-    sa.Enum("pending", "approved", "rejected", name="volunteer_status").drop(
+    postgresql.ENUM(
+        "pending",
+        "approved",
+        "rejected",
+        name="volunteer_status",
+        create_type=False,
+    ).drop(
         op.get_bind(),
         checkfirst=True,
     )

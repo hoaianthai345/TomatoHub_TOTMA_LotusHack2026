@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.security import get_password_hash
 from app.db.session import SessionLocal
 from app.models.beneficiary import Beneficiary
-from app.models.campaign import Campaign
+from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
 from app.models.user import User
@@ -78,9 +78,18 @@ def seed() -> None:
                 "description": "Raise funds for books, uniforms and digital kits.",
                 "goal_amount": Decimal("15000.00"),
                 "raised_amount": Decimal("4800.00"),
+                "support_types": [SupportType.money.value, SupportType.goods.value],
+                "province": "An Giang",
+                "district": "Chau Phu",
+                "address_line": "Commune Hall, Chau Phu",
+                "media_urls": [
+                    "https://images.example.org/campaigns/school-supplies-cover.jpg",
+                ],
                 "starts_at": now - timedelta(days=20),
                 "ends_at": now + timedelta(days=45),
                 "is_active": True,
+                "status": CampaignStatus.published,
+                "published_at": now - timedelta(days=20),
             },
             {
                 "title": "Medical Aid for Pediatric Patients",
@@ -89,9 +98,18 @@ def seed() -> None:
                 "description": "Support critical treatment and post-care for children.",
                 "goal_amount": Decimal("30000.00"),
                 "raised_amount": Decimal("11200.00"),
+                "support_types": [SupportType.money.value, SupportType.volunteer.value],
+                "province": "Can Tho",
+                "district": "Ninh Kieu",
+                "address_line": "Pediatric Ward, Ninh Kieu",
+                "media_urls": [
+                    "https://images.example.org/campaigns/pediatric-aid-cover.jpg",
+                ],
                 "starts_at": now - timedelta(days=10),
                 "ends_at": now + timedelta(days=60),
                 "is_active": True,
+                "status": CampaignStatus.published,
+                "published_at": now - timedelta(days=10),
             },
             {
                 "title": "Food and Shelter for Flood Victims",
@@ -100,9 +118,18 @@ def seed() -> None:
                 "description": "Provide temporary shelter and food for displaced households.",
                 "goal_amount": Decimal("25000.00"),
                 "raised_amount": Decimal("9300.00"),
+                "support_types": [SupportType.money.value, SupportType.goods.value],
+                "province": "Dong Thap",
+                "district": "Tam Nong",
+                "address_line": "Temporary Shelter Point 2",
+                "media_urls": [
+                    "https://images.example.org/campaigns/flood-victims-cover.jpg",
+                ],
                 "starts_at": now - timedelta(days=7),
                 "ends_at": now + timedelta(days=30),
                 "is_active": True,
+                "status": CampaignStatus.published,
+                "published_at": now - timedelta(days=7),
             },
         ]
 
