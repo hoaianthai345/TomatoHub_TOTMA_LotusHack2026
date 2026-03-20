@@ -1,6 +1,5 @@
 /**
- * Auth Types for TomatoHub MVP
- * Defines user roles, support types, and current user structure
+ * Auth types backed by backend API.
  */
 
 export type UserRole = "guest" | "supporter" | "organization";
@@ -19,13 +18,43 @@ export interface CurrentUser {
   email?: string;
   location?: string;
   supportTypes?: SupportType[];
+  organizationId?: string;
+  organizationName?: string;
+  isSuperuser?: boolean;
+  createdAt?: string;
+}
+
+export interface LoginPayload {
+  email: string;
+  password: string;
+}
+
+export interface SupporterSignupPayload {
+  name: string;
+  email: string;
+  password: string;
+  location?: string;
+  supportTypes?: SupportType[];
+}
+
+export interface OrganizationSignupPayload {
+  name: string;
+  representative: string;
+  email: string;
+  password: string;
+  location?: string;
+  description?: string;
+  website?: string;
+  logoUrl?: string;
 }
 
 export interface AuthContextType {
   currentUser: CurrentUser | null;
   isLoading: boolean;
-  login: (userId: string) => Promise<void>;
+  login: (payload: LoginPayload) => Promise<CurrentUser>;
   logout: () => void;
-  signup: (userData: Partial<CurrentUser>) => Promise<void>;
+  signupSupporter: (payload: SupporterSignupPayload) => Promise<CurrentUser>;
+  signupOrganization: (payload: OrganizationSignupPayload) => Promise<CurrentUser>;
+  refreshCurrentUser: () => Promise<void>;
   isAuthenticated: boolean;
 }

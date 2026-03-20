@@ -2,18 +2,21 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthApiError } from "@/lib/auth/api";
 import { useAuth } from "@/lib/auth";
 import type { SupportType } from "@/lib/auth";
 
 export default function SupporterSignupPage() {
   const router = useRouter();
-  const { signup, isLoading } = useAuth();
+  const { signupSupporter, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    password: "",
     location: "",
     supportTypes: [] as SupportType[],
   });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const supportTypeOptions: { value: SupportType; label: string }[] = [
     { value: "donor_money", label: "Donate Money" },
@@ -34,17 +37,23 @@ export default function SupporterSignupPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
     try {
-      await signup({
+      await signupSupporter({
         name: formData.name,
         email: formData.email,
+        password: formData.password,
         location: formData.location,
-        role: "supporter",
-        supportTypes: formData.supportTypes,
+        supportTypes: formData.supportTypes.length ? formData.supportTypes : undefined,
       });
       router.push("/supporter");
     } catch (error) {
-      console.error("Signup failed:", error);
+      if (error instanceof AuthApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Signup failed. Please try again.");
+      }
     }
   };
 
@@ -93,6 +102,24 @@ export default function SupporterSignupPage() {
             />
           </div>
 
+          {/* Password */}
+          <div>
+            <label className="label-text block mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={formData.password}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, password: e.target.value }))
+              }
+              className="input-base"
+              placeholder="At least 8 characters"
+            />
+          </div>
+
           {/* Location */}
           <div>
             <label className="label-text block mb-1">
@@ -129,6 +156,12 @@ export default function SupporterSignupPage() {
               ))}
             </div>
           </div>
+
+          {errorMessage ? (
+            <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
+              {errorMessage}
+            </p>
+          ) : null}
 
           {/* Submit Button */}
           <button

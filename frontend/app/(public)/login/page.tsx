@@ -1,16 +1,36 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { AuthApiError } from "@/lib/auth/api";
 import { useAuth } from "@/lib/auth";
 
 export default function LoginPage() {
+  const router = useRouter();
   const { login, isLoading } = useAuth();
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleQuickLogin = async (userId: string) => {
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setErrorMessage(null);
+
     try {
-      await login(userId);
+      const user = await login({
+        email: formData.email,
+        password: formData.password,
+      });
+      router.push(user.role === "organization" ? "/organization" : "/supporter");
     } catch (error) {
-      console.error("Login failed:", error);
+      if (error instanceof AuthApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Login failed. Please try again.");
+      }
     }
   };
 
@@ -24,25 +44,51 @@ export default function LoginPage() {
           Sign in to continue to your dashboard
         </p>
 
-        {/* Mock Login Buttons */}
-        <div className="space-y-3 mb-6">
-          <button
-            onClick={() => handleQuickLogin("sup-1")}
-            disabled={isLoading}
-            className="btn-base w-full btn-primary disabled:opacity-50 justify-center"
-          >
-            {isLoading ? "Logging in..." : "Login as Supporter (Mai Giang)"}
-          </button>
-          <button
-            onClick={() => handleQuickLogin("org-1")}
-            disabled={isLoading}
-            className="btn-base w-full btn-primary disabled:opacity-50 justify-center"
-          >
-            {isLoading ? "Logging in..." : "Login as Organization"}
-          </button>
-        </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label-text block mb-1">Email</label>
+            <input
+              type="email"
+              required
+              className="input-base"
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, email: event.target.value }))
+              }
+            />
+          </div>
 
-        <div className="relative mb-6">
+          <div>
+            <label className="label-text block mb-1">Password</label>
+            <input
+              type="password"
+              required
+              className="input-base"
+              placeholder="Your password"
+              value={formData.password}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, password: event.target.value }))
+              }
+            />
+          </div>
+
+          {errorMessage ? (
+            <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
+              {errorMessage}
+            </p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="btn-base w-full btn-primary disabled:opacity-50 justify-center"
+          >
+            {isLoading ? "Logging in..." : "Sign in"}
+          </button>
+        </form>
+
+        <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
             <div className="w-full border-t border-main"></div>
           </div>

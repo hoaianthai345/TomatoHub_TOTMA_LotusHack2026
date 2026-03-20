@@ -5,18 +5,22 @@
 
 export { AuthProvider, AuthContext } from "./AuthContext";
 export { useAuth } from "./useAuth";
-export type { CurrentUser, AuthContextType, UserRole, SupportType } from "./types";
+export type {
+  AuthContextType,
+  CurrentUser,
+  LoginPayload,
+  OrganizationSignupPayload,
+  SupporterSignupPayload,
+  SupportType,
+  UserRole,
+} from "./types";
 export {
-  mockSupporterUser,
-  mockSupporterUser2,
-  mockOrganizationUser,
-  mockOrganizationUser2,
-  mockGuestUser,
-  allMockUsers,
-} from "./mockUsers";
-export {
-  AUTH_STORAGE_KEY,
+  AUTH_COOKIE_MAX_AGE,
+  AUTH_ROLE_COOKIE_KEY,
   AUTH_STORAGE_ROLE_KEY,
+  AUTH_TOKEN_COOKIE_KEY,
+  AUTH_TOKEN_STORAGE_KEY,
+  AUTH_USER_STORAGE_KEY,
   AUTH_ROUTES,
   PUBLIC_ROUTES,
   SUPPORTER_ROUTES,
