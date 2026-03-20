@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -59,6 +59,17 @@ def get_campaign(campaign_id: UUID, db: Session = Depends(get_db)) -> Campaign:
     return get_campaign_or_404(db, campaign_id)
 
 
+@router.get("/slug/{slug}", response_model=CampaignRead)
+def get_campaign_by_slug(slug: str, db: Session = Depends(get_db)) -> Campaign:
+    campaign = db.scalar(select(Campaign).where(Campaign.slug == slug))
+    if campaign is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found",
+        )
+    return campaign
+
+
 @router.post("/", response_model=CampaignRead, status_code=status.HTTP_201_CREATED)
 def create_campaign(
     payload: CampaignCreate,
@@ -86,4 +97,3 @@ def publish_campaign_endpoint(
         message="Campaign published successfully",
         campaign=CampaignRead.model_validate(campaign),
     )
-

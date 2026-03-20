@@ -35,7 +35,10 @@ class Campaign(Base):
     )
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
+    short_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    tags: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
+    cover_image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     support_types: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
 
     goal_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)

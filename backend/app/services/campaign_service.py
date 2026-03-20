@@ -77,7 +77,10 @@ def create_manual_campaign(db: Session, payload: CampaignCreate) -> Campaign:
         organization_id=payload.organization_id,
         title=payload.title,
         slug=_resolve_slug(db, payload.title, payload.slug),
+        short_description=payload.short_description,
         description=payload.description,
+        tags=payload.tags,
+        cover_image_url=payload.cover_image_url or (payload.media_urls[0] if payload.media_urls else None),
         support_types=_normalize_support_types(payload.support_types),
         goal_amount=payload.goal_amount,
         raised_amount=Decimal("0.00"),
@@ -112,6 +115,12 @@ def update_manual_campaign(
         )
 
     update_data = payload.model_dump(exclude_unset=True)
+    if update_data.get("support_types") is None:
+        update_data.pop("support_types", None)
+    if update_data.get("tags") is None:
+        update_data.pop("tags", None)
+    if update_data.get("media_urls") is None:
+        update_data.pop("media_urls", None)
 
     if "organization_id" in update_data:
         org_id = update_data["organization_id"]

@@ -51,6 +51,14 @@ cd backend
 python -m scripts.seed_demo_data
 ```
 
+Demo accounts after seed:
+
+- `admin@lotushack.local` / `Admin@123456` (superuser)
+- `mai.giang@example.com` / `Supporter@123` (supporter)
+- `nguyen.tuan@example.com` / `Supporter@123` (supporter)
+- `info@tomatorelief.org` / `Org@123456` (organization)
+- `contact@communityaid.org` / `Org@123456` (organization)
+
 ## 5. Start API
 
 ```bash
@@ -106,6 +114,68 @@ curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/" \
 ```bash
 curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/publish"
 ```
+
+## 5C. Auth API (for frontend login/signup)
+
+Supporter signup:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/auth/signup/supporter" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "full_name": "Demo Supporter",
+    "email": "supporter.demo@example.com",
+    "password": "Supporter@123",
+    "location": "Thu Duc, HCMC",
+    "support_types": ["donor_money", "volunteer"]
+  }'
+```
+
+Organization signup:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/auth/signup/organization" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_name": "Demo Organization",
+    "representative_name": "Org Owner",
+    "email": "org.demo@example.com",
+    "password": "Org@123456",
+    "location": "District 1, HCMC",
+    "description": "Community support group"
+  }'
+```
+
+Login:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "mai.giang@example.com",
+    "password": "Supporter@123"
+  }'
+```
+
+Get current user (`/auth/me`) with Bearer token:
+
+```bash
+curl -X GET "http://127.0.0.1:8000/api/v1/auth/me" \
+  -H "Authorization: Bearer <access_token>"
+```
+
+## 5D. Data APIs for current frontend features
+
+- `GET /api/v1/dashboards/organization/{organization_id}`
+- `GET /api/v1/dashboards/supporter/{user_id}`
+- `GET /api/v1/supporters/?organization_id=<uuid>`
+- `GET /api/v1/beneficiaries/?organization_id=<uuid>`
+- `POST /api/v1/beneficiaries/` (organization token required)
+- `GET /api/v1/donations/?organization_id=<uuid>`
+- `POST /api/v1/donations/`
+- `GET /api/v1/volunteer-registrations/?organization_id=<uuid>`
+- `POST /api/v1/volunteer-registrations/`
+- `PATCH /api/v1/volunteer-registrations/{registration_id}/status` (organization token required)
 
 ## 6. Deploy on Linux VM (basic)
 

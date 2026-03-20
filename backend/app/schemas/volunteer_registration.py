@@ -19,6 +19,10 @@ class VolunteerRegistrationCreate(VolunteerRegistrationBase):
     status: VolunteerStatus = VolunteerStatus.pending
 
 
+class VolunteerRegistrationUpdateStatus(BaseModel):
+    status: VolunteerStatus
+
+
 class VolunteerRegistrationRead(VolunteerRegistrationBase):
     id: UUID
     status: VolunteerStatus

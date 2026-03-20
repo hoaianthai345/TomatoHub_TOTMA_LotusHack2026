@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "local"
     SECRET_KEY: str = "change-me"
     API_V1_PREFIX: str = "/api/v1"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "admin123"
 

@@ -11,7 +11,10 @@ class CampaignCreate(BaseModel):
     organization_id: UUID
     title: str = Field(min_length=3, max_length=255)
     slug: str | None = None
+    short_description: str | None = Field(default=None, max_length=500)
     description: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    cover_image_url: str | None = Field(default=None, max_length=500)
     support_types: list[SupportType] = Field(
         default_factory=lambda: [SupportType.money],
         min_length=1,
@@ -41,6 +44,16 @@ class CampaignCreate(BaseModel):
     def normalize_media_urls(cls, values: list[str]) -> list[str]:
         return [value.strip() for value in values if value.strip()]
 
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for value in values:
+            clean = value.strip().lower()
+            if clean and clean not in normalized:
+                normalized.append(clean)
+        return normalized
+
     @model_validator(mode="after")
     def validate_time_window(self) -> "CampaignCreate":
         if self.ends_at and self.ends_at <= self.starts_at:
@@ -52,7 +65,10 @@ class CampaignUpdate(BaseModel):
     organization_id: UUID | None = None
     title: str | None = Field(default=None, min_length=3, max_length=255)
     slug: str | None = None
+    short_description: str | None = Field(default=None, max_length=500)
     description: str | None = None
+    tags: list[str] | None = None
+    cover_image_url: str | None = Field(default=None, max_length=500)
     support_types: list[SupportType] | None = Field(default=None, min_length=1)
     goal_amount: Decimal | None = Field(default=None, gt=0)
 
@@ -81,6 +97,18 @@ class CampaignUpdate(BaseModel):
             return values
         return [value.strip() for value in values if value.strip()]
 
+    @field_validator("tags")
+    @classmethod
+    def normalize_tags(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return values
+        normalized: list[str] = []
+        for value in values:
+            clean = value.strip().lower()
+            if clean and clean not in normalized:
+                normalized.append(clean)
+        return normalized
+
     @model_validator(mode="after")
     def validate_time_window(self) -> "CampaignUpdate":
         if self.starts_at and self.ends_at and self.ends_at <= self.starts_at:
@@ -93,7 +121,10 @@ class CampaignRead(BaseModel):
     organization_id: UUID
     title: str
     slug: str
+    short_description: str | None
     description: str | None
+    tags: list[str]
+    cover_image_url: str | None
     support_types: list[SupportType]
 
     goal_amount: Decimal

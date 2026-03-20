@@ -38,6 +38,9 @@ def create_organization(
         name=payload.name.strip(),
         description=payload.description,
         website=payload.website,
+        location=payload.location,
+        logo_url=payload.logo_url,
+        verified=False,
     )
     db.add(organization)
     try:
