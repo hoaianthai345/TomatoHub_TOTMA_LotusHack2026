@@ -127,10 +127,12 @@ export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps)
 
   const sortedCampaigns = useMemo<CampaignWithDistance[]>(() => {
     return campaigns
+      .filter((campaign) => campaign.coordinates !== null)
       .map((campaign) => {
+        const coordinates = campaign.coordinates as CampaignCoordinates;
         const distanceKm = userLocation
-          ? calculateDistanceKm(userLocation, campaign.coordinates)
-          : calculateDistanceKm(FALLBACK_LOCATION, campaign.coordinates);
+          ? calculateDistanceKm(userLocation, coordinates)
+          : calculateDistanceKm(FALLBACK_LOCATION, coordinates);
 
         return { campaign, distanceKm };
       })
@@ -203,7 +205,10 @@ export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps)
 
       nearbyCampaigns.forEach((item) => {
         const marker = L.circleMarker(
-          [item.campaign.coordinates.latitude, item.campaign.coordinates.longitude],
+          [
+            (item.campaign.coordinates as CampaignCoordinates).latitude,
+            (item.campaign.coordinates as CampaignCoordinates).longitude,
+          ],
           {
             radius: 9,
             color: "#c2410c",
@@ -220,8 +225,8 @@ export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps)
         );
 
         bounds.extend([
-          item.campaign.coordinates.latitude,
-          item.campaign.coordinates.longitude,
+          (item.campaign.coordinates as CampaignCoordinates).latitude,
+          (item.campaign.coordinates as CampaignCoordinates).longitude,
         ]);
       });
 

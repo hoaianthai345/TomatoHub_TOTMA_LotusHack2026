@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_organization_user, get_db
+from app.api.deps import (
+    get_current_organization_user,
+    get_db,
+    get_optional_current_user,
+)
+from app.api.permissions import ensure_authenticated_user_matches
 from app.models.campaign import Campaign
 from app.models.user import User
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
@@ -48,24 +53,35 @@ def list_volunteer_registrations(
 def create_volunteer_registration(
     payload: VolunteerRegistrationCreate,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> VolunteerRegistration:
     campaign = db.get(Campaign, payload.campaign_id)
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
 
+    full_name = payload.full_name
+    email = payload.email
     if payload.user_id is not None:
+        ensure_authenticated_user_matches(
+            current_user,
+            payload.user_id,
+            auth_detail="Authentication required to create a linked registration",
+            mismatch_detail="Cannot create registration for another user",
+        )
         user = db.get(User, payload.user_id)
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        full_name = user.full_name
+        email = user.email
 
     registration = VolunteerRegistration(
         campaign_id=payload.campaign_id,
         user_id=payload.user_id,
-        full_name=payload.full_name,
-        email=payload.email,
+        full_name=full_name,
+        email=email,
         phone_number=payload.phone_number,
         message=payload.message,
-        status=payload.status,
+        status=VolunteerStatus.pending,
     )
     db.add(registration)
     db.commit()

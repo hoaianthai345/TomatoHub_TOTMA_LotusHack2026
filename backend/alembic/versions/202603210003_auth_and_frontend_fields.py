@@ -71,7 +71,7 @@ def upgrade() -> None:
     )
 
     op.execute(
-        "UPDATE beneficiaries SET status = CASE WHEN is_verified = true THEN 'verified' ELSE 'added' END"
+        "UPDATE beneficiaries SET status = CASE WHEN is_verified = true THEN 'verified'::beneficiary_status ELSE 'added'::beneficiary_status END"
     )
 
     op.alter_column("organizations", "verified", server_default=None)

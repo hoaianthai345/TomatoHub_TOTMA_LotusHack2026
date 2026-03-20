@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_current_active_user, get_current_organization_user, get_db
+from app.api.permissions import ensure_authenticated_user_matches, ensure_matching_organization
 from app.models.beneficiary import Beneficiary
 from app.models.campaign import Campaign, CampaignStatus
 from app.models.monetary_donation import MonetaryDonation
@@ -21,7 +22,13 @@ router = APIRouter(prefix="/dashboards", tags=["dashboards"])
 def organization_dashboard(
     organization_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
 ) -> OrganizationDashboardRead:
+    ensure_matching_organization(
+        current_user,
+        organization_id,
+        detail="Cannot view another organization dashboard",
+    )
     organization = db.get(Organization, organization_id)
     if organization is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
@@ -89,7 +96,14 @@ def organization_dashboard(
 def supporter_dashboard(
     user_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
 ) -> SupporterDashboardRead:
+    ensure_authenticated_user_matches(
+        current_user,
+        user_id,
+        auth_detail="Authentication required to view a supporter dashboard",
+        mismatch_detail="Cannot view another user dashboard",
+    )
     user = db.get(User, user_id)
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

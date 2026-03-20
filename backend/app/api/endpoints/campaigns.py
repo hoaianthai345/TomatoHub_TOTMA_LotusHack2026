@@ -4,8 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_current_organization_user, get_db
+from app.api.permissions import ensure_matching_organization
 from app.models.campaign import Campaign, CampaignStatus
+from app.models.user import User
 from app.schemas.campaign import (
     CampaignCreate,
     CampaignPublishResponse,
@@ -74,7 +76,13 @@ def get_campaign_by_slug(slug: str, db: Session = Depends(get_db)) -> Campaign:
 def create_campaign(
     payload: CampaignCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
 ) -> Campaign:
+    ensure_matching_organization(
+        current_user,
+        payload.organization_id,
+        detail="Cannot create campaign for another organization",
+    )
     return create_manual_campaign(db, payload)
 
 
@@ -83,7 +91,20 @@ def update_campaign(
     campaign_id: UUID,
     payload: CampaignUpdate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
 ) -> Campaign:
+    campaign = get_campaign_or_404(db, campaign_id)
+    ensure_matching_organization(
+        current_user,
+        campaign.organization_id,
+        detail="Cannot update campaign from another organization",
+    )
+    if payload.organization_id is not None:
+        ensure_matching_organization(
+            current_user,
+            payload.organization_id,
+            detail="Cannot reassign campaign to another organization",
+        )
     return update_manual_campaign(db, campaign_id, payload)
 
 
@@ -91,7 +112,14 @@ def update_campaign(
 def publish_campaign_endpoint(
     campaign_id: UUID,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
 ) -> CampaignPublishResponse:
+    campaign = get_campaign_or_404(db, campaign_id)
+    ensure_matching_organization(
+        current_user,
+        campaign.organization_id,
+        detail="Cannot publish campaign from another organization",
+    )
     campaign = publish_campaign(db, campaign_id)
     return CampaignPublishResponse(
         message="Campaign published successfully",

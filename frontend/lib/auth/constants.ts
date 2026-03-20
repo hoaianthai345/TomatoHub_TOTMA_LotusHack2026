@@ -14,6 +14,7 @@ export const AUTH_ROUTES = {
   LOGIN: "/login",
   SIGNUP: "/signup",
   SIGNUP_SUPPORTER: "/signup/supporter",
+  SIGNUP_SUPPORTER_SUPPORT_TYPES: "/signup/supporter/support-types",
   SIGNUP_ORGANIZATION: "/signup/organization",
   SUPPORTER_DASHBOARD: "/supporter",
   ORG_DASHBOARD: "/organization",
@@ -32,6 +33,7 @@ export const PUBLIC_ROUTES = [
   "/login",
   "/signup",
   "/signup/supporter",
+  "/signup/supporter/support-types",
   "/signup/organization",
 ] as const;
 

@@ -6,10 +6,7 @@ import type {
   SupporterSignupPayload,
   UserRole,
 } from "./types";
-
-const API_BASE_URL = (
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000/api/v1"
-).replace(/\/+$/, "");
+import { ApiError, requestJson } from "@/lib/api/http";
 
 interface BackendCurrentUser {
   id: string;
@@ -31,46 +28,7 @@ interface BackendTokenResponse {
   user: BackendCurrentUser;
 }
 
-export class AuthApiError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-  }
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers || {}),
-    },
-  });
-
-  if (!response.ok) {
-    let errorMessage = "Request failed";
-    try {
-      const payload = await response.json();
-      if (typeof payload?.detail === "string") {
-        errorMessage = payload.detail;
-      } else if (Array.isArray(payload?.detail) && payload.detail.length > 0) {
-        const firstIssue = payload.detail[0];
-        if (typeof firstIssue?.msg === "string") {
-          errorMessage = firstIssue.msg;
-        }
-      } else if (typeof payload?.message === "string") {
-        errorMessage = payload.message;
-      }
-    } catch {
-      // Ignore parse error and keep default message.
-    }
-    throw new AuthApiError(errorMessage, response.status);
-  }
-
-  return response.json() as Promise<T>;
-}
+export { ApiError as AuthApiError };
 
 function mapCurrentUser(user: BackendCurrentUser): CurrentUser {
   return {
@@ -93,7 +51,7 @@ export interface AuthSuccessPayload {
 }
 
 export async function loginApi(payload: LoginPayload): Promise<AuthSuccessPayload> {
-  const response = await request<BackendTokenResponse>("/auth/login", {
+  const response = await requestJson<BackendTokenResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -106,7 +64,7 @@ export async function loginApi(payload: LoginPayload): Promise<AuthSuccessPayloa
 export async function signupSupporterApi(
   payload: SupporterSignupPayload
 ): Promise<AuthSuccessPayload> {
-  const response = await request<BackendTokenResponse>("/auth/signup/supporter", {
+  const response = await requestJson<BackendTokenResponse>("/auth/signup/supporter", {
     method: "POST",
     body: JSON.stringify({
       full_name: payload.name,
@@ -126,7 +84,7 @@ export async function signupSupporterApi(
 export async function signupOrganizationApi(
   payload: OrganizationSignupPayload
 ): Promise<AuthSuccessPayload> {
-  const response = await request<BackendTokenResponse>("/auth/signup/organization", {
+  const response = await requestJson<BackendTokenResponse>("/auth/signup/organization", {
     method: "POST",
     body: JSON.stringify({
       organization_name: payload.name,
@@ -147,11 +105,9 @@ export async function signupOrganizationApi(
 }
 
 export async function getMeApi(token: string): Promise<CurrentUser> {
-  const response = await request<BackendCurrentUser>("/auth/me", {
+  const response = await requestJson<BackendCurrentUser>("/auth/me", {
     method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    token,
   });
   return mapCurrentUser(response);
 }

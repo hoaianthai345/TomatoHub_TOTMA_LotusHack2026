@@ -4,7 +4,7 @@
  * This is the single source of truth for mock data
  */
 
-import type { CurrentUser } from "@/lib/auth/types";
+import type { CurrentUser } from "@/types/user";
 import type { Supporter } from "@/types/supporter";
 import type { Organization } from "@/types/organization";
 
@@ -84,7 +84,7 @@ export const organizations: Organization[] = [
     description:
       "Community-led organization coordinating local aid campaigns.",
     verified: true,
-    logo: "https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=200&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1556740749-887f6717d7e4?w=200&q=80",
     location: mockOrganizationUser.location ?? "",
   },
   {
@@ -92,7 +92,7 @@ export const organizations: Organization[] = [
     name: mockOrganizationUser2.name,
     description: "Foundation focused on community development and aid.",
     verified: true,
-    logo: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=200&q=80",
+    logoUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?w=200&q=80",
     location: mockOrganizationUser2.location ?? "",
   },
 ];

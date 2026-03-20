@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_optional_current_user
+from app.api.permissions import ensure_authenticated_user_matches
 from app.models.campaign import Campaign
 from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
@@ -43,20 +44,29 @@ def list_donations(
 def create_donation(
     payload: MonetaryDonationCreate,
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> MonetaryDonation:
     campaign = db.get(Campaign, payload.campaign_id)
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
 
+    donor_name = payload.donor_name
     if payload.donor_user_id is not None:
+        ensure_authenticated_user_matches(
+            current_user,
+            payload.donor_user_id,
+            auth_detail="Authentication required to create a linked donation",
+            mismatch_detail="Cannot create donation for another user",
+        )
         donor_user = db.get(User, payload.donor_user_id)
         if donor_user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Donor user not found")
+        donor_name = donor_user.full_name
 
     donation = MonetaryDonation(
         campaign_id=payload.campaign_id,
         donor_user_id=payload.donor_user_id,
-        donor_name=payload.donor_name,
+        donor_name=donor_name,
         amount=payload.amount,
         currency=payload.currency.upper(),
         payment_method=payload.payment_method,

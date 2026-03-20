@@ -1,8 +1,10 @@
 export interface Organization {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   verified: boolean;
-  logo: string;
-  location: string;
+  website?: string;
+  logoUrl?: string;
+  location?: string;
+  createdAt?: string;
 }

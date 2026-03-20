@@ -11,6 +11,7 @@ export type {
   LoginPayload,
   OrganizationSignupPayload,
   SupporterSignupPayload,
+  SupporterSignupDraft,
   SupportType,
   UserRole,
 } from "./types";

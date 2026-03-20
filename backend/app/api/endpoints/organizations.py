@@ -5,8 +5,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_current_superuser, get_db
 from app.models.organization import Organization
+from app.models.user import User
 from app.schemas.organization import OrganizationCreate, OrganizationRead
 
 router = APIRouter(prefix="/organizations", tags=["organizations"])
@@ -33,6 +34,7 @@ def get_organization(organization_id: UUID, db: Session = Depends(get_db)) -> Or
 def create_organization(
     payload: OrganizationCreate,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_superuser),
 ) -> Organization:
     organization = Organization(
         name=payload.name.strip(),

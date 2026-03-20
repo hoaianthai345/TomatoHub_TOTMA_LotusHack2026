@@ -9,7 +9,7 @@ interface CampaignCardProps {
 // Áp dụng card-base và card-hover từ globals.css
 export default function CampaignCard({ campaign }: CampaignCardProps) {
   const raisedAmount = campaign.raisedAmount ?? 0;
-  const targetAmount = campaign.targetAmount ?? 0;
+  const targetAmount = campaign.targetAmount ?? campaign.goalAmount ?? 0;
 
   const progress =
     targetAmount > 0 ? Math.min(100, (raisedAmount / targetAmount) * 100) : 0;
@@ -36,7 +36,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         <h3 className="text-lg font-bold text-heading">{campaign.title}</h3>
 
         <p className="mt-2 text-sm text-text-muted flex-1 line-clamp-2">
-          {campaign.shortDescription}
+          {campaign.shortDescription || campaign.description}
         </p>
 
         <div className="mt-5 space-y-2 text-sm text-text font-medium bg-surface-muted p-3 rounded-lg border border-border/50">

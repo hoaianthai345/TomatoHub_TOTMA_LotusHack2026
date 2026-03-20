@@ -1,0 +1,61 @@
+TomatoHub Sprint Context
+
+Completed in this sprint
+- Frontend public campaign list and campaign detail now load from backend API instead of `frontend/mocks`.
+- Frontend home page featured campaigns now load from backend API.
+- Organization dashboard and supporter dashboard now load live metrics from backend endpoints.
+- Organization create campaign page now submits a real draft campaign to backend with authenticated organization token.
+- Frontend now has a shared API layer in `frontend/lib/api/*` and normalized domain types for campaigns and dashboards.
+- Auth context now exposes `accessToken` so protected client pages can call backend without reading localStorage in many places.
+- Frontend auth/user types are now centralized in `frontend/types/user.ts`; `frontend/lib/auth/types.ts` re-exports those shared types instead of drifting separately.
+- Supporter signup is now a 2-step flow:
+  - Step 1 at `frontend/app/(public)/signup/supporter/page.tsx` collects account info.
+  - Step 2 at `frontend/app/(public)/signup/supporter/support-types/page.tsx` collects optional support preferences and finishes signup.
+  - Temporary signup state is kept in `frontend/lib/auth/SupporterSignupFlowContext.tsx`.
+- User-facing dashboard/profile pages now use `frontend/components/auth/RoleGate.tsx` so supporter and organization routes do not render the wrong account state while auth is restoring.
+- Dashboard backend endpoints are now authenticated for the logged-in account:
+  - Supporters can only view their own dashboard.
+  - Organizations can only view their own dashboard.
+- Backend write authorization is tighter:
+  - `POST/PATCH /campaigns` and `POST /campaigns/{id}/publish` require organization ownership.
+  - `POST /donations` cannot spoof `donor_user_id`; linked donations require authenticated matching user.
+  - `POST /volunteer-registrations` cannot spoof `user_id`; linked registrations require authenticated matching user and always start as `pending`.
+  - `POST /organizations` now requires superuser.
+- Repo hygiene improved with `.gitignore` updates and minimal permission tests added in `backend/tests/test_permissions.py`.
+
+Important files added or reshaped
+- `frontend/lib/api/http.ts`
+- `frontend/lib/api/campaigns.ts`
+- `frontend/lib/api/dashboards.ts`
+- `frontend/types/campaign.ts`
+- `frontend/types/dashboard.ts`
+- `frontend/types/user.ts`
+- `frontend/lib/auth/SupporterSignupFlowContext.tsx`
+- `frontend/lib/auth/supportTypes.ts`
+- `frontend/components/auth/RoleGate.tsx`
+- `backend/app/api/permissions.py`
+
+Known gaps for next sprint
+- `frontend/app/organization/supporters/page.tsx` still uses mock data.
+- `frontend/app/organization/beneficiaries/page.tsx` still uses mock data.
+- `frontend/app/organization/transparency/page.tsx` still uses mock data.
+- `frontend/app/organization/campaigns/page.tsx` is still placeholder.
+- Public donation flow and supporter registration flow are not yet wired to live create endpoints.
+- There is not yet an edit-profile flow for supporter or organization accounts.
+- Login is unified by email/password and redirects by returned backend role; there is still no dedicated role chooser for sign-in because backend already resolves the role from the account.
+- There is still no end-to-end test coverage; current tests only cover permission helpers.
+- Read-side access for organization-specific draft listings may need a dedicated authenticated endpoint later if the team wants a real organization campaign management screen.
+
+Recommended next sprint order
+1. Connect organization campaigns page to live API with draft/published status handling.
+2. Connect organization beneficiaries/supporters pages to backend API.
+3. Build live donation and supporter registration submit flows from campaign detail.
+4. Add backend endpoint tests around campaign create/publish and linked donation/registration authorization.
+5. Add a small frontend loading/error abstraction for API-backed pages.
+
+Run notes
+- Backend env example: `backend/.env.example`
+- Frontend env example: `frontend/.env.example`
+- Minimal backend test command:
+  - `cd backend`
+  - `python -m unittest discover tests`

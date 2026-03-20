@@ -1,9 +1,10 @@
-import type { SupportType } from "./campaign";
+import type { SupportType } from "./user";
 
 export interface Supporter {
   id: string;
   fullName: string;
+  email?: string;
   supportTypes: SupportType[];
-  location: string;
+  location?: string;
   joinedCampaignIds: string[];
 }

@@ -1,6 +1,6 @@
-export type SupportType = "donor_money" | "donor_goods" | "volunteer" | "shipper" | "coordinator";
+export type CampaignSupportType = "money" | "goods" | "volunteer";
 
-export type CampaignStatus = "draft" | "active" | "completed";
+export type CampaignStatus = "draft" | "published" | "closed";
 
 export interface CampaignNeed {
 	label: string;
@@ -22,12 +22,25 @@ export interface Campaign {
 	organizationId: string;
 	status: CampaignStatus;
 	tags: string[];
-	targetAmount?: number;
-	raisedAmount?: number;
-	beneficiaryCount: number;
-	supporterCount: number;
+	targetAmount: number;
+	goalAmount?: number;
+	raisedAmount: number;
+	beneficiaryCount?: number;
+	supporterCount?: number;
+	supportTypes?: CampaignSupportType[];
 	needs: CampaignNeed[];
 	coverImage: string;
-	coordinates: CampaignCoordinates;
+	coverImageUrl?: string;
+	province?: string;
+	district?: string;
+	addressLine?: string;
+	coordinates: CampaignCoordinates | null;
+	mediaUrls?: string[];
+	startsAt?: string;
+	endsAt?: string;
+	isActive?: boolean;
+	publishedAt?: string;
+	closedAt?: string;
 	createdAt: string;
+	updatedAt?: string;
 }

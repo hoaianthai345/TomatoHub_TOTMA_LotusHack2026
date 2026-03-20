@@ -1,10 +1,11 @@
 export interface Donation {
   id: string;
   campaignId: string;
-  supporterId: string;
-  type: "money" | "goods";
-  amount?: number;
-  itemName?: string;
-  quantity?: number;
+  donorUserId?: string;
+  donorName: string;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  note?: string;
   createdAt: string;
 }

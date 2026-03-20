@@ -9,6 +9,10 @@ import { useAuth } from "@/lib/auth";
 export default function Navbar() {
   const router = useRouter();
   const { currentUser, logout, isAuthenticated } = useAuth();
+  const displayName =
+    currentUser?.role === "organization"
+      ? currentUser.organizationName ?? currentUser.name
+      : currentUser?.name;
 
   const handleLogout = () => {
     logout();
@@ -44,7 +48,7 @@ export default function Navbar() {
               <div className="hidden md:flex items-center gap-3">
                 <div className="text-right">
                   <p className="text-sm font-medium text-heading">
-                    {currentUser?.name}
+                    {displayName}
                   </p>
                   <p className="text-xs text-muted capitalize">
                     {currentUser?.role}

@@ -41,6 +41,7 @@ function clearAuthCookies() {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const clearAuthStorage = useCallback(() => {
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.removeItem(AUTH_USER_STORAGE_KEY);
     localStorage.removeItem(AUTH_STORAGE_ROLE_KEY);
     clearAuthCookies();
+    setAccessToken(null);
     setCurrentUser(null);
   }, []);
 
@@ -56,12 +58,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
     localStorage.setItem(AUTH_STORAGE_ROLE_KEY, user.role);
     setAuthCookies(token, user.role);
+    setAccessToken(token);
     setCurrentUser(user);
   }, []);
 
   const refreshCurrentUser = useCallback(async () => {
     const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
     if (!token) {
+      setAccessToken(null);
       setCurrentUser(null);
       return;
     }
@@ -146,6 +150,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const value: AuthContextType = {
     currentUser,
+    accessToken,
     isLoading,
     login,
     logout,
