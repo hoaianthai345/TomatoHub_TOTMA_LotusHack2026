@@ -1,0 +1,1 @@
+"""LotusHack backend package."""
