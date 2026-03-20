@@ -5,7 +5,6 @@ import {
   SUPPORTER_ROUTES,
   ORG_ROUTES,
   AUTH_STORAGE_KEY,
-  AUTH_ROUTES,
 } from "@/lib/auth/constants";
 import { allMockUsers } from "@/lib/auth/mockUsers";
 

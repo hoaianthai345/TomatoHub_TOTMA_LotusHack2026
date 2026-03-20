@@ -25,6 +25,10 @@ export const campaigns: Campaign[] = [
     ],
     coverImage:
       "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80",
+    coordinates: {
+      latitude: 10.8489,
+      longitude: 106.7727,
+    },
     createdAt: "2026-03-20T09:00:00Z",
   },
   {
@@ -50,6 +54,68 @@ export const campaigns: Campaign[] = [
     ],
     coverImage:
       "https://images.unsplash.com/photo-1509062522246-3755977927d7?w=1200&q=80",
+    coordinates: {
+      latitude: 10.6958,
+      longitude: 106.5967,
+    },
     createdAt: "2026-03-19T07:30:00Z",
+  },
+  {
+    id: "camp-3",
+    slug: "medical-support-go-vap",
+    title: "Emergency Medical Support in Go Vap",
+    shortDescription:
+      "Raise funds and recruit healthcare volunteers for urgent home care needs.",
+    description:
+      "This campaign focuses on emergency medicine packages, basic diagnostics, and volunteer nurse shifts for elderly residents in Go Vap.",
+    location: "Go Vap, HCMC",
+    organizationId: "org-2",
+    status: "active",
+    tags: ["medical", "elderly", "urgent"],
+    targetAmount: 75000000,
+    raisedAmount: 38000000,
+    beneficiaryCount: 62,
+    supporterCount: 51,
+    needs: [
+      { label: "Medicine kits", value: "160 sets" },
+      { label: "Volunteer nurses", value: "12 people" },
+      { label: "Blood pressure monitors", value: "25 devices" },
+    ],
+    coverImage:
+      "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1200&q=80",
+    coordinates: {
+      latitude: 10.8386,
+      longitude: 106.6659,
+    },
+    createdAt: "2026-03-18T11:15:00Z",
+  },
+  {
+    id: "camp-4",
+    slug: "food-packages-hoc-mon",
+    title: "Food Package Delivery for Hoc Mon Families",
+    shortDescription:
+      "Coordinate dry food donations and transport support for suburban households.",
+    description:
+      "Organization teams are preparing weekly food package distribution for low-income families in Hoc Mon with transparent check-in logs.",
+    location: "Hoc Mon, HCMC",
+    organizationId: "org-2",
+    status: "active",
+    tags: ["food", "delivery", "community"],
+    targetAmount: 60000000,
+    raisedAmount: 26000000,
+    beneficiaryCount: 98,
+    supporterCount: 57,
+    needs: [
+      { label: "Rice", value: "2,500 kg" },
+      { label: "Dry food boxes", value: "350 boxes" },
+      { label: "Shippers", value: "14 people" },
+    ],
+    coverImage:
+      "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=1200&q=80",
+    coordinates: {
+      latitude: 10.8897,
+      longitude: 106.5946,
+    },
+    createdAt: "2026-03-17T06:45:00Z",
   },
 ];
