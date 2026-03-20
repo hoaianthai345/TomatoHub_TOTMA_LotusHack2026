@@ -1,17 +1,23 @@
+"use client";
+
 import Container from "@/components/common/container";
 import SectionTitle from "@/components/common/section-title";
 import OrgStatCard from "@/components/organization/org-stat-card";
+import Link from "next/link";
+import { useAuth } from "@/lib/auth";
 import { campaigns } from "@/mocks/campaigns";
 import { beneficiaries } from "@/mocks/beneficiaries";
 import { supporters } from "@/mocks/supporters";
 import { donations } from "@/mocks/donations";
 
 export default function OrganizationDashboardPage() {
+  const { currentUser } = useAuth();
+
   return (
     <div className="py-10">
       <Container>
         <SectionTitle
-          title="Organization Dashboard"
+          title={`${currentUser?.name} Dashboard`}
           description="Main management entry for campaigns, beneficiaries, supporters, donations, and transparency."
         />
 
@@ -25,15 +31,24 @@ export default function OrganizationDashboardPage() {
         <div className="mt-8 card-base p-6">
           <h3 className="text-lg font-semibold text-heading">Quick actions</h3>
           <div className="mt-4 flex flex-wrap gap-3">
-            <button className="btn-base btn-primary">
+            <Link
+              href="/organization/campaigns/create"
+              className="btn-base btn-primary"
+            >
               Create campaign
-            </button>
-            <button className="btn-base btn-secondary">
+            </Link>
+            <Link
+              href="/organization/beneficiaries"
+              className="btn-base btn-secondary"
+            >
               Manage beneficiaries
-            </button>
-            <button className="btn-base btn-secondary">
+            </Link>
+            <Link
+              href="/organization/transparency"
+              className="btn-base btn-secondary"
+            >
               Publish transparency
-            </button>
+            </Link>
           </div>
         </div>
       </Container>

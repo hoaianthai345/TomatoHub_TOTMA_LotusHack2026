@@ -79,10 +79,6 @@ body {
   color: var(--color-heading);
 }
 
-@utility text-muted {
-  color: var(--color-text-muted);
-}
-
 @utility card-base {
   border: 1px solid var(--color-border);
   background: var(--color-surface);
@@ -124,6 +120,187 @@ body {
   transition: border-color 180ms var(--ease-default), box-shadow 180ms var(--ease-default);
 }
 
+/* ==================== UTILITY COLORS ==================== */
+
+/* Backgrounds */
+@utility bg-surface-light {
+  background: var(--color-surface-muted);
+}
+
+@utility bg-surface-main {
+  background: var(--color-surface);
+}
+
+@utility bg-page {
+  background: var(--color-background);
+}
+
+@utility bg-primary {
+  background: var(--color-primary);
+}
+
+@utility bg-org {
+  background: var(--color-org);
+}
+
+@utility bg-supporter {
+  background: var(--color-supporter);
+}
+
+@utility bg-danger {
+  background: var(--color-danger);
+}
+
+/* Text Colors */
+@utility text-primary {
+  color: var(--color-primary);
+}
+
+@utility text-heading {
+  color: var(--color-heading);
+}
+
+@utility text-body {
+  color: var(--color-text);
+}
+
+@utility text-muted {
+  color: var(--color-text-muted);
+}
+
+@utility text-success {
+  color: var(--color-success);
+}
+
+@utility text-warning {
+  color: var(--color-warning);
+}
+
+@utility text-danger {
+  color: var(--color-danger);
+}
+
+@utility text-info {
+  color: var(--color-info);
+}
+
+/* Aliases for consistent naming */
+@utility text-text {
+  color: var(--color-text);
+}
+
+@utility text-text-muted {
+  color: var(--color-text-muted);
+}
+
+/* Border Colors */
+@utility border-main {
+  border-color: var(--color-border);
+}
+
+@utility border-border {
+  border-color: var(--color-border);
+}
+
+@utility border-supporter {
+  border-color: var(--color-supporter);
+}
+
+@utility border-org {
+  border-color: var(--color-org);
+}
+
+/* ==================== UI COMPONENTS ==================== */
+
+/* Card container with proper styling */
+@utility card-container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Sidebar styling */
+@utility sidebar-container {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+}
+
+@utility sidebar-link {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+  transition: background-color 180ms var(--ease-default);
+}
+
+/* Sidebar link hover - use CSS class instead */
+.sidebar-link:hover {
+  background: var(--color-surface-muted);
+}
+
+/* Form labels */
+@utility label-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-heading);
+}
+
+/* Helper text */
+@utility helper-text {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+/* Badges */
+@utility badge-base {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@utility badge-primary {
+  background: color-mix(in oklab, var(--color-primary) 15%, white);
+  color: var(--color-primary);
+}
+
+@utility badge-success {
+  background: color-mix(in oklab, var(--color-success) 15%, white);
+  color: var(--color-success);
+}
+
+@utility badge-supporter {
+  background: color-mix(in oklab, var(--color-supporter) 15%, white);
+  color: var(--color-supporter);
+}
+
+@utility badge-org {
+  background: color-mix(in oklab, var(--color-org) 15%, white);
+  color: var(--color-org);
+}
+
+/* Role badge circle */
+@utility role-badge {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: white;
+}
+
+@utility role-badge-org {
+  background: var(--color-org);
+}
+
+@utility role-badge-supporter {
+  background: var(--color-supporter);
+}
+
 /* Base states that require pseudo-classes should be written in pure CSS */
 .card-hover {
   transition: transform 180ms var(--ease-default), box-shadow 180ms var(--ease-default), border-color 180ms var(--ease-default);
@@ -146,6 +323,20 @@ body {
 .btn-secondary:hover {
   border-color: color-mix(in oklab, var(--color-primary) 20%, var(--color-border));
   background: var(--color-surface-muted);
+}
+
+/* Sidebar link active state */
+.sidebar-link:hover {
+  background: var(--color-surface-muted);
+}
+
+/* Form input focus state */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 10%, white);
 }
 
 .input-base::placeholder {
