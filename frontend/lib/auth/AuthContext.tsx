@@ -1,115 +1,159 @@
 "use client";
 
 import React, { createContext, useCallback, useEffect, useState } from "react";
-import type { CurrentUser, AuthContextType } from "./types";
-import { allMockUsers, mockGuestUser } from "./mockUsers";
-import { AUTH_STORAGE_KEY } from "./constants";
+import {
+  getMeApi,
+  loginApi,
+  signupOrganizationApi,
+  signupSupporterApi,
+} from "./api";
+import {
+  AUTH_COOKIE_MAX_AGE,
+  AUTH_ROLE_COOKIE_KEY,
+  AUTH_STORAGE_ROLE_KEY,
+  AUTH_TOKEN_COOKIE_KEY,
+  AUTH_TOKEN_STORAGE_KEY,
+  AUTH_USER_STORAGE_KEY,
+} from "./constants";
+import type {
+  AuthContextType,
+  CurrentUser,
+  LoginPayload,
+  OrganizationSignupPayload,
+  SupporterSignupPayload,
+} from "./types";
 
-export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
-);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: React.ReactNode;
+}
+
+function setAuthCookies(token: string, role: CurrentUser["role"]) {
+  document.cookie = `${AUTH_TOKEN_COOKIE_KEY}=${encodeURIComponent(token)}; Path=/; Max-Age=${AUTH_COOKIE_MAX_AGE}; SameSite=Lax`;
+  document.cookie = `${AUTH_ROLE_COOKIE_KEY}=${encodeURIComponent(role)}; Path=/; Max-Age=${AUTH_COOKIE_MAX_AGE}; SameSite=Lax`;
+}
+
+function clearAuthCookies() {
+  document.cookie = `${AUTH_TOKEN_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
+  document.cookie = `${AUTH_ROLE_COOKIE_KEY}=; Path=/; Max-Age=0; SameSite=Lax`;
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth from localStorage on mount
+  const clearAuthStorage = useCallback(() => {
+    localStorage.removeItem(AUTH_TOKEN_STORAGE_KEY);
+    localStorage.removeItem(AUTH_USER_STORAGE_KEY);
+    localStorage.removeItem(AUTH_STORAGE_ROLE_KEY);
+    clearAuthCookies();
+    setCurrentUser(null);
+  }, []);
+
+  const persistAuth = useCallback((token: string, user: CurrentUser) => {
+    localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(AUTH_USER_STORAGE_KEY, JSON.stringify(user));
+    localStorage.setItem(AUTH_STORAGE_ROLE_KEY, user.role);
+    setAuthCookies(token, user.role);
+    setCurrentUser(user);
+  }, []);
+
+  const refreshCurrentUser = useCallback(async () => {
+    const token = localStorage.getItem(AUTH_TOKEN_STORAGE_KEY);
+    if (!token) {
+      setCurrentUser(null);
+      return;
+    }
+
+    try {
+      const user = await getMeApi(token);
+      persistAuth(token, user);
+    } catch (error) {
+      console.error("Failed to refresh current user:", error);
+      clearAuthStorage();
+      throw error;
+    }
+  }, [clearAuthStorage, persistAuth]);
+
   useEffect(() => {
-    const initializeAuth = () => {
+    let mounted = true;
+
+    const initializeAuth = async () => {
       try {
-        const storedUserId = localStorage.getItem(AUTH_STORAGE_KEY);
-        if (storedUserId && allMockUsers[storedUserId]) {
-          setCurrentUser(allMockUsers[storedUserId]);
-        } else {
-          setCurrentUser(mockGuestUser);
-        }
-      } catch (error) {
-        console.error("Failed to initialize auth:", error);
-        setCurrentUser(mockGuestUser);
+        await refreshCurrentUser();
+      } catch {
+        // Auth state already cleaned in refreshCurrentUser().
       } finally {
-        setIsLoading(false);
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initializeAuth();
-  }, []);
 
-  const login = useCallback(async (userId: string) => {
-    setIsLoading(true);
-    try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 300));
+    return () => {
+      mounted = false;
+    };
+  }, [refreshCurrentUser]);
 
-      const user = allMockUsers[userId];
-      if (!user) {
-        throw new Error("User not found");
-      }
-
-      setCurrentUser(user);
-      localStorage.setItem(AUTH_STORAGE_KEY, userId);
-    } catch (error) {
-      console.error("Login failed:", error);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    setCurrentUser(mockGuestUser);
-    localStorage.removeItem(AUTH_STORAGE_KEY);
-  }, []);
-
-  const signup = useCallback(
-    async (userData: Partial<CurrentUser>) => {
+  const login = useCallback(
+    async (payload: LoginPayload) => {
       setIsLoading(true);
       try {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
-        // Create new user with mock ID
-        const newUserId =
-          userData.role === "organization"
-            ? `org-${Date.now()}`
-            : `sup-${Date.now()}`;
-
-        const newUser: CurrentUser = {
-          id: newUserId,
-          name: userData.name || "New User",
-          role: userData.role || "supporter",
-          email: userData.email,
-          location: userData.location,
-          supportTypes: userData.supportTypes,
-        };
-
-        setCurrentUser(newUser);
-        localStorage.setItem(AUTH_STORAGE_KEY, newUserId);
-      } catch (error) {
-        console.error("Signup failed:", error);
-        throw error;
+        const { token, user } = await loginApi(payload);
+        persistAuth(token, user);
+        return user;
       } finally {
         setIsLoading(false);
       }
     },
-    []
+    [persistAuth]
   );
+
+  const signupSupporter = useCallback(
+    async (payload: SupporterSignupPayload) => {
+      setIsLoading(true);
+      try {
+        const { token, user } = await signupSupporterApi(payload);
+        persistAuth(token, user);
+        return user;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [persistAuth]
+  );
+
+  const signupOrganization = useCallback(
+    async (payload: OrganizationSignupPayload) => {
+      setIsLoading(true);
+      try {
+        const { token, user } = await signupOrganizationApi(payload);
+        persistAuth(token, user);
+        return user;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [persistAuth]
+  );
+
+  const logout = useCallback(() => {
+    clearAuthStorage();
+  }, [clearAuthStorage]);
 
   const value: AuthContextType = {
     currentUser,
     isLoading,
     login,
     logout,
-    signup,
-    isAuthenticated: currentUser !== null && currentUser.role !== "guest",
+    signupSupporter,
+    signupOrganization,
+    refreshCurrentUser,
+    isAuthenticated: currentUser !== null,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

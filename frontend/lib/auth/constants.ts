@@ -3,8 +3,12 @@
  * Storage keys and default values for auth system
  */
 
-export const AUTH_STORAGE_KEY = "tomatohub_auth_user";
+export const AUTH_TOKEN_STORAGE_KEY = "tomatohub_auth_token";
+export const AUTH_USER_STORAGE_KEY = "tomatohub_auth_user";
 export const AUTH_STORAGE_ROLE_KEY = "tomatohub_auth_role";
+export const AUTH_TOKEN_COOKIE_KEY = "tomatohub_auth_token";
+export const AUTH_ROLE_COOKIE_KEY = "tomatohub_auth_role";
+export const AUTH_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export const AUTH_ROUTES = {
   LOGIN: "/login",

@@ -2,31 +2,42 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthApiError } from "@/lib/auth/api";
 import { useAuth } from "@/lib/auth";
 
 export default function OrganizationSignupPage() {
   const router = useRouter();
-  const { signup, isLoading } = useAuth();
+  const { signupOrganization, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     representative: "",
     email: "",
+    password: "",
     location: "",
     description: "",
   });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
+
     try {
-      await signup({
+      await signupOrganization({
         name: formData.name,
+        representative: formData.representative || formData.name,
         email: formData.email,
+        password: formData.password,
         location: formData.location,
-        role: "organization",
+        description: formData.description,
       });
       router.push("/organization");
     } catch (error) {
-      console.error("Signup failed:", error);
+      if (error instanceof AuthApiError) {
+        setErrorMessage(error.message);
+      } else {
+        setErrorMessage("Signup failed. Please try again.");
+      }
     }
   };
 
@@ -94,6 +105,24 @@ export default function OrganizationSignupPage() {
             />
           </div>
 
+          {/* Password */}
+          <div>
+            <label className="label-text block mb-1">
+              Password
+            </label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={formData.password}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, password: e.target.value }))
+              }
+              className="input-base"
+              placeholder="At least 8 characters"
+            />
+          </div>
+
           {/* Location */}
           <div>
             <label className="label-text block mb-1">
@@ -128,6 +157,12 @@ export default function OrganizationSignupPage() {
               rows={3}
             />
           </div>
+
+          {errorMessage ? (
+            <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
+              {errorMessage}
+            </p>
+          ) : null}
 
           {/* Submit Button */}
           <button
