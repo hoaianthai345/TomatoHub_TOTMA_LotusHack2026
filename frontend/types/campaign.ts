@@ -7,6 +7,11 @@ export interface CampaignNeed {
 	value: string;
 }
 
+export interface CampaignCoordinates {
+	latitude: number;
+	longitude: number;
+}
+
 export interface Campaign {
 	id: string;
 	slug: string;
@@ -23,5 +28,6 @@ export interface Campaign {
 	supporterCount: number;
 	needs: CampaignNeed[];
 	coverImage: string;
+	coordinates: CampaignCoordinates;
 	createdAt: string;
 }

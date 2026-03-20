@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     APP_ENV: str = "local"
     SECRET_KEY: str = "change-me"
     API_V1_PREFIX: str = "/api/v1"
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin123"
 
     DATABASE_URL: str = Field(
         default="postgresql+psycopg2://postgres:postgres@localhost:5432/lotushack"

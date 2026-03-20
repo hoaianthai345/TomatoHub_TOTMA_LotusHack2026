@@ -348,3 +348,16 @@ select:focus {
   border-color: color-mix(in oklab, var(--color-primary) 45%, white);
   box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 15%, white);
 }
+
+.nearby-map {
+  min-height: 320px;
+}
+
+.nearby-map .leaflet-popup-content {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.nearby-map .leaflet-control-attribution {
+  font-size: 0.65rem;
+}
