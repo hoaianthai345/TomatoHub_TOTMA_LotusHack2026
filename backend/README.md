@@ -17,6 +17,25 @@ cp .env.example .env
 psql -U postgres -c "CREATE DATABASE lotushack;"
 ```
 
+## 2A. Use Aiven PostgreSQL instead of local DB
+
+1. In Aiven Console, open your PostgreSQL service and copy: `host`, `port`, `database`, `username`, `password`.
+2. Set `backend/.env` like this:
+
+```env
+APP_ENV=production
+SECRET_KEY=replace-with-a-secure-random-string
+DATABASE_URL=postgresql+psycopg2://avnadmin:<url-encoded-password>@<service-host>:<service-port>/<database>?sslmode=require
+```
+
+3. If your password has special characters (`@`, `:`, `/`, `?`, `#`), URL-encode it first:
+
+```bash
+python -c "import urllib.parse; print(urllib.parse.quote_plus('your-password'))"
+```
+
+If you use Aiven, skip step 2 (create local database) and continue with migration.
+
 ## 3. Run migration
 
 ```bash
