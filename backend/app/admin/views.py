@@ -25,6 +25,8 @@ class UserAdmin(BaseAdminView, model=User):
         User.id,
         User.email,
         User.full_name,
+        User.location,
+        User.support_types,
         User.is_active,
         User.is_superuser,
         User.organization_id,
@@ -39,7 +41,14 @@ class OrganizationAdmin(BaseAdminView, model=Organization):
     name = "Organization"
     name_plural = "Organizations"
     icon = "fa-solid fa-building"
-    column_list = [Organization.id, Organization.name, Organization.website, Organization.created_at]
+    column_list = [
+        Organization.id,
+        Organization.name,
+        Organization.location,
+        Organization.verified,
+        Organization.website,
+        Organization.created_at,
+    ]
     column_searchable_list = [Organization.name]
     column_default_sort = [(Organization.created_at, True)]
     form_excluded_columns = [Organization.campaigns, Organization.beneficiaries, Organization.members]
@@ -52,8 +61,10 @@ class CampaignAdmin(BaseAdminView, model=Campaign):
     column_list = [
         Campaign.id,
         Campaign.title,
+        Campaign.short_description,
         Campaign.organization_id,
         Campaign.status,
+        Campaign.tags,
         Campaign.goal_amount,
         Campaign.raised_amount,
         Campaign.starts_at,
@@ -73,7 +84,9 @@ class BeneficiaryAdmin(BaseAdminView, model=Beneficiary):
     column_list = [
         Beneficiary.id,
         Beneficiary.full_name,
+        Beneficiary.location,
         Beneficiary.category,
+        Beneficiary.status,
         Beneficiary.organization_id,
         Beneficiary.campaign_id,
         Beneficiary.target_support_amount,

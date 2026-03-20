@@ -1,4 +1,4 @@
-from app.models.beneficiary import Beneficiary
+from app.models.beneficiary import Beneficiary, BeneficiaryStatus
 from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
@@ -12,6 +12,7 @@ __all__ = [
     "CampaignStatus",
     "SupportType",
     "Beneficiary",
+    "BeneficiaryStatus",
     "MonetaryDonation",
     "VolunteerRegistration",
     "VolunteerStatus",

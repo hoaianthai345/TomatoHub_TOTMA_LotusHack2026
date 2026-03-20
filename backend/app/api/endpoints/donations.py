@@ -1,0 +1,71 @@
+from decimal import Decimal
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_db
+from app.models.campaign import Campaign
+from app.models.monetary_donation import MonetaryDonation
+from app.models.user import User
+from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
+
+router = APIRouter(prefix="/donations", tags=["donations"])
+
+
+@router.get("/", response_model=list[MonetaryDonationRead])
+def list_donations(
+    campaign_id: UUID | None = Query(default=None),
+    organization_id: UUID | None = Query(default=None),
+    donor_user_id: UUID | None = Query(default=None),
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+) -> list[MonetaryDonation]:
+    stmt = (
+        select(MonetaryDonation)
+        .order_by(MonetaryDonation.donated_at.desc())
+        .limit(limit)
+    )
+    if campaign_id is not None:
+        stmt = stmt.where(MonetaryDonation.campaign_id == campaign_id)
+    if donor_user_id is not None:
+        stmt = stmt.where(MonetaryDonation.donor_user_id == donor_user_id)
+    if organization_id is not None:
+        stmt = stmt.join(Campaign, Campaign.id == MonetaryDonation.campaign_id).where(
+            Campaign.organization_id == organization_id
+        )
+
+    return list(db.scalars(stmt).all())
+
+
+@router.post("/", response_model=MonetaryDonationRead, status_code=status.HTTP_201_CREATED)
+def create_donation(
+    payload: MonetaryDonationCreate,
+    db: Session = Depends(get_db),
+) -> MonetaryDonation:
+    campaign = db.get(Campaign, payload.campaign_id)
+    if campaign is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+
+    if payload.donor_user_id is not None:
+        donor_user = db.get(User, payload.donor_user_id)
+        if donor_user is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Donor user not found")
+
+    donation = MonetaryDonation(
+        campaign_id=payload.campaign_id,
+        donor_user_id=payload.donor_user_id,
+        donor_name=payload.donor_name,
+        amount=payload.amount,
+        currency=payload.currency.upper(),
+        payment_method=payload.payment_method,
+        note=payload.note,
+    )
+    db.add(donation)
+
+    campaign.raised_amount = Decimal(campaign.raised_amount) + Decimal(payload.amount)
+
+    db.commit()
+    db.refresh(donation)
+    return donation
