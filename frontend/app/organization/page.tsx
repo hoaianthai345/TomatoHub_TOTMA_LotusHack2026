@@ -22,16 +22,16 @@ export default function OrganizationDashboardPage() {
           <OrgStatCard label="Donations" value={donations.length} />
         </div>
 
-        <div className="mt-8 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">Quick actions</h3>
+        <div className="mt-8 card-base p-6">
+          <h3 className="text-lg font-semibold text-heading">Quick actions</h3>
           <div className="mt-4 flex flex-wrap gap-3">
-            <button className="rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white">
+            <button className="btn-base btn-primary">
               Create campaign
             </button>
-            <button className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-800">
+            <button className="btn-base btn-secondary">
               Manage beneficiaries
             </button>
-            <button className="rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-800">
+            <button className="btn-base btn-secondary">
               Publish transparency
             </button>
           </div>

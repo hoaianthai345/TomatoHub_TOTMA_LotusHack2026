@@ -7,26 +7,26 @@ export default function SupporterPage() {
 			<Container>
 				<SectionTitle title="Supporter Registration" description="One user can support in multiple ways depending on product logic." />
 
-				<div className="max-w-2xl rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+				<div className="max-w-2xl card-base p-6">
 					<form className="space-y-4">
 						<div>
-							<label className="mb-2 block text-sm font-medium text-gray-700">Full name</label>
-							<input type="text" className="w-full rounded-xl border border-gray-300 px-4 py-3" placeholder="Enter full name" />
+							<label className="mb-2 block text-sm font-medium text-text">Full name</label>
+							<input type="text" className="input-base" placeholder="Enter full name" />
 						</div>
 
 						<div>
-							<label className="mb-2 block text-sm font-medium text-gray-700">Support types</label>
+							<label className="mb-2 block text-sm font-medium text-text">Support types</label>
 							<div className="grid gap-3 sm:grid-cols-2">
 								{["donor_money", "donor_goods", "volunteer", "shipper", "coordinator"].map((type) => (
-									<label key={type} className="flex items-center gap-2 rounded-xl border border-gray-300 px-4 py-3 text-sm">
-										<input type="checkbox" />
-										<span>{type}</span>
+									<label key={type} className="flex items-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-sm cursor-pointer hover:bg-surface-muted transition-colors">
+										<input type="checkbox" className="accent-primary" />
+										<span className="text-text">{type}</span>
 									</label>
 								))}
 							</div>
 						</div>
 
-						<button type="submit" className="rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white">
+						<button type="submit" className="btn-base btn-primary w-full">
 							Register
 						</button>
 					</form>

@@ -10,8 +10,8 @@ export default function ProfilePage() {
           description="Prototype profile page for supporter contribution history."
         />
 
-        <div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-gray-700">Support history and participation status will be shown here.</p>
+        <div className="card-base p-6">
+          <p className="text-text">Support history and participation status will be shown here.</p>
         </div>
       </Container>
     </div>

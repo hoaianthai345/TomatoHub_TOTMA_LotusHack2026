@@ -29,23 +29,23 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 						<SectionTitle title="Current Needs" description="Needs are updated by Organization and visible to supporters." />
 						<div className="grid gap-4 sm:grid-cols-2">
 							{campaign.needs.map((need) => (
-								<div key={need.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-									<p className="text-sm text-gray-500">{need.label}</p>
-									<p className="mt-2 text-lg font-semibold text-gray-900">{need.value}</p>
+								<div key={need.label} className="card-base p-5 border-border">
+									<p className="text-sm text-text-muted">{need.label}</p>
+									<p className="mt-2 text-lg font-semibold text-heading">{need.value}</p>
 								</div>
 							))}
 						</div>
 					</div>
 
-					<div className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-						<h3 className="text-lg font-semibold text-gray-900">Support this campaign</h3>
-						<p className="mt-2 text-sm text-gray-600">
+					<div className="card-base p-6 border-border h-fit sticky top-24">
+						<h3 className="text-lg font-semibold text-heading">Support this campaign</h3>
+						<p className="mt-2 text-sm text-text-muted">
 							Choose support type: donor money, donor goods, volunteer, shipper, or coordinator.
 						</p>
 
 						<div className="mt-5 space-y-3">
-							<button className="w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white">Donate money</button>
-							<button className="w-full rounded-xl border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-800">
+							<button className="w-full btn-base btn-primary">Donate money</button>
+							<button className="w-full btn-base btn-secondary">
 								Register as supporter
 							</button>
 						</div>

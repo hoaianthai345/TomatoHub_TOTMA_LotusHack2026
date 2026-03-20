@@ -10,21 +10,21 @@ export default function CreateCampaignPage() {
           description="Prototype screen for organization campaign creation."
         />
 
-        <div className="max-w-3xl rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="max-w-3xl card-base p-6">
           <form className="grid gap-4">
             <input
-              className="rounded-xl border border-gray-300 px-4 py-3"
+              className="input-base"
               placeholder="Campaign title"
             />
             <input
-              className="rounded-xl border border-gray-300 px-4 py-3"
+              className="input-base"
               placeholder="Location"
             />
             <textarea
-              className="min-h-36 rounded-xl border border-gray-300 px-4 py-3"
+              className="min-h-36 input-base"
               placeholder="Campaign description"
             />
-            <button className="w-fit rounded-xl bg-red-600 px-5 py-3 text-sm font-semibold text-white">
+            <button className="w-fit btn-base btn-primary">
               Create
             </button>
           </form>

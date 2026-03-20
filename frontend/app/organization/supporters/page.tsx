@@ -15,12 +15,12 @@ export default function SupportersPage() {
           {supporters.map((item) => (
             <div
               key={item.id}
-              className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+              className="card-base p-5"
             >
-              <h3 className="font-semibold text-gray-900">{item.fullName}</h3>
-              <p className="mt-1 text-sm text-gray-600">{item.location}</p>
-              <p className="mt-2 text-sm text-gray-700">
-                Support types: {item.supportTypes.join(", ")}
+              <h3 className="font-semibold text-heading">{item.fullName}</h3>
+              <p className="mt-1 text-sm text-text-muted">{item.location}</p>
+              <p className="mt-2 text-sm text-text">
+                Support types: <span className="font-medium">{item.supportTypes.join(", ")}</span>
               </p>
             </div>
           ))}

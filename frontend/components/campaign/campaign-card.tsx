@@ -6,42 +6,63 @@ interface CampaignCardProps {
   campaign: Campaign;
 }
 
+// Áp dụng card-base và card-hover từ globals.css
 export default function CampaignCard({ campaign }: CampaignCardProps) {
+  const raisedAmount = campaign.raisedAmount ?? 0;
+  const targetAmount = campaign.targetAmount ?? 0;
+
+  const progress =
+    targetAmount > 0 ? Math.min(100, (raisedAmount / targetAmount) * 100) : 0;
+
   return (
-    <article className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <article className="overflow-hidden card-base card-hover flex flex-col">
       <div
-        className="h-48 w-full bg-cover bg-center"
+        className="h-48 w-full bg-cover bg-center border-b border-border"
         style={{ backgroundImage: `url(${campaign.coverImage})` }}
       />
 
-      <div className="p-5">
+      <div className="p-5 flex-1 flex flex-col">
         <div className="mb-3 flex flex-wrap gap-2">
           {campaign.tags.map((tag) => (
             <span
               key={tag}
-              className="rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700"
+              className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
             >
               {tag}
             </span>
           ))}
         </div>
 
-        <h3 className="text-lg font-semibold text-gray-900">{campaign.title}</h3>
-        <p className="mt-2 text-sm text-gray-600">{campaign.shortDescription}</p>
+        <h3 className="text-lg font-bold text-heading">{campaign.title}</h3>
 
-        <div className="mt-4 space-y-1 text-sm text-gray-700">
-          <p>Location: {campaign.location}</p>
-          <p>Beneficiaries: {campaign.beneficiaryCount}</p>
-          <p>Supporters: {campaign.supporterCount}</p>
-          <p>
-            Raised: {formatCurrency(campaign.raisedAmount)} /{" "}
-            {formatCurrency(campaign.targetAmount)}
+        <p className="mt-2 text-sm text-text-muted flex-1 line-clamp-2">
+          {campaign.shortDescription}
+        </p>
+
+        <div className="mt-5 space-y-2 text-sm text-text font-medium bg-surface-muted p-3 rounded-lg border border-border/50">
+          <p className="flex justify-between">
+            <span>Location:</span>
+            <span>{campaign.location}</span>
           </p>
+
+          <p className="flex justify-between">
+            <span>Raise:</span>
+            <span className="text-primary font-bold">
+              {formatCurrency(raisedAmount)} / {formatCurrency(targetAmount)}
+            </span>
+          </p>
+
+          <div className="h-2 w-full bg-border rounded-full overflow-hidden mt-1">
+            <div
+              className="h-full bg-primary"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
         </div>
 
         <Link
           href={`/campaigns/${campaign.slug}`}
-          className="mt-5 inline-flex rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700"
+          className="mt-5 w-full btn-base btn-primary"
         >
           View details
         </Link>
