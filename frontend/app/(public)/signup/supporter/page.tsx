@@ -3,6 +3,9 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSupporterSignupFlow } from "@/lib/auth/SupporterSignupFlowContext";
+import VietnamLocationFields from "@/components/location/VietnamLocationFields";
+import { formatVietnamLocationLabel } from "@/lib/api/vietnam-location";
+import type { VietnamLocationValue } from "@/types/location";
 
 export default function SupporterSignupPage() {
   const router = useRouter();
@@ -11,8 +14,10 @@ export default function SupporterSignupPage() {
     name: draft?.name ?? "",
     email: draft?.email ?? "",
     password: draft?.password ?? "",
-    location: draft?.location ?? "",
   });
+  const [locationValue, setLocationValue] = useState<VietnamLocationValue>(
+    draft?.locationSelection ?? {}
+  );
 
   const canContinue = useMemo(
     () =>
@@ -29,7 +34,8 @@ export default function SupporterSignupPage() {
       name: formData.name.trim(),
       email: formData.email.trim(),
       password: formData.password,
-      location: formData.location.trim() || undefined,
+      location: formatVietnamLocationLabel(locationValue) || undefined,
+      locationSelection: locationValue,
       supportTypes: draft?.supportTypes ?? [],
     });
 
@@ -95,18 +101,11 @@ export default function SupporterSignupPage() {
             />
           </div>
 
-          <div>
-            <label className="label-text block mb-1">Location</label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, location: event.target.value }))
-              }
-              className="input-base"
-              placeholder="City, District"
-            />
-          </div>
+          <VietnamLocationFields
+            value={locationValue}
+            onChange={setLocationValue}
+            helperText="Shared Vietnam administrative data. We store ward, district, and province as your profile location."
+          />
 
           <button
             type="submit"

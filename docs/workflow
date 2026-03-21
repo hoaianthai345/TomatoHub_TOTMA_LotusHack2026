@@ -16,6 +16,13 @@ Completed in this sprint
 - Dashboard backend endpoints are now authenticated for the logged-in account:
   - Supporters can only view their own dashboard.
   - Organizations can only view their own dashboard.
+- Frontend dashboard workspaces for `/supporter` and `/organization` were refreshed visually with improved sidebars, hero sections, and activity panels.
+- Sample frontend-only engagement data now exists in `frontend/mocks/dashboard-experience.ts` to support UI work for:
+  - supporter joined campaigns
+  - supporter contribution history
+  - supporter task states
+  - organization campaign pipeline cards
+  - organization recent activity feed
 - Backend write authorization is tighter:
   - `POST/PATCH /campaigns` and `POST /campaigns/{id}/publish` require organization ownership.
   - `POST /donations` cannot spoof `donor_user_id`; linked donations require authenticated matching user.
@@ -27,13 +34,17 @@ Important files added or reshaped
 - `frontend/lib/api/http.ts`
 - `frontend/lib/api/campaigns.ts`
 - `frontend/lib/api/dashboards.ts`
+- `frontend/lib/api/vietnam-location.ts`
 - `frontend/types/campaign.ts`
 - `frontend/types/dashboard.ts`
 - `frontend/types/user.ts`
+- `frontend/types/location.ts`
 - `frontend/lib/auth/SupporterSignupFlowContext.tsx`
 - `frontend/lib/auth/supportTypes.ts`
 - `frontend/components/auth/RoleGate.tsx`
+- `frontend/components/location/VietnamLocationFields.tsx`
 - `backend/app/api/permissions.py`
+- `docs/vietnam-location-checklist.md`
 
 Known gaps for next sprint
 - `frontend/app/organization/supporters/page.tsx` still uses mock data.

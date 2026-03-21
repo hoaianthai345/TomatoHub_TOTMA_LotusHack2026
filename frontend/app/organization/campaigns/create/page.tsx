@@ -3,10 +3,12 @@
 import { useMemo, useState } from "react";
 import Container from "@/components/common/container";
 import SectionTitle from "@/components/common/section-title";
+import VietnamLocationFields from "@/components/location/VietnamLocationFields";
 import { useAuth } from "@/lib/auth";
 import { createCampaign } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
 import type { CampaignSupportType } from "@/types/campaign";
+import type { VietnamLocationValue } from "@/types/location";
 
 const supportTypeOptions: { value: CampaignSupportType; label: string }[] = [
   { value: "money", label: "Money" },
@@ -28,15 +30,13 @@ export default function CreateCampaignPage() {
     shortDescription: "",
     description: "",
     goalAmount: "5000",
-    province: "",
-    district: "",
-    addressLine: "",
     coverImageUrl: "",
     tags: "",
     startsAt: buildDefaultDateTime(8),
     endsAt: buildDefaultDateTime(18),
     supportTypes: ["money"] as CampaignSupportType[],
   });
+  const [locationValue, setLocationValue] = useState<VietnamLocationValue>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,9 +78,9 @@ export default function CreateCampaignPage() {
           shortDescription: formData.shortDescription,
           description: formData.description,
           goalAmount: Number(formData.goalAmount),
-          province: formData.province,
-          district: formData.district,
-          addressLine: formData.addressLine,
+          province: locationValue.provinceName,
+          district: locationValue.districtName,
+          addressLine: locationValue.addressLine,
           coverImageUrl: formData.coverImageUrl,
           tags: formData.tags
             .split(",")
@@ -103,15 +103,13 @@ export default function CreateCampaignPage() {
         shortDescription: "",
         description: "",
         goalAmount: "5000",
-        province: "",
-        district: "",
-        addressLine: "",
         coverImageUrl: "",
         tags: "",
         startsAt: buildDefaultDateTime(8),
         endsAt: buildDefaultDateTime(18),
         supportTypes: ["money"],
       });
+      setLocationValue({});
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Failed to create campaign."
@@ -185,35 +183,13 @@ export default function CreateCampaignPage() {
                 }
               />
             </div>
-            <div className="grid gap-4 md:grid-cols-3">
-              <input
-                className="input-base"
-                placeholder="Province"
-                value={formData.province}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, province: event.target.value }))
-                }
-              />
-              <input
-                className="input-base"
-                placeholder="District"
-                value={formData.district}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, district: event.target.value }))
-                }
-              />
-              <input
-                className="input-base"
-                placeholder="Address line"
-                value={formData.addressLine}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    addressLine: event.target.value,
-                  }))
-                }
-              />
-            </div>
+            <VietnamLocationFields
+              value={locationValue}
+              onChange={setLocationValue}
+              includeWard={false}
+              includeAddressLine
+              helperText="This shared Vietnam location picker currently uses province and district because the backend campaign schema still stores those fields separately."
+            />
             <input
               className="input-base"
               placeholder="Cover image URL"

@@ -2,8 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import VietnamLocationFields from "@/components/location/VietnamLocationFields";
 import { AuthApiError } from "@/lib/auth/api";
+import { formatVietnamLocationLabel } from "@/lib/api/vietnam-location";
 import { useAuth } from "@/lib/auth";
+import type { VietnamLocationValue } from "@/types/location";
 
 export default function OrganizationSignupPage() {
   const router = useRouter();
@@ -13,9 +16,9 @@ export default function OrganizationSignupPage() {
     representative: "",
     email: "",
     password: "",
-    location: "",
     description: "",
   });
+  const [locationValue, setLocationValue] = useState<VietnamLocationValue>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,7 +31,7 @@ export default function OrganizationSignupPage() {
         representative: formData.representative || formData.name,
         email: formData.email,
         password: formData.password,
-        location: formData.location,
+        location: formatVietnamLocationLabel(locationValue) || undefined,
         description: formData.description,
       });
       router.push("/organization");
@@ -123,21 +126,11 @@ export default function OrganizationSignupPage() {
             />
           </div>
 
-          {/* Location */}
-          <div>
-            <label className="label-text block mb-1">
-              Location
-            </label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, location: e.target.value }))
-              }
-              className="input-base"
-              placeholder="City, District"
-            />
-          </div>
+          <VietnamLocationFields
+            value={locationValue}
+            onChange={setLocationValue}
+            helperText="Use the shared Vietnam administrative dataset so organization locations stay consistent across forms."
+          />
 
           {/* Description */}
           <div>
