@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getSupporterDashboard } from "@/lib/api/dashboards";
@@ -54,27 +55,22 @@ export default function SupporterDashboardPage() {
     {
       label: "Active Campaigns",
       value: dashboard?.activeCampaigns ?? 0,
-      color: "--color-primary",
     },
     {
       label: "Total Contributions",
       value: dashboard?.totalContributions ?? 0,
-      color: "--color-info",
     },
     {
       label: "Tasks Completed",
       value: dashboard?.tasksCompleted ?? 0,
-      color: "--color-success",
     },
     {
       label: "Support Types",
       value: currentUser?.supportTypes?.length || 0,
-      color: "--color-supporter",
     },
     {
       label: "Total Donated",
       value: formatCurrency(dashboard?.totalDonatedAmount ?? 0),
-      color: "--color-org",
     },
   ];
   const participationCards = dashboard?.participationCards ?? [];
@@ -156,17 +152,10 @@ export default function SupporterDashboardPage() {
           {statCards.map((stat) => (
             <div
               key={stat.label}
-              className="card-hover rounded-3xl border p-5"
-              style={{
-                backgroundColor: `color-mix(in oklab, var(${stat.color}) 10%, white)`,
-                borderColor: `var(${stat.color})`,
-              }}
+              className="card-hover rounded-3xl border border-border bg-white p-5"
             >
               <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">{stat.label}</h3>
-              <p
-                className="mt-3 text-3xl font-bold"
-                style={{ color: `var(${stat.color})` }}
-              >
+              <p className="mt-3 text-3xl font-bold text-heading">
                 {stat.value}
               </p>
             </div>
@@ -192,15 +181,18 @@ export default function SupporterDashboardPage() {
                 {participationCards.map((item) => (
                   <article
                     key={item.id}
-                    className="grid gap-4 rounded-3xl border border-border bg-white p-4 md:grid-cols-[120px_minmax(0,1fr)]"
+                    className="rounded-3xl border border-border bg-white p-4"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.coverImage}
-                      alt={item.campaignTitle}
-                      className="h-28 w-full rounded-2xl object-cover"
-                    />
-                    <div className="min-w-0">
+                    <div className="relative aspect-[16/7] w-full overflow-hidden rounded-2xl border border-border bg-surface-light">
+                      <Image
+                        src={item.coverImage}
+                        alt={item.campaignTitle}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 1024px) 100vw, 760px"
+                      />
+                    </div>
+                    <div className="mt-4 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="badge-base badge-supporter">{item.roleLabel}</span>
                         <span className="badge-base border border-border bg-surface-light text-text">

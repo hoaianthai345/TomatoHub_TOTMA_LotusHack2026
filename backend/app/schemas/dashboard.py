@@ -42,8 +42,11 @@ class SupporterTaskItemRead(BaseModel):
 class OrganizationCampaignSnapshotRead(BaseModel):
     id: str
     campaign_id: UUID
+    campaign_slug: str
+    campaign_status: str
     campaign_title: str
     location: str
+    cover_image_url: str | None = None
     status_label: str
     support_label: str
     progress_percent: int

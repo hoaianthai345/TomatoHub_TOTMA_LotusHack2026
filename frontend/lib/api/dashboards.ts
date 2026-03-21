@@ -52,8 +52,11 @@ interface BackendSupporterTaskItem {
 interface BackendOrganizationCampaignSnapshot {
   id: string;
   campaign_id: string;
+  campaign_slug: string;
+  campaign_status: "draft" | "published" | "closed";
   campaign_title: string;
   location: string;
+  cover_image_url: string | null;
   status_label: string;
   support_label: string;
   progress_percent: number;
@@ -136,13 +139,13 @@ function buildFallbackNextStep(registration: {
     const shiftEnd = parseDate(registration.shiftEndAt);
 
     if (shiftStart && now < shiftStart) {
-      return `Chờ tới lịch volunteer (${formatDateTime(registration.shiftStartAt)}).`;
+      return `Waiting for volunteer shift (${formatDateTime(registration.shiftStartAt)}).`;
     }
     if (shiftStart && shiftEnd && now >= shiftStart && now <= shiftEnd) {
-      return `Đang trong ca volunteer (đến ${formatDateTime(registration.shiftEndAt)}).`;
+      return `In volunteer shift (until ${formatDateTime(registration.shiftEndAt)}).`;
     }
     if (shiftEnd && now > shiftEnd) {
-      return `Quá ca/chưa check-in (${formatDateTime(registration.shiftEndAt)}).`;
+      return `Shift ended / not checked in (${formatDateTime(registration.shiftEndAt)}).`;
     }
 
     return "Arrive at checkpoint and scan QR to check in.";
@@ -247,8 +250,11 @@ function mapOrganizationCampaignSnapshot(
   return {
     id: item.id,
     campaignId: item.campaign_id,
+    campaignSlug: item.campaign_slug,
+    campaignStatus: item.campaign_status,
     campaignTitle: item.campaign_title,
     location: item.location,
+    coverImageUrl: resolveApiAssetUrl(item.cover_image_url) ?? undefined,
     statusLabel: item.status_label,
     supportLabel: item.support_label,
     progressPercent: item.progress_percent,
@@ -331,3 +337,4 @@ export async function getSupporterDashboard(
     taskItems: (dashboard.task_items ?? []).map(mapSupporterTaskItem),
   };
 }
+

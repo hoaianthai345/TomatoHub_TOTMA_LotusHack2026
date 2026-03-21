@@ -7,9 +7,11 @@ import StatePanel from "@/components/common/state-panel";
 import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api/http";
+import { getStatusMeta, STATUS_TONE_CLASS } from "@/lib/ui/status";
 import {
   listVolunteerRegistrations,
   updateVolunteerRegistrationAttendance,
+  updateVolunteerRegistrationStatus,
 } from "@/lib/api/volunteer-registrations";
 import type {
   VolunteerAttendanceStatus,
@@ -56,6 +58,28 @@ const ATTENDANCE_STATUS_OPTIONS: Array<{
   },
 ];
 
+const REGISTRATION_STATUS_OPTIONS: Array<{
+  value: VolunteerRegistrationStatus;
+  label: string;
+  hint: string;
+}> = [
+  {
+    value: "approved",
+    label: "Approved",
+    hint: "Volunteer is approved and can be marked for attendance.",
+  },
+  {
+    value: "pending",
+    label: "Pending",
+    hint: "Volunteer is waiting for review.",
+  },
+  {
+    value: "rejected",
+    label: "Rejected",
+    hint: "Volunteer is rejected for this campaign.",
+  },
+];
+
 const VOLUNTEER_ROLE_LABEL: Record<VolunteerRole, string> = {
   packing: "Packing",
   delivery: "Delivery",
@@ -87,16 +111,16 @@ function volunteerShiftLabel(item: {
 }
 
 function registrationSortWeight(status: VolunteerRegistrationStatus): number {
-  if (status === "approved") {
+  if (status === "pending") {
     return 0;
   }
-  if (status === "pending") {
+  if (status === "approved") {
     return 1;
   }
   if (status === "rejected") {
     return 2;
   }
-  return 3;
+  return 4;
 }
 
 function attendanceSortWeight(status: VolunteerAttendanceStatus): number {
@@ -113,6 +137,14 @@ function attendanceSortWeight(status: VolunteerAttendanceStatus): number {
     return 3;
   }
   return 4;
+}
+
+function statusToneClass(
+  kind: "registration_status" | "attendance_status",
+  value: string
+): string {
+  const tone = getStatusMeta(kind, value).tone;
+  return STATUS_TONE_CLASS[tone];
 }
 
 function resolveReplacementRegistration(
@@ -163,9 +195,8 @@ export default function CampaignVolunteerCheckinPanel({
   const [selectedRegistrationId, setSelectedRegistrationId] = useState<string | null>(
     null
   );
-  const [draftStatus, setDraftStatus] = useState<VolunteerAttendanceStatus>("not_marked");
-  const [draftNote, setDraftNote] = useState("");
-  const [savingStatus, setSavingStatus] = useState(false);
+  const [savingAttendanceStatus, setSavingAttendanceStatus] = useState(false);
+  const [savingRegistrationStatus, setSavingRegistrationStatus] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -207,11 +238,16 @@ export default function CampaignVolunteerCheckinPanel({
   }, [accessToken, campaignId, isOwnerOrg]);
 
   const visibleRegistrations = useMemo(
-    () =>
-      registrations.filter(
+    () => {
+      if (isOwnerOrg) {
+        return registrations;
+      }
+
+      return registrations.filter(
         (item) => item.status === "approved" || item.status === "pending"
-      ),
-    [registrations]
+      );
+    },
+    [isOwnerOrg, registrations]
   );
 
   const sortedRegistrations = useMemo(
@@ -242,19 +278,25 @@ export default function CampaignVolunteerCheckinPanel({
     [sortedRegistrations, selectedRegistrationId]
   );
 
-  const canSaveSelectedAttendance =
+  const canUpdateSelectedAttendance =
     selectedRegistration?.status === "approved" ||
     selectedRegistration?.status === "pending";
+  const canUpdateSelectedRegistrationStatus =
+    selectedRegistration?.status !== "cancelled";
+  const isSavingAny = savingAttendanceStatus || savingRegistrationStatus;
 
   const panelTitle = isOwnerOrg
-    ? "Manage Volunteer Attendance"
+    ? "Manage Volunteers"
     : currentUser?.role === "supporter"
       ? "Volunteer Participants"
       : "Campaign Volunteer List";
 
   const panelDescription = isOwnerOrg
-    ? "Click a volunteer row to open the attendance popup and update status."
+    ? "Click a volunteer row to open the popup and manage registration + attendance."
     : "This is the current volunteer list for this campaign.";
+  const emptyStateMessage = isOwnerOrg
+    ? "No volunteer registrations yet for this campaign."
+    : "No approved or pending volunteers yet for this campaign.";
 
   const modeLabel = isOwnerOrg
     ? "Organization view"
@@ -267,32 +309,120 @@ export default function CampaignVolunteerCheckinPanel({
       return;
     }
     setSelectedRegistrationId(registration.id);
-    setDraftStatus(registration.attendanceStatus);
-    setDraftNote(registration.attendanceNote ?? "");
     setErrorMessage(null);
     setSuccessMessage(null);
   };
 
   const closeAttendancePopup = () => {
     setSelectedRegistrationId(null);
-    setDraftStatus("not_marked");
-    setDraftNote("");
-    setSavingStatus(false);
+    setSavingAttendanceStatus(false);
+    setSavingRegistrationStatus(false);
   };
 
-  const handleSaveAttendanceStatus = async () => {
+  const handleUpdateRegistrationStatus = async (
+    status: VolunteerRegistrationStatus
+  ) => {
     if (!selectedRegistration || !accessToken || !isOwnerOrg) {
       return;
     }
 
-    if (!canSaveSelectedAttendance) {
+    if (!canUpdateSelectedRegistrationStatus) {
+      setErrorMessage(
+        "Registration status cannot be updated for cancelled registrations."
+      );
+      return;
+    }
+
+    if (selectedRegistration.status === status) {
+      return;
+    }
+
+    setSavingRegistrationStatus(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      let updatedRegistration: VolunteerRegistration;
+      try {
+        updatedRegistration = await updateVolunteerRegistrationStatus(
+          {
+            registrationId: selectedRegistration.id,
+            status,
+          },
+          accessToken
+        );
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.status !== 404) {
+          throw error;
+        }
+
+        const latestRegistrations = await listVolunteerRegistrations({
+          campaignId,
+          limit: 500,
+          token: accessToken,
+        });
+        setRegistrations(latestRegistrations);
+
+        const replacement = resolveReplacementRegistration(
+          latestRegistrations,
+          selectedRegistration
+        );
+
+        if (!replacement) {
+          throw new ApiError(
+            "Volunteer record was not found. Please refresh and try again.",
+            404
+          );
+        }
+
+        updatedRegistration = await updateVolunteerRegistrationStatus(
+          {
+            registrationId: replacement.id,
+            status,
+          },
+          accessToken
+        );
+      }
+
+      setRegistrations((previous) =>
+        previous.map((item) =>
+          item.id === updatedRegistration.id ? updatedRegistration : item
+        )
+      );
+
+      setSuccessMessage(
+        `Registration status updated for ${updatedRegistration.fullName} (${updatedRegistration.status}).`
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Failed to update registration status."
+      );
+    } finally {
+      setSavingRegistrationStatus(false);
+    }
+  };
+
+  const handleUpdateAttendanceStatus = async (
+    attendanceStatus: VolunteerAttendanceStatus
+  ) => {
+    if (!selectedRegistration || !accessToken || !isOwnerOrg) {
+      return;
+    }
+
+    if (!canUpdateSelectedAttendance) {
       setErrorMessage(
         "Attendance cannot be updated for rejected or cancelled registrations."
       );
       return;
     }
 
-    setSavingStatus(true);
+    if (selectedRegistration.attendanceStatus === attendanceStatus) {
+      return;
+    }
+
+    setSavingAttendanceStatus(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -302,8 +432,7 @@ export default function CampaignVolunteerCheckinPanel({
         updatedRegistration = await updateVolunteerRegistrationAttendance(
           {
             registrationId: selectedRegistration.id,
-            attendanceStatus: draftStatus,
-            attendanceNote: draftNote.trim() || undefined,
+            attendanceStatus,
           },
           accessToken
         );
@@ -334,8 +463,7 @@ export default function CampaignVolunteerCheckinPanel({
         updatedRegistration = await updateVolunteerRegistrationAttendance(
           {
             registrationId: replacement.id,
-            attendanceStatus: draftStatus,
-            attendanceNote: draftNote.trim() || undefined,
+            attendanceStatus,
           },
           accessToken
         );
@@ -347,7 +475,6 @@ export default function CampaignVolunteerCheckinPanel({
         )
       );
       setSuccessMessage(`Attendance updated for ${updatedRegistration.fullName}.`);
-      closeAttendancePopup();
     } catch (error) {
       if (error instanceof ApiError && error.status === 404) {
         setErrorMessage(
@@ -361,7 +488,7 @@ export default function CampaignVolunteerCheckinPanel({
         );
       }
     } finally {
-      setSavingStatus(false);
+      setSavingAttendanceStatus(false);
     }
   };
 
@@ -398,7 +525,7 @@ export default function CampaignVolunteerCheckinPanel({
         <StatePanel
           variant="empty"
           className="mt-4"
-          message="No approved or pending volunteers yet for this campaign."
+          message={emptyStateMessage}
         />
       ) : null}
 
@@ -493,10 +620,10 @@ export default function CampaignVolunteerCheckinPanel({
 
       {selectedRegistration ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+          <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-lg font-semibold text-heading">Update attendance</h3>
+                <h3 className="text-lg font-semibold text-heading">Manage volunteer status</h3>
                 <p className="mt-1 text-sm text-text-muted">{selectedRegistration.fullName}</p>
                 <p className="text-xs text-text-muted">
                   {volunteerRoleLabel(selectedRegistration.role)} |{" "}
@@ -507,7 +634,7 @@ export default function CampaignVolunteerCheckinPanel({
                 type="button"
                 className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border text-text-muted hover:bg-surface-muted"
                 onClick={closeAttendancePopup}
-                disabled={savingStatus}
+                disabled={isSavingAny}
                 aria-label="Close popup"
                 title="Close"
               >
@@ -528,71 +655,78 @@ export default function CampaignVolunteerCheckinPanel({
               />
             </div>
 
-            {!canSaveSelectedAttendance ? (
+            <div className="mt-4 space-y-2">
+              <p className="text-sm font-medium text-heading">Registration status</p>
+              <div className="flex flex-wrap gap-2">
+                {REGISTRATION_STATUS_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`badge-base px-3 py-1.5 text-xs transition ${
+                      selectedRegistration.status === option.value
+                        ? statusToneClass("registration_status", option.value)
+                        : "border border-border bg-white text-text-muted hover:bg-surface-muted"
+                    }`}
+                    onClick={() => {
+                      void handleUpdateRegistrationStatus(option.value);
+                    }}
+                    title={option.hint}
+                    disabled={
+                      isSavingAny ||
+                      !canUpdateSelectedRegistrationStatus ||
+                      selectedRegistration.status === option.value
+                    }
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {!canUpdateSelectedRegistrationStatus ? (
               <StatePanel
                 variant="warning"
                 className="mt-3"
-                message="Attendance cannot be updated for rejected or cancelled registrations."
+                message="Registration status cannot be updated for cancelled registrations."
+              />
+            ) : null}
+
+            {!canUpdateSelectedAttendance ? (
+              <StatePanel
+                variant="warning"
+                className="mt-3"
+                message="Attendance can only be updated when registration status is approved or pending."
               />
             ) : null}
 
             <div className="mt-4 space-y-2">
-              {ATTENDANCE_STATUS_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  className="flex cursor-pointer items-start gap-3 rounded-lg border border-border p-3"
-                >
-                  <input
-                    type="radio"
-                    name="attendance-status"
-                    value={option.value}
-                    checked={draftStatus === option.value}
-                    onChange={() => {
-                      setDraftStatus(option.value);
+              <p className="text-sm font-medium text-heading">Attendance status</p>
+              <div className="flex flex-wrap gap-2">
+                {ATTENDANCE_STATUS_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`badge-base px-3 py-1.5 text-xs transition ${
+                      selectedRegistration.attendanceStatus === option.value
+                        ? statusToneClass("attendance_status", option.value)
+                        : "border border-border bg-white text-text-muted hover:bg-surface-muted"
+                    }`}
+                    onClick={() => {
+                      void handleUpdateAttendanceStatus(option.value);
                     }}
-                    disabled={savingStatus || !canSaveSelectedAttendance}
-                  />
-                  <span className="text-sm">
-                    <span className="font-medium text-heading">{option.label}</span>
-                    <span className="mt-0.5 block text-xs text-text-muted">{option.hint}</span>
-                  </span>
-                </label>
-              ))}
+                    title={option.hint}
+                    disabled={
+                      isSavingAny ||
+                      !canUpdateSelectedAttendance ||
+                      selectedRegistration.attendanceStatus === option.value
+                    }
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            <label className="mt-4 block text-sm text-text">
-              <span className="mb-1 block font-medium text-heading">Note (optional)</span>
-              <textarea
-                className="input-base min-h-24"
-                value={draftNote}
-                onChange={(event) => {
-                  setDraftNote(event.target.value);
-                }}
-                disabled={savingStatus || !canSaveSelectedAttendance}
-                placeholder="Example: arrived 10 minutes late, left early due to health issue..."
-              />
-            </label>
-
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                type="button"
-                className="btn-base btn-secondary"
-                onClick={closeAttendancePopup}
-                disabled={savingStatus}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn-base btn-primary"
-                onClick={() => {
-                  void handleSaveAttendanceStatus();
-                }}
-                disabled={savingStatus || !canSaveSelectedAttendance}
-              >
-                {savingStatus ? "Saving..." : "Save status"}
-              </button>
-            </div>
           </div>
         </div>
       ) : null}

@@ -15,7 +15,7 @@ export default function Navbar() {
       ? currentUser.organizationName ?? currentUser.name
       : currentUser?.name;
   const profileHref =
-    currentUser?.role === "organization" ? "/organization/profile" : "/supporter/profile";
+    currentUser?.role === "organization" ? "/organization" : "/supporter";
 
   const handleLogout = () => {
     logout();
@@ -74,7 +74,7 @@ export default function Navbar() {
                       href={profileHref}
                       className="mt-2 block rounded-lg px-3 py-2 text-sm font-medium text-text transition hover:bg-surface-light"
                     >
-                      Open profile
+                      Open dashboard
                     </Link>
                     <button
                       onClick={handleLogout}

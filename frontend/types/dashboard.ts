@@ -34,8 +34,11 @@ export interface SupporterTaskItem {
 export interface OrganizationCampaignSnapshot {
   id: string;
   campaignId: string;
+  campaignSlug: string;
+  campaignStatus: "draft" | "published" | "closed";
   campaignTitle: string;
   location: string;
+  coverImageUrl?: string;
   statusLabel: string;
   supportLabel: string;
   progressPercent: number;

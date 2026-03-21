@@ -58,12 +58,8 @@ export const SUPPORTER_ROUTES = [
  */
 export const ORG_ROUTES = [
   "/organization",
-  "/organization/checkpoints",
   "/organization/campaigns",
   "/organization/campaigns/create",
-  "/organization/beneficiaries",
   "/organization/supporters",
-  "/organization/donations",
-  "/organization/transparency",
   "/organization/profile",
 ] as const;

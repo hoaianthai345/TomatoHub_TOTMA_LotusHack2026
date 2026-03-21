@@ -24,11 +24,7 @@ export default function OrganizationLayout({
   const sidebarLinks = [
     { label: "Dashboard", href: "/organization" },
     { label: "Campaigns", href: "/organization/campaigns" },
-    { label: "Checkpoints", href: "/organization/checkpoints" },
-    { label: "Beneficiaries", href: "/organization/beneficiaries" },
     { label: "Supporters", href: "/organization/supporters" },
-    { label: "Donations", href: "/organization/donations" },
-    { label: "Transparency", href: "/organization/transparency" },
     { label: "Profile", href: "/organization/profile" },
   ];
 
@@ -72,7 +68,7 @@ export default function OrganizationLayout({
           <div className="m-4 rounded-2xl border border-org/15 bg-[color-mix(in_oklab,var(--color-org)_8%,white)] p-4">
             <p className="text-sm font-semibold text-heading">Today&apos;s focus</p>
             <p className="mt-2 text-sm text-text-muted">
-              Keep campaign progress, supporter communication, and transparency updates in one visible flow.
+              Keep campaign progress and supporter communication in one clear workspace.
             </p>
           </div>
         </aside>
