@@ -34,6 +34,12 @@ interface CreateVolunteerRegistrationInput {
   userId?: string;
 }
 
+interface QuickJoinVolunteerRegistrationInput {
+  campaignId: string;
+  phoneNumber?: string;
+  message?: string;
+}
+
 function mapVolunteerRegistration(
   item: BackendVolunteerRegistration
 ): VolunteerRegistration {
@@ -97,6 +103,26 @@ export async function createVolunteerRegistration(
         user_id: payload.userId,
         full_name: payload.fullName,
         email: payload.email,
+        phone_number: payload.phoneNumber,
+        message: payload.message,
+      }),
+    }
+  );
+
+  return mapVolunteerRegistration(registration);
+}
+
+export async function quickJoinVolunteerRegistration(
+  payload: QuickJoinVolunteerRegistrationInput,
+  token: string
+): Promise<VolunteerRegistration> {
+  const registration = await requestJson<BackendVolunteerRegistration>(
+    "/volunteer-registrations/quick-join",
+    {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        campaign_id: payload.campaignId,
         phone_number: payload.phoneNumber,
         message: payload.message,
       }),
