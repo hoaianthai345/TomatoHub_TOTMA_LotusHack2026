@@ -1,5 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -43,6 +44,31 @@ class Settings(BaseSettings):
             for origin in self.BACKEND_CORS_ORIGINS.split(",")
             if origin.strip()
         ]
+
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        url = self.DATABASE_URL.strip()
+        if url.startswith("postgres://"):
+            url = f"postgresql://{url[len('postgres://'):]}"
+        if url.startswith("postgresql://"):
+            url = f"postgresql+psycopg2://{url[len('postgresql://'):]}"
+
+        parts = urlsplit(url)
+        query = dict(parse_qsl(parts.query, keep_blank_values=True))
+        host = (parts.hostname or "").lower()
+        cloud_domains = ("supabase.com", "aivencloud.com", "render.com")
+        if any(host.endswith(domain) for domain in cloud_domains) and "sslmode" not in query:
+            query["sslmode"] = "require"
+
+        return urlunsplit(
+            (
+                parts.scheme,
+                parts.netloc,
+                parts.path,
+                urlencode(query, doseq=True),
+                parts.fragment,
+            )
+        )
 
     def upload_root_path(self) -> Path:
         upload_path = Path(self.UPLOAD_DIR)
