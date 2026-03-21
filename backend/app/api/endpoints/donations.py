@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, get_optional_current_user
 from app.api.permissions import ensure_authenticated_user_matches
-from app.models.campaign import Campaign
+from app.models.campaign import Campaign, CampaignStatus
 from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
 from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
@@ -76,6 +76,11 @@ def create_donation(
     campaign = db.get(Campaign, payload.campaign_id)
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    if campaign.status != CampaignStatus.published or not campaign.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campaign is not open for donations",
+        )
 
     donor_user_id = payload.donor_user_id
     donor_name = payload.donor_name.strip()

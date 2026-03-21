@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Reques
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_active_user, get_current_organization_user, get_db
+from app.api.deps import (
+    get_current_active_user,
+    get_current_organization_user,
+    get_db,
+    get_optional_current_user,
+)
 from app.api.permissions import ensure_matching_organization
 from app.models.campaign_image import CampaignImage
 from app.models.campaign import Campaign, CampaignStatus, SupportType
@@ -17,6 +22,7 @@ from app.schemas.campaign import (
     CampaignCreate,
     CampaignPublishResponse,
     CampaignRead,
+    CampaignReopenResponse,
     CampaignUpdate,
 )
 from app.schemas.campaign_image import CampaignImageRead, CampaignImageSetCoverResponse
@@ -31,6 +37,7 @@ from app.services.campaign_service import (
     delete_campaign,
     get_campaign_or_404,
     publish_campaign,
+    reopen_campaign,
     update_manual_campaign,
 )
 
@@ -129,6 +136,7 @@ def list_campaigns_by_organization(
     limit: int = Query(default=50, ge=1, le=200),
     campaign_status: CampaignStatus | None = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> list[Campaign]:
     stmt = (
         select(Campaign)
@@ -136,7 +144,19 @@ def list_campaigns_by_organization(
         .order_by(Campaign.created_at.desc())
         .limit(limit)
     )
-    if campaign_status is not None:
+    can_manage_org_campaigns = (
+        current_user is not None
+        and (current_user.is_superuser or current_user.organization_id == organization_id)
+    )
+    if campaign_status is None:
+        if not can_manage_org_campaigns:
+            stmt = stmt.where(Campaign.status == CampaignStatus.published)
+    else:
+        if campaign_status != CampaignStatus.published and not can_manage_org_campaigns:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Authentication required to query non-public organization campaigns",
+            )
         stmt = stmt.where(Campaign.status == campaign_status)
     return list(db.scalars(stmt).all())
 
@@ -375,6 +395,25 @@ def close_campaign_endpoint(
     campaign = close_campaign(db, campaign_id, payload)
     return CampaignCloseResponse(
         message="Campaign closed successfully",
+        campaign=CampaignRead.model_validate(campaign),
+    )
+
+
+@router.post("/{campaign_id}/reopen", response_model=CampaignReopenResponse)
+def reopen_campaign_endpoint(
+    campaign_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> CampaignReopenResponse:
+    campaign = get_campaign_or_404(db, campaign_id)
+    ensure_matching_organization(
+        current_user,
+        campaign.organization_id,
+        detail="Cannot reopen campaign from another organization",
+    )
+    campaign = reopen_campaign(db, campaign_id)
+    return CampaignReopenResponse(
+        message="Campaign reopened as draft",
         campaign=CampaignRead.model_validate(campaign),
     )
 

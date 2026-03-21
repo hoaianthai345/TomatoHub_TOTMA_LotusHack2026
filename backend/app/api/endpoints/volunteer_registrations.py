@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -162,11 +162,31 @@ def create_volunteer_registration(
             existing.email = email
             existing.phone_number = payload.phone_number
             existing.message = payload.message
-            if existing.status == VolunteerStatus.rejected:
+            if existing.status in {VolunteerStatus.rejected, VolunteerStatus.cancelled}:
                 existing.status = VolunteerStatus.pending
             db.commit()
             db.refresh(existing)
             return existing
+    else:
+        existing_unlinked = db.scalar(
+            select(VolunteerRegistration)
+            .where(
+                VolunteerRegistration.campaign_id == payload.campaign_id,
+                VolunteerRegistration.user_id.is_(None),
+                func.lower(VolunteerRegistration.email) == email.lower(),
+            )
+            .order_by(VolunteerRegistration.registered_at.desc())
+        )
+        if existing_unlinked is not None:
+            existing_unlinked.full_name = full_name
+            existing_unlinked.email = email
+            existing_unlinked.phone_number = payload.phone_number
+            existing_unlinked.message = payload.message
+            if existing_unlinked.status in {VolunteerStatus.rejected, VolunteerStatus.cancelled}:
+                existing_unlinked.status = VolunteerStatus.pending
+            db.commit()
+            db.refresh(existing_unlinked)
+            return existing_unlinked
 
     registration = VolunteerRegistration(
         campaign_id=payload.campaign_id,
@@ -212,6 +232,68 @@ def update_volunteer_registration_status(
         )
 
     registration.status = payload.status
+    db.commit()
+    db.refresh(registration)
+    return registration
+
+
+@router.post("/{registration_id}/withdraw", response_model=VolunteerRegistrationRead)
+def withdraw_volunteer_registration(
+    registration_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> VolunteerRegistration:
+    registration = db.get(VolunteerRegistration, registration_id)
+    if registration is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Volunteer registration not found",
+        )
+
+    if (
+        current_user.organization_id is not None
+        and not current_user.is_superuser
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Supporter account required to withdraw registration",
+        )
+
+    if not current_user.is_superuser and registration.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot withdraw another user's registration",
+        )
+
+    registration.status = VolunteerStatus.cancelled
+    db.add(registration)
+    db.commit()
+    db.refresh(registration)
+    return registration
+
+
+@router.post("/{registration_id}/cancel", response_model=VolunteerRegistrationRead)
+def cancel_volunteer_registration(
+    registration_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> VolunteerRegistration:
+    registration = db.get(VolunteerRegistration, registration_id)
+    if registration is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Volunteer registration not found",
+        )
+
+    campaign = db.get(Campaign, registration.campaign_id)
+    if campaign is None or campaign.organization_id != current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot cancel registration for another organization",
+        )
+
+    registration.status = VolunteerStatus.cancelled
+    db.add(registration)
     db.commit()
     db.refresh(registration)
     return registration

@@ -38,6 +38,14 @@ export default function RegisterSupportPage() {
     const params = new URLSearchParams(window.location.search);
     setPreferredCampaignId(params.get("campaignId"));
   }, []);
+  const [preferredCampaignId, setPreferredCampaignId] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setPreferredCampaignId(params.get("campaignId"));
+  }, []);
 
   useEffect(() => {
     if (
@@ -95,6 +103,7 @@ export default function RegisterSupportPage() {
     return () => {
       cancelled = true;
     };
+  }, [accessToken, currentUser?.id, currentUser?.role, isLoading, preferredCampaignId]);
   }, [accessToken, currentUser?.id, currentUser?.role, isLoading, preferredCampaignId]);
 
   const campaignTitleById = useMemo(

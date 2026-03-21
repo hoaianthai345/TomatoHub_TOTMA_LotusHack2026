@@ -142,6 +142,12 @@ curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/close" \
   }'
 ```
 
+5. Reopen closed campaign as `draft` (to edit/re-publish):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/reopen"
+```
+
 ## 5C. Auth API (for frontend login/signup)
 
 Supporter signup:
@@ -191,36 +197,91 @@ curl -X GET "http://127.0.0.1:8000/api/v1/auth/me" \
   -H "Authorization: Bearer <access_token>"
 ```
 
+Refresh access token:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/auth/refresh" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh_token": "<refresh_token>"
+  }'
+```
+
+Change password:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/auth/change-password" \
+  -H "Authorization: Bearer <access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "current_password": "Supporter@123",
+    "new_password": "Supporter@123456"
+  }'
+```
+
+Forgot/reset password (local dev can return `reset_token` when debug enabled):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/auth/forgot-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "mai.giang@example.com"
+  }'
+```
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/auth/reset-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reset_token": "<reset_token>",
+    "new_password": "Supporter@123456"
+  }'
+```
+
 ## 5D. Data APIs for current frontend features
 
 - `GET /api/v1/dashboards/organization/{organization_id}`
 - `GET /api/v1/dashboards/supporter/{user_id}`
+- `GET /api/v1/dashboards/organization/{organization_id}/campaign-pipeline`
+- `GET /api/v1/dashboards/organization/{organization_id}/recent-activities`
+- `GET /api/v1/dashboards/supporter/{user_id}/participations`
+- `GET /api/v1/dashboards/supporter/{user_id}/tasks`
+- `GET /api/v1/dashboards/supporter/{user_id}/contributions`
 - `GET /api/v1/supporters/?organization_id=<uuid>`
+- `PATCH /api/v1/supporters/{supporter_id}` (same user/superuser)
 - `GET /api/v1/beneficiaries/?organization_id=<uuid>`
 - `POST /api/v1/beneficiaries/` (organization token required)
 - `GET /api/v1/donations/?organization_id=<uuid>`
-- `POST /api/v1/donations/`
+- `POST /api/v1/donations/` (campaign must be published & active)
 - `GET /api/v1/volunteer-registrations/?organization_id=<uuid>`
-- `POST /api/v1/volunteer-registrations/`
+- `POST /api/v1/volunteer-registrations/` (campaign must be published & active)
 - `PATCH /api/v1/volunteer-registrations/{registration_id}/status` (organization token required)
+- `POST /api/v1/volunteer-registrations/{registration_id}/withdraw` (supporter token required)
+- `POST /api/v1/volunteer-registrations/{registration_id}/cancel` (organization token required)
 - `GET /api/v1/transparency/logs?campaign_id=<uuid>` or `?organization_id=<uuid>`
 - `POST /api/v1/campaign-checkpoints/` (organization token required)
 - `PATCH /api/v1/campaign-checkpoints/{checkpoint_id}` (organization token required)
+- `DELETE /api/v1/campaign-checkpoints/{checkpoint_id}` (organization token required)
 - `POST /api/v1/campaign-checkpoints/{checkpoint_id}/qr` (organization token required)
 - `POST /api/v1/campaign-checkpoints/scan` (supporter token required)
 - `GET /api/v1/campaign-checkpoints/my-attendance` (supporter token required)
+- `GET /api/v1/campaign-checkpoints/my-goods-checkins` (supporter token required)
+- `GET /api/v1/campaign-checkpoints/goods-checkins` (organization token required)
 - `GET /api/v1/campaign-checkpoints/{checkpoint_id}/logs` (organization token required)
 - `GET /api/v1/campaigns/{campaign_id}/images` (public)
 - `POST /api/v1/campaigns/{campaign_id}/images` (`multipart/form-data`, auth required)
 - `POST /api/v1/campaigns/{campaign_id}/images/{image_id}/set-cover` (organization owner/superuser)
 - `DELETE /api/v1/campaigns/{campaign_id}/images/{image_id}` (organization owner/uploader/superuser)
 - `POST /api/v1/campaigns/{campaign_id}/close` (organization owner, body optional: `closed_at`)
+- `POST /api/v1/campaigns/{campaign_id}/reopen` (organization owner)
+- `PATCH /api/v1/organizations/{organization_id}` (owner org/superuser)
 
 Notes:
 
 - `organization_id` filters in supporters / beneficiaries / donations / volunteer registrations require authenticated access to that organization (or superuser).
 - `donor_user_id` / `user_id` filters require authenticated access to the same user (or superuser).
 - `POST /donations` and `POST /volunteer-registrations` automatically bind to the authenticated user when a bearer token is provided.
+- `GET /campaigns/by-organization/{organization_id}` only returns `published` campaigns for public users. Querying `draft`/`closed` requires organization owner or superuser token.
 - Checkpoint QR in current phase supports volunteer check-in/check-out flow with approved registrations.
 - Volunteer registration is linked to `campaign` (not organization directly). A supporter has at most one linked registration per campaign.
 

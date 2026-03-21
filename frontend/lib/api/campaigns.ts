@@ -308,7 +308,6 @@ export async function publishCampaign(
 
   return mapCampaign(response.campaign);
 }
-
 export async function updateCampaign(
   campaignId: string,
   payload: UpdateCampaignInput,
@@ -339,4 +338,14 @@ export async function updateCampaign(
   );
 
   return mapCampaign(campaign);
+}
+
+export async function deleteCampaign(
+  campaignId: string,
+  token: string
+): Promise<void> {
+  await requestJson<{ message: string }>(`/campaigns/${encodeURIComponent(campaignId)}`, {
+    method: "DELETE",
+    token,
+  });
 }

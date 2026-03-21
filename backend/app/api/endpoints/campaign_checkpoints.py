@@ -187,6 +187,19 @@ def update_campaign_checkpoint(
     return checkpoint
 
 
+@router.delete("/{checkpoint_id}")
+def delete_campaign_checkpoint(
+    checkpoint_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> dict[str, str]:
+    checkpoint = _get_checkpoint_or_404(db, checkpoint_id)
+    _ensure_checkpoint_owner(checkpoint, current_user)
+    db.delete(checkpoint)
+    db.commit()
+    return {"message": "Checkpoint deleted successfully"}
+
+
 @router.post("/{checkpoint_id}/qr", response_model=CampaignCheckpointGenerateQrResponse)
 def generate_checkpoint_qr(
     checkpoint_id: UUID,
@@ -500,6 +513,63 @@ def scan_campaign_checkpoint_qr(
         flow_type=CheckpointType.volunteer,
         attendance=VolunteerAttendanceRead.model_validate(open_attendance),
     )
+
+
+@router.get("/goods-checkins", response_model=list[GoodsCheckinRead])
+def list_goods_checkins_for_organization(
+    campaign_id: UUID | None = Query(default=None),
+    checkpoint_id: UUID | None = Query(default=None),
+    user_id: UUID | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> list[GoodsCheckin]:
+    stmt = (
+        select(GoodsCheckin)
+        .join(CampaignCheckpoint, CampaignCheckpoint.id == GoodsCheckin.checkpoint_id)
+        .order_by(GoodsCheckin.checked_in_at.desc())
+        .limit(limit)
+    )
+
+    if checkpoint_id is not None:
+        checkpoint = _get_checkpoint_or_404(db, checkpoint_id)
+        _ensure_checkpoint_owner(checkpoint, current_user)
+        stmt = stmt.where(GoodsCheckin.checkpoint_id == checkpoint_id)
+
+    if campaign_id is not None:
+        campaign = _get_campaign_or_404(db, campaign_id)
+        if campaign.organization_id != current_user.organization_id and not current_user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot query goods check-ins for another organization campaign",
+            )
+        stmt = stmt.where(GoodsCheckin.campaign_id == campaign_id)
+    elif not current_user.is_superuser:
+        stmt = stmt.where(CampaignCheckpoint.organization_id == current_user.organization_id)
+
+    if user_id is not None:
+        stmt = stmt.where(GoodsCheckin.user_id == user_id)
+
+    return list(db.scalars(stmt).all())
+
+
+@router.get("/my-goods-checkins", response_model=list[GoodsCheckinRead])
+def list_my_goods_checkins(
+    campaign_id: UUID | None = Query(default=None),
+    limit: int = Query(default=200, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> list[GoodsCheckin]:
+    _ensure_supporter_user(current_user)
+    stmt = (
+        select(GoodsCheckin)
+        .where(GoodsCheckin.user_id == current_user.id)
+        .order_by(GoodsCheckin.checked_in_at.desc())
+        .limit(limit)
+    )
+    if campaign_id is not None:
+        stmt = stmt.where(GoodsCheckin.campaign_id == campaign_id)
+    return list(db.scalars(stmt).all())
 
 
 @router.get("/my-attendance", response_model=list[VolunteerAttendanceRead])

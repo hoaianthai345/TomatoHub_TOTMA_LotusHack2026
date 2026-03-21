@@ -15,6 +15,7 @@ class VolunteerStatus(str, enum.Enum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
+    cancelled = "cancelled"
 
 
 class VolunteerRegistration(Base):
