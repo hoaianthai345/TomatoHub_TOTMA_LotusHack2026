@@ -2,7 +2,7 @@ import enum
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 
 class UserRole(str, enum.Enum):
@@ -28,13 +28,6 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     organization_id: UUID | None = None
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_bytes(cls, value: str) -> str:
-        if len(value.encode("utf-8")) > 72:
-            raise ValueError("Password cannot exceed 72 bytes in UTF-8 encoding.")
-        return value
 
 
 class UserRead(UserBase):
