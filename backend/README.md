@@ -21,6 +21,7 @@ CORS note:
 - Local dev frontend port is not always `3000` (can be `5173`, `3001`, ...).
 - `BACKEND_CORS_ALLOW_ORIGIN_REGEX` in `.env` already allows localhost/127.0.0.1 with any port by default.
 - For deployment, set `BACKEND_CORS_ORIGINS` to your real frontend domain(s).
+- Campaign image uploads are saved under `UPLOAD_DIR` and served from `UPLOAD_URL_PREFIX`.
 
 ## 2. Create PostgreSQL database
 
@@ -199,6 +200,10 @@ curl -X GET "http://127.0.0.1:8000/api/v1/auth/me" \
 - `POST /api/v1/campaign-checkpoints/scan` (supporter token required)
 - `GET /api/v1/campaign-checkpoints/my-attendance` (supporter token required)
 - `GET /api/v1/campaign-checkpoints/{checkpoint_id}/logs` (organization token required)
+- `GET /api/v1/campaigns/{campaign_id}/images` (public)
+- `POST /api/v1/campaigns/{campaign_id}/images` (`multipart/form-data`, auth required)
+- `POST /api/v1/campaigns/{campaign_id}/images/{image_id}/set-cover` (organization owner/superuser)
+- `DELETE /api/v1/campaigns/{campaign_id}/images/{image_id}` (organization owner/uploader/superuser)
 
 Notes:
 
@@ -206,6 +211,7 @@ Notes:
 - `donor_user_id` / `user_id` filters require authenticated access to the same user (or superuser).
 - `POST /donations` and `POST /volunteer-registrations` automatically bind to the authenticated user when a bearer token is provided.
 - Checkpoint QR in current phase supports volunteer check-in/check-out flow with approved registrations.
+- Volunteer registration is linked to `campaign` (not organization directly). A supporter has at most one linked registration per campaign.
 
 ## 5E. Volunteer QR check-in / check-out flow
 
@@ -244,6 +250,30 @@ curl -X POST "http://127.0.0.1:8000/api/v1/campaign-checkpoints/scan" \
   -d '{
     "token": "<qr_token>"
   }'
+```
+
+## 5F. Campaign image upload (multipart)
+
+Upload image (organization owner hoặc supporter có quan hệ campaign):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/images" \
+  -H "Authorization: Bearer <access_token>" \
+  -F "file=@/absolute/path/to/photo.jpg" \
+  -F "set_as_cover=true"
+```
+
+List images:
+
+```bash
+curl -X GET "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/images"
+```
+
+Set cover by image id:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/images/<image_id>/set-cover" \
+  -H "Authorization: Bearer <organization_or_superuser_token>"
 ```
 
 ## 6. Deploy on Linux VM (basic)

@@ -6,6 +6,7 @@ from app.core.config import settings
 from app.db.session import engine
 from app.models.beneficiary import Beneficiary
 from app.models.campaign import Campaign
+from app.models.campaign_image import CampaignImage
 from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
 from app.models.user import User
@@ -75,6 +76,25 @@ class CampaignAdmin(BaseAdminView, model=Campaign):
     column_searchable_list = [Campaign.title, Campaign.slug]
     column_default_sort = [(Campaign.created_at, True)]
     form_excluded_columns = [Campaign.organization, Campaign.beneficiaries, Campaign.donations]
+
+
+class CampaignImageAdmin(BaseAdminView, model=CampaignImage):
+    name = "Campaign Image"
+    name_plural = "Campaign Images"
+    icon = "fa-solid fa-image"
+    column_list = [
+        CampaignImage.id,
+        CampaignImage.campaign_id,
+        CampaignImage.uploaded_by_user_id,
+        CampaignImage.original_filename,
+        CampaignImage.mime_type,
+        CampaignImage.size_bytes,
+        CampaignImage.relative_path,
+        CampaignImage.created_at,
+    ]
+    column_searchable_list = [CampaignImage.original_filename, CampaignImage.relative_path]
+    column_default_sort = [(CampaignImage.created_at, True)]
+    form_excluded_columns = [CampaignImage.campaign, CampaignImage.uploaded_by_user]
 
 
 class BeneficiaryAdmin(BaseAdminView, model=Beneficiary):
@@ -149,6 +169,7 @@ def setup_admin(app: FastAPI) -> None:
     admin.add_view(UserAdmin)
     admin.add_view(OrganizationAdmin)
     admin.add_view(CampaignAdmin)
+    admin.add_view(CampaignImageAdmin)
     admin.add_view(BeneficiaryAdmin)
     admin.add_view(MonetaryDonationAdmin)
     admin.add_view(VolunteerRegistrationAdmin)

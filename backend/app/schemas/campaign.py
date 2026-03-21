@@ -153,3 +153,12 @@ class CampaignRead(BaseModel):
 class CampaignPublishResponse(BaseModel):
     message: str
     campaign: CampaignRead
+
+
+class CampaignCloseRequest(BaseModel):
+    closed_at: datetime | None = None
+
+
+class CampaignCloseResponse(BaseModel):
+    message: str
+    campaign: CampaignRead

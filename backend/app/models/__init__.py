@@ -1,5 +1,6 @@
 from app.models.beneficiary import Beneficiary, BeneficiaryStatus
 from app.models.campaign import Campaign, CampaignStatus, SupportType
+from app.models.campaign_image import CampaignImage
 from app.models.campaign_checkpoint import CampaignCheckpoint, CheckpointType
 from app.models.checkpoint_scan_log import (
     CheckpointScanLog,
@@ -19,6 +20,7 @@ __all__ = [
     "Campaign",
     "CampaignStatus",
     "SupportType",
+    "CampaignImage",
     "CampaignCheckpoint",
     "CheckpointType",
     "CheckpointScanLog",

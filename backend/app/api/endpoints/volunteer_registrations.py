@@ -1,16 +1,18 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
+    get_current_active_user,
     get_current_organization_user,
     get_db,
     get_optional_current_user,
 )
 from app.api.permissions import ensure_authenticated_user_matches
-from app.models.campaign import Campaign
+from app.models.campaign import Campaign, CampaignStatus
 from app.models.user import User
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 from app.schemas.volunteer_registration import (
@@ -85,6 +87,21 @@ def create_volunteer_registration(
     campaign = db.get(Campaign, payload.campaign_id)
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    if campaign.status != CampaignStatus.published or not campaign.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campaign is not open for volunteer registration",
+        )
+
+    if (
+        current_user is not None
+        and current_user.organization_id is not None
+        and not current_user.is_superuser
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization account cannot register as volunteer",
+        )
 
     user_id = payload.user_id
     full_name = payload.full_name.strip()
@@ -116,6 +133,11 @@ def create_volunteer_registration(
         user = db.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        if user.organization_id is not None and not user.is_superuser:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Volunteer registration user must be a supporter account",
+            )
         if not full_name:
             full_name = user.full_name
         email = user.email
@@ -125,6 +147,26 @@ def create_volunteer_registration(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="full_name cannot be empty",
         )
+
+    if user_id is not None:
+        existing = db.scalar(
+            select(VolunteerRegistration)
+            .where(
+                VolunteerRegistration.campaign_id == payload.campaign_id,
+                VolunteerRegistration.user_id == user_id,
+            )
+            .order_by(VolunteerRegistration.registered_at.desc())
+        )
+        if existing is not None:
+            existing.full_name = full_name
+            existing.email = email
+            existing.phone_number = payload.phone_number
+            existing.message = payload.message
+            if existing.status == VolunteerStatus.rejected:
+                existing.status = VolunteerStatus.pending
+            db.commit()
+            db.refresh(existing)
+            return existing
 
     registration = VolunteerRegistration(
         campaign_id=payload.campaign_id,
@@ -136,7 +178,14 @@ def create_volunteer_registration(
         status=VolunteerStatus.pending,
     )
     db.add(registration)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Volunteer registration already exists for this campaign and user",
+        ) from None
     db.refresh(registration)
     return registration
 
@@ -166,3 +215,39 @@ def update_volunteer_registration_status(
     db.commit()
     db.refresh(registration)
     return registration
+
+
+@router.delete("/{registration_id}")
+def delete_volunteer_registration(
+    registration_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, str]:
+    registration = db.get(VolunteerRegistration, registration_id)
+    if registration is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Volunteer registration not found",
+        )
+
+    campaign = db.get(Campaign, registration.campaign_id)
+    if campaign is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign not found",
+        )
+
+    can_delete = (
+        current_user.is_superuser
+        or registration.user_id == current_user.id
+        or current_user.organization_id == campaign.organization_id
+    )
+    if not can_delete:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot remove registration from another campaign",
+        )
+
+    db.delete(registration)
+    db.commit()
+    return {"message": "Volunteer registration removed successfully"}

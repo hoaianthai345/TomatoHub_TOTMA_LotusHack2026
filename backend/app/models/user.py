@@ -42,6 +42,9 @@ class User(Base):
 
     organization: Mapped["Organization | None"] = relationship(back_populates="members")
     donations: Mapped[list["MonetaryDonation"]] = relationship(back_populates="donor_user")
+    uploaded_campaign_images: Mapped[list["CampaignImage"]] = relationship(
+        back_populates="uploaded_by_user"
+    )
     volunteer_registrations: Mapped[list["VolunteerRegistration"]] = relationship(
         back_populates="user"
     )

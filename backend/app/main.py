@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 from app.admin import setup_admin
@@ -36,6 +37,14 @@ def create_application() -> FastAPI:
     @app.get("/", tags=["system"])
     def root() -> dict[str, str]:
         return {"message": "LotusHack backend is running"}
+
+    upload_root = settings.upload_root_path()
+    upload_root.mkdir(parents=True, exist_ok=True)
+    app.mount(
+        settings.UPLOAD_URL_PREFIX,
+        StaticFiles(directory=str(upload_root)),
+        name="uploads",
+    )
 
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
     setup_admin(app)

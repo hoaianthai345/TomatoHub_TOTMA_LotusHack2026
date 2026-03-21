@@ -160,3 +160,19 @@ alembic downgrade -1
 3. `alembic downgrade -1` và `upgrade head` chạy pass (hoặc có giải thích rõ lý do không rollback).
 4. Seed script được cập nhật nếu cần.
 5. README/docs liên quan được cập nhật nếu có thay đổi workflow.
+
+## 9. Ghi chú migration 202603210006
+
+Migration `202603210006_campaign_images_and_volunteer_relation.py` thêm:
+
+- Bảng `campaign_images` để lưu metadata ảnh campaign upload từ API.
+- Unique partial index `uq_volunteer_registrations_campaign_user` để mỗi supporter chỉ có tối đa 1 quan hệ volunteer với 1 campaign (khi `user_id` khác null).
+
+Khi merge nhánh có migration này:
+
+```bash
+cd backend
+alembic upgrade head
+```
+
+Nếu deploy môi trường mới, nhớ tạo thư mục upload theo config (`UPLOAD_DIR`) hoặc để app tự tạo khi startup.
