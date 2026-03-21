@@ -383,10 +383,16 @@ Enable Groq in `.env`:
 RECOMMENDATION_USE_LLM=true
 GROQ_API_KEY=<your-groq-api-key>
 GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL_HEAVY=
+GROQ_MODEL_LIGHT=llama-3.1-8b-instant
 SUPPORTER_RECOMMENDATION_MAX_LIMIT=20
+RECOMMENDATION_MODEL_ROUTING_ENABLED=true
+RECOMMENDATION_DRAFT_COMPLEXITY_THRESHOLD=900
+RECOMMENDATION_SUPPORTER_LIGHT_MAX_ITEMS=8
 ```
 
 If `GROQ_API_KEY` is empty or Groq call fails, backend automatically falls back to heuristic logic.
+If model routing is enabled, simple tasks use light model and complex tasks use heavy model.
 
 Generate campaign draft recommendation:
 

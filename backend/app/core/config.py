@@ -1,3 +1,4 @@
+import json
 from functools import lru_cache
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -30,8 +31,13 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str | None = None
     GROQ_API_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_MODEL_HEAVY: str = ""
+    GROQ_MODEL_LIGHT: str = "llama-3.1-8b-instant"
     GROQ_TIMEOUT_SECONDS: int = 20
     SUPPORTER_RECOMMENDATION_MAX_LIMIT: int = 20
+    RECOMMENDATION_MODEL_ROUTING_ENABLED: bool = True
+    RECOMMENDATION_DRAFT_COMPLEXITY_THRESHOLD: int = 900
+    RECOMMENDATION_SUPPORTER_LIGHT_MAX_ITEMS: int = 8
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT_SECONDS: int = 15
@@ -60,11 +66,29 @@ class Settings(BaseSettings):
     )
 
     def cors_origins(self) -> list[str]:
-        return [
-            origin.strip()
-            for origin in self.BACKEND_CORS_ORIGINS.split(",")
-            if origin.strip()
-        ]
+        raw = self.BACKEND_CORS_ORIGINS.strip()
+        if not raw:
+            return []
+
+        values: list[str]
+        if raw.startswith("["):
+            try:
+                parsed = json.loads(raw)
+            except json.JSONDecodeError:
+                parsed = None
+            if isinstance(parsed, list):
+                values = [str(item) for item in parsed]
+            else:
+                values = raw.split(",")
+        else:
+            values = raw.split(",")
+
+        normalized: list[str] = []
+        for value in values:
+            clean = str(value).strip().strip('"').strip("'").rstrip("/")
+            if clean and clean not in normalized:
+                normalized.append(clean)
+        return normalized
 
     @property
     def sqlalchemy_database_url(self) -> str:
