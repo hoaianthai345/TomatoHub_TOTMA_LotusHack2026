@@ -16,7 +16,7 @@ import { listVolunteerRegistrations } from "./volunteer-registrations";
 type ApiDecimal = string | number;
 
 const DEFAULT_COVER_IMAGE =
-  "/images/campaigns/default-cover.svg";
+  "/images/campaigns/default-cover.jpg";
 
 interface BackendSupporterParticipationCard {
   id: string;

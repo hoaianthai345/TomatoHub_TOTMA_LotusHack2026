@@ -155,7 +155,7 @@ export interface UpdateCampaignInput {
   endsAt?: string | null;
 }
 
-export const DEFAULT_CAMPAIGN_COVER_IMAGE = "/images/campaigns/default-cover.svg";
+export const DEFAULT_CAMPAIGN_COVER_IMAGE = "/images/campaigns/default-cover.jpg";
 
 function toNumber(value: ApiDecimal | null | undefined): number {
   if (value === null || value === undefined) {
