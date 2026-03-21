@@ -76,7 +76,7 @@ export default async function CampaignDetailPage({
 
               <div className="mt-5 space-y-3">
                 <Link
-                  href="/donate"
+                  href={`/donate?campaignId=${campaign.id}`}
                   className="w-full btn-base btn-primary text-center"
                 >
                   Donate money

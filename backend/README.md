@@ -12,6 +12,12 @@ cp .env.example .env
 # set SECRET_KEY / ADMIN_USERNAME / ADMIN_PASSWORD in .env
 ```
 
+CORS note:
+
+- Local dev frontend port is not always `3000` (can be `5173`, `3001`, ...).
+- `BACKEND_CORS_ALLOW_ORIGIN_REGEX` in `.env` already allows localhost/127.0.0.1 with any port by default.
+- For deployment, set `BACKEND_CORS_ORIGINS` to your real frontend domain(s).
+
 ## 2. Create PostgreSQL database
 
 ```bash
@@ -67,6 +73,12 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Open docs at: `http://127.0.0.1:8000/docs`
+
+If signup/login preflight fails with `OPTIONS ... 400`:
+
+1. Ensure frontend calls `/api/v1/auth/...` (not `/auth/...`).
+2. Ensure `NEXT_PUBLIC_API_BASE_URL` points to backend host (this repo auto-appends `/api/v1` if missing).
+3. Ensure backend CORS allows your frontend origin.
 
 ## 5A. Admin dashboard (hidden route)
 
