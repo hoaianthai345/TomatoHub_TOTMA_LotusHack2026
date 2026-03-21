@@ -117,6 +117,7 @@ export default function OrganizationSignupPage() {
               type="password"
               required
               minLength={8}
+              maxLength={72}
               value={formData.password}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, password: e.target.value }))
@@ -124,6 +125,9 @@ export default function OrganizationSignupPage() {
               className="input-base"
               placeholder="At least 8 characters"
             />
+            <p className="mt-1 text-xs text-text-muted">
+              Max 72 bytes (bcrypt limit).
+            </p>
           </div>
 
           <VietnamLocationFields
