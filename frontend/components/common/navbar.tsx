@@ -13,6 +13,8 @@ export default function Navbar() {
     currentUser?.role === "organization"
       ? currentUser.organizationName ?? currentUser.name
       : currentUser?.name;
+  const profileHref =
+    currentUser?.role === "organization" ? "/organization/profile" : "/supporter/profile";
 
   const handleLogout = () => {
     logout();
@@ -21,21 +23,22 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur">
-      <Container className="flex h-16 items-center justify-between">
-        <Link href="/" className="flex items-center gap-3">
-          <img
-            src="/images/logo.svg"
-            alt="TomatoHub"
-            style={{ height: "36px", width: "auto" }}
-            className="md:h-10"
-          />
-          <span className="hidden text-xs font-semibold uppercase tracking-[0.3em] text-primary/80 lg:inline-block">
-            Relief Network
-          </span>
-        </Link>
+      <Container className="relative flex h-16 items-center">
+        <div className="flex flex-1 items-center">
+          <Link href="/" className="flex items-center gap-3">
+            <img
+              src="/images/logo.svg"
+              alt="TomatoHub"
+              style={{ height: "36px", width: "auto" }}
+              className="md:h-10"
+            />
+            <span className="hidden text-xs font-semibold uppercase tracking-[0.3em] text-primary/80 lg:inline-block">
+              Relief Network
+            </span>
+          </Link>
+        </div>
 
-        {/* Nav Links */}
-        <nav className="hidden gap-6 md:flex">
+        <nav className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-6 md:flex">
           {NAV_LINKS.map((item) => (
             <Link
               key={item.href}
@@ -47,56 +50,41 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Auth Section */}
-        <div className="flex items-center gap-3">
+        <div className="ml-auto flex flex-1 items-center justify-end gap-3">
           {isAuthenticated ? (
             <>
-              {/* User Info */}
-              <div className="hidden md:flex items-center gap-3">
-                <div className="text-right">
-                  <p className="text-sm font-medium text-heading">
-                    {displayName}
-                  </p>
-                  <p className="text-xs text-muted capitalize">
-                    {currentUser?.role}
-                  </p>
-                </div>
-
-                {/* Role Badge */}
-                <div
-                  className={`role-badge ${
-                    currentUser?.role === "organization"
-                      ? "role-badge-org"
-                      : "role-badge-supporter"
-                  }`}
+              <div className="group relative">
+                <button
+                  type="button"
+                  className="btn-base btn-secondary !px-4 py-2 text-sm font-medium"
                 >
-                  {currentUser?.role === "organization" ? "ORG" : "SUP"}
+                  Profile
+                </button>
+
+                <div className="pointer-events-none invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
+                  <div className="w-56 rounded-xl border border-border bg-white p-2 shadow-[0_12px_28px_rgba(17,24,39,0.12)]">
+                    <div className="rounded-lg bg-surface-light px-3 py-2">
+                      <p className="text-sm font-semibold text-heading">{displayName}</p>
+                      <p className="text-xs capitalize text-text-muted">{currentUser?.role}</p>
+                    </div>
+                    <Link
+                      href={profileHref}
+                      className="mt-2 block rounded-lg px-3 py-2 text-sm font-medium text-text transition hover:bg-surface-light"
+                    >
+                      Open profile
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="mt-1 block w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-danger transition hover:bg-danger/10"
+                    >
+                      Logout
+                    </button>
+                  </div>
                 </div>
               </div>
-
-              {/* Dashboard Link */}
-              <Link
-                href={
-                  currentUser?.role === "organization"
-                    ? "/organization"
-                    : "/supporter"
-                }
-                className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-body bg-surface-light rounded-lg transition"
-              >
-                Dashboard
-              </Link>
-
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-danger rounded-lg transition"
-              >
-                Logout
-              </button>
             </>
           ) : (
             <>
-              {/* Guest Auth Links */}
               <Link
                 href="/login"
                 className="hidden md:inline-block px-3 py-1.5 text-sm font-medium text-body hover:text-primary transition"

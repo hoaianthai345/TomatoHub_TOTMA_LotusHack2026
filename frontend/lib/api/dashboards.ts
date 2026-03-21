@@ -7,7 +7,11 @@ import type {
   SupporterParticipationCard,
   SupporterTaskItem,
 } from "@/types/dashboard";
+import type { Campaign } from "@/types/campaign";
+import { formatDateTime } from "@/utils/format";
 import { requestJson } from "./http";
+import { listPublishedCampaigns } from "./campaigns";
+import { listVolunteerRegistrations } from "./volunteer-registrations";
 
 type ApiDecimal = string | number;
 
@@ -108,6 +112,63 @@ function mapSupporterParticipationCard(
   };
 }
 
+function buildFallbackNextStep(status: string): string {
+  if (status === "approved") {
+    return "Arrive at checkpoint and scan QR to check in.";
+  }
+  if (status === "pending") {
+    return "Wait for organization approval.";
+  }
+  if (status === "rejected") {
+    return "Registration was rejected.";
+  }
+  if (status === "cancelled") {
+    return "Registration was cancelled.";
+  }
+  return "Follow campaign updates for the next action.";
+}
+
+async function buildParticipationCardsFromRegistrations(
+  userId: string,
+  token?: string
+): Promise<SupporterParticipationCard[]> {
+  if (!token) {
+    return [];
+  }
+
+  const [registrations, campaigns] = await Promise.all([
+    listVolunteerRegistrations({
+      userId,
+      token,
+      limit: 100,
+    }),
+    listPublishedCampaigns(100),
+  ]);
+
+  if (!registrations.length) {
+    return [];
+  }
+
+  const campaignById = new Map<string, Campaign>(
+    campaigns.map((campaign) => [campaign.id, campaign])
+  );
+
+  return registrations.slice(0, 10).map((registration) => {
+    const campaign = campaignById.get(registration.campaignId);
+    return {
+      id: `volunteer-${registration.id}`,
+      campaignId: registration.campaignId,
+      campaignTitle: campaign?.title ?? `Campaign ${registration.campaignId.slice(0, 8)}`,
+      campaignLocation: campaign?.location ?? "Location updating",
+      coverImage: campaign?.coverImage ?? DEFAULT_COVER_IMAGE,
+      roleLabel: "Volunteer",
+      statusLabel: registration.status,
+      nextStep: buildFallbackNextStep(registration.status),
+      dateLabel: formatDateTime(registration.registeredAt),
+    };
+  });
+}
+
 function mapSupporterContributionItem(
   item: BackendSupporterContributionItem
 ): SupporterContributionItem {
@@ -194,6 +255,21 @@ export async function getSupporterDashboard(
     { token }
   );
 
+  let participationCards = (dashboard.participation_cards ?? []).map(
+    mapSupporterParticipationCard
+  );
+
+  if (participationCards.length === 0) {
+    try {
+      participationCards = await buildParticipationCardsFromRegistrations(
+        userId,
+        token
+      );
+    } catch {
+      // Keep empty state when fallback data is unavailable.
+    }
+  }
+
   return {
     userId: dashboard.user_id,
     activeCampaigns: dashboard.active_campaigns,
@@ -201,9 +277,7 @@ export async function getSupporterDashboard(
     totalDonatedAmount: toNumber(dashboard.total_donated_amount),
     myRegistrations: dashboard.my_registrations,
     tasksCompleted: dashboard.tasks_completed,
-    participationCards: (dashboard.participation_cards ?? []).map(
-      mapSupporterParticipationCard
-    ),
+    participationCards,
     contributionItems: (dashboard.contribution_items ?? []).map(
       mapSupporterContributionItem
     ),
