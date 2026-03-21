@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "change-me"
     API_V1_PREFIX: str = "/api/v1"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 30
+    PASSWORD_RESET_TOKEN_EXPIRE_MINUTES: int = 30
+    PASSWORD_RESET_DEBUG_RETURN_TOKEN: bool = False
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD: str = "admin123"
     BACKEND_CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"

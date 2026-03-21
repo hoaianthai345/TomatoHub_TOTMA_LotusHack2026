@@ -220,6 +220,25 @@ def close_campaign(
     return campaign
 
 
+def reopen_campaign(db: Session, campaign_id: uuid.UUID) -> Campaign:
+    campaign = get_campaign_or_404(db, campaign_id)
+
+    if campaign.status != CampaignStatus.closed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only closed campaign can be reopened",
+        )
+
+    campaign.status = CampaignStatus.draft
+    campaign.is_active = False
+    campaign.closed_at = None
+    campaign.published_at = None
+
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
 def delete_campaign(db: Session, campaign_id: uuid.UUID) -> None:
     campaign = get_campaign_or_404(db, campaign_id)
     db.delete(campaign)

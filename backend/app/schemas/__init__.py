@@ -1,9 +1,15 @@
 from app.schemas.auth import (
+    ChangePasswordRequest,
     CurrentUserRead,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginRequest,
     OrganizationSignupRequest,
+    RefreshTokenRequest,
+    ResetPasswordRequest,
     SupporterSignupRequest,
     TokenResponse,
+    UserProfileUpdateRequest,
 )
 from app.schemas.beneficiary import BeneficiaryCreate, BeneficiaryRead, BeneficiaryUpdate
 from app.schemas.campaign import (
@@ -12,6 +18,7 @@ from app.schemas.campaign import (
     CampaignCreate,
     CampaignPublishResponse,
     CampaignRead,
+    CampaignReopenResponse,
     CampaignUpdate,
 )
 from app.schemas.campaign_image import CampaignImageRead, CampaignImageSetCoverResponse
@@ -28,10 +35,18 @@ from app.schemas.campaign_checkpoint import (
     VolunteerAttendanceRead,
 )
 from app.schemas.common import HealthResponse
-from app.schemas.dashboard import OrganizationDashboardRead, SupporterDashboardRead
+from app.schemas.dashboard import (
+    OrganizationActivityItemRead,
+    OrganizationCampaignPipelineItemRead,
+    OrganizationDashboardRead,
+    SupporterContributionItemRead,
+    SupporterDashboardRead,
+    SupporterParticipationItemRead,
+    SupporterTaskItemRead,
+)
 from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
-from app.schemas.organization import OrganizationCreate, OrganizationRead
-from app.schemas.supporter import SupporterRead
+from app.schemas.organization import OrganizationCreate, OrganizationRead, OrganizationUpdate
+from app.schemas.supporter import SupporterRead, SupporterUpdate
 from app.schemas.transparency import TransparencyLogRead, TransparencyLogType
 from app.schemas.user import UserCreate, UserRead
 from app.schemas.volunteer_registration import (
@@ -45,13 +60,25 @@ __all__ = [
     "SupporterSignupRequest",
     "OrganizationSignupRequest",
     "TokenResponse",
+    "RefreshTokenRequest",
+    "ChangePasswordRequest",
+    "ForgotPasswordRequest",
+    "ForgotPasswordResponse",
+    "ResetPasswordRequest",
+    "UserProfileUpdateRequest",
     "CurrentUserRead",
     "HealthResponse",
     "OrganizationDashboardRead",
+    "OrganizationCampaignPipelineItemRead",
+    "OrganizationActivityItemRead",
     "SupporterDashboardRead",
+    "SupporterParticipationItemRead",
+    "SupporterTaskItemRead",
+    "SupporterContributionItemRead",
     "UserCreate",
     "UserRead",
     "OrganizationCreate",
+    "OrganizationUpdate",
     "OrganizationRead",
     "CampaignCreate",
     "CampaignUpdate",
@@ -59,6 +86,7 @@ __all__ = [
     "CampaignPublishResponse",
     "CampaignCloseRequest",
     "CampaignCloseResponse",
+    "CampaignReopenResponse",
     "CampaignImageRead",
     "CampaignImageSetCoverResponse",
     "CampaignCheckpointCreate",
@@ -77,6 +105,7 @@ __all__ = [
     "MonetaryDonationCreate",
     "MonetaryDonationRead",
     "SupporterRead",
+    "SupporterUpdate",
     "TransparencyLogType",
     "TransparencyLogRead",
     "VolunteerRegistrationCreate",

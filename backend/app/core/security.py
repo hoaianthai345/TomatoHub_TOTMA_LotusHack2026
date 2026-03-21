@@ -1,4 +1,5 @@
 import hashlib
+from dataclasses import dataclass
 from uuid import UUID
 
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
@@ -10,6 +11,18 @@ pwd_context = CryptContext(
     schemes=["argon2", "bcrypt"],
     deprecated="auto",
 )
+
+
+@dataclass(frozen=True, slots=True)
+class DecodedRefreshToken:
+    subject: UUID
+    token_version: int
+
+
+@dataclass(frozen=True, slots=True)
+class DecodedPasswordResetToken:
+    subject: UUID
+    token_version: int
 
 
 def _is_bcrypt_password_length_error(exc: Exception) -> bool:
@@ -90,7 +103,7 @@ def _token_serializer() -> URLSafeTimedSerializer:
 
 def create_access_token(subject: UUID) -> str:
     serializer = _token_serializer()
-    return serializer.dumps({"sub": str(subject)})
+    return serializer.dumps({"sub": str(subject), "typ": "access"})
 
 
 def decode_access_token(token: str) -> UUID:
@@ -98,9 +111,80 @@ def decode_access_token(token: str) -> UUID:
     max_age_seconds = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
     try:
         payload = serializer.loads(token, max_age=max_age_seconds)
+        token_type = payload.get("typ")
+        if token_type not in (None, "access"):
+            raise ValueError("Invalid token type")
         subject = payload.get("sub")
         if not isinstance(subject, str):
             raise ValueError("Invalid token payload")
         return UUID(subject)
+    except (BadSignature, SignatureExpired, ValueError) as exc:
+        raise ValueError("Invalid or expired token") from exc
+
+
+def _refresh_token_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(settings.SECRET_KEY, salt="refresh-token")
+
+
+def create_refresh_token(subject: UUID, token_version: int) -> str:
+    serializer = _refresh_token_serializer()
+    return serializer.dumps(
+        {
+            "sub": str(subject),
+            "typ": "refresh",
+            "v": int(token_version),
+        }
+    )
+
+
+def decode_refresh_token(token: str) -> DecodedRefreshToken:
+    serializer = _refresh_token_serializer()
+    max_age_seconds = settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
+    try:
+        payload = serializer.loads(token, max_age=max_age_seconds)
+        if payload.get("typ") != "refresh":
+            raise ValueError("Invalid token type")
+
+        subject = payload.get("sub")
+        token_version = payload.get("v")
+        if not isinstance(subject, str):
+            raise ValueError("Invalid token payload")
+        if not isinstance(token_version, int) or token_version < 0:
+            raise ValueError("Invalid token payload")
+        return DecodedRefreshToken(subject=UUID(subject), token_version=token_version)
+    except (BadSignature, SignatureExpired, ValueError) as exc:
+        raise ValueError("Invalid or expired token") from exc
+
+
+def _password_reset_token_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(settings.SECRET_KEY, salt="password-reset-token")
+
+
+def create_password_reset_token(subject: UUID, token_version: int) -> str:
+    serializer = _password_reset_token_serializer()
+    return serializer.dumps(
+        {
+            "sub": str(subject),
+            "typ": "password_reset",
+            "v": int(token_version),
+        }
+    )
+
+
+def decode_password_reset_token(token: str) -> DecodedPasswordResetToken:
+    serializer = _password_reset_token_serializer()
+    max_age_seconds = settings.PASSWORD_RESET_TOKEN_EXPIRE_MINUTES * 60
+    try:
+        payload = serializer.loads(token, max_age=max_age_seconds)
+        if payload.get("typ") != "password_reset":
+            raise ValueError("Invalid token type")
+
+        subject = payload.get("sub")
+        token_version = payload.get("v")
+        if not isinstance(subject, str):
+            raise ValueError("Invalid token payload")
+        if not isinstance(token_version, int) or token_version < 0:
+            raise ValueError("Invalid token payload")
+        return DecodedPasswordResetToken(subject=UUID(subject), token_version=token_version)
     except (BadSignature, SignatureExpired, ValueError) as exc:
         raise ValueError("Invalid or expired token") from exc

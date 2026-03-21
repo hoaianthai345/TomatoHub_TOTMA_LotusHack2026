@@ -6,10 +6,14 @@ from app.core.config import settings
 from app.db.session import engine
 from app.models.beneficiary import Beneficiary
 from app.models.campaign import Campaign
+from app.models.campaign_checkpoint import CampaignCheckpoint
 from app.models.campaign_image import CampaignImage
+from app.models.checkpoint_scan_log import CheckpointScanLog
+from app.models.goods_checkin import GoodsCheckin
 from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
 from app.models.user import User
+from app.models.volunteer_attendance import VolunteerAttendance
 from app.models.volunteer_registration import VolunteerRegistration
 
 
@@ -158,6 +162,91 @@ class VolunteerRegistrationAdmin(BaseAdminView, model=VolunteerRegistration):
     form_excluded_columns = [VolunteerRegistration.campaign, VolunteerRegistration.user]
 
 
+class CampaignCheckpointAdmin(BaseAdminView, model=CampaignCheckpoint):
+    name = "Campaign Checkpoint"
+    name_plural = "Campaign Checkpoints"
+    icon = "fa-solid fa-map-pin"
+    column_list = [
+        CampaignCheckpoint.id,
+        CampaignCheckpoint.campaign_id,
+        CampaignCheckpoint.organization_id,
+        CampaignCheckpoint.name,
+        CampaignCheckpoint.checkpoint_type,
+        CampaignCheckpoint.is_active,
+        CampaignCheckpoint.address_line,
+        CampaignCheckpoint.created_at,
+    ]
+    column_searchable_list = [CampaignCheckpoint.name, CampaignCheckpoint.address_line]
+    column_default_sort = [(CampaignCheckpoint.created_at, True)]
+    form_excluded_columns = [CampaignCheckpoint.campaign, CampaignCheckpoint.organization]
+
+
+class VolunteerAttendanceAdmin(BaseAdminView, model=VolunteerAttendance):
+    name = "Volunteer Attendance"
+    name_plural = "Volunteer Attendances"
+    icon = "fa-solid fa-user-check"
+    column_list = [
+        VolunteerAttendance.id,
+        VolunteerAttendance.campaign_id,
+        VolunteerAttendance.checkpoint_id,
+        VolunteerAttendance.user_id,
+        VolunteerAttendance.check_in_at,
+        VolunteerAttendance.check_out_at,
+        VolunteerAttendance.duration_minutes,
+    ]
+    column_default_sort = [(VolunteerAttendance.check_in_at, True)]
+    form_excluded_columns = [
+        VolunteerAttendance.campaign,
+        VolunteerAttendance.checkpoint,
+        VolunteerAttendance.registration,
+        VolunteerAttendance.user,
+    ]
+
+
+class CheckpointScanLogAdmin(BaseAdminView, model=CheckpointScanLog):
+    name = "Checkpoint Scan Log"
+    name_plural = "Checkpoint Scan Logs"
+    icon = "fa-solid fa-qrcode"
+    column_list = [
+        CheckpointScanLog.id,
+        CheckpointScanLog.campaign_id,
+        CheckpointScanLog.checkpoint_id,
+        CheckpointScanLog.user_id,
+        CheckpointScanLog.scan_type,
+        CheckpointScanLog.result,
+        CheckpointScanLog.message,
+        CheckpointScanLog.scanned_at,
+    ]
+    column_searchable_list = [CheckpointScanLog.scan_type, CheckpointScanLog.result]
+    column_default_sort = [(CheckpointScanLog.scanned_at, True)]
+    form_excluded_columns = [
+        CheckpointScanLog.campaign,
+        CheckpointScanLog.checkpoint,
+        CheckpointScanLog.registration,
+        CheckpointScanLog.user,
+    ]
+
+
+class GoodsCheckinAdmin(BaseAdminView, model=GoodsCheckin):
+    name = "Goods Check-in"
+    name_plural = "Goods Check-ins"
+    icon = "fa-solid fa-box"
+    column_list = [
+        GoodsCheckin.id,
+        GoodsCheckin.campaign_id,
+        GoodsCheckin.checkpoint_id,
+        GoodsCheckin.user_id,
+        GoodsCheckin.donor_name,
+        GoodsCheckin.item_name,
+        GoodsCheckin.quantity,
+        GoodsCheckin.unit,
+        GoodsCheckin.checked_in_at,
+    ]
+    column_searchable_list = [GoodsCheckin.donor_name, GoodsCheckin.item_name]
+    column_default_sort = [(GoodsCheckin.checked_in_at, True)]
+    form_excluded_columns = [GoodsCheckin.campaign, GoodsCheckin.checkpoint, GoodsCheckin.user]
+
+
 def setup_admin(app: FastAPI) -> None:
     admin = Admin(
         app,
@@ -170,6 +259,10 @@ def setup_admin(app: FastAPI) -> None:
     admin.add_view(OrganizationAdmin)
     admin.add_view(CampaignAdmin)
     admin.add_view(CampaignImageAdmin)
+    admin.add_view(CampaignCheckpointAdmin)
+    admin.add_view(VolunteerAttendanceAdmin)
+    admin.add_view(CheckpointScanLogAdmin)
+    admin.add_view(GoodsCheckinAdmin)
     admin.add_view(BeneficiaryAdmin)
     admin.add_view(MonetaryDonationAdmin)
     admin.add_view(VolunteerRegistrationAdmin)

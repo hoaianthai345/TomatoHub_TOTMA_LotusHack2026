@@ -176,3 +176,15 @@ alembic upgrade head
 ```
 
 Nếu deploy môi trường mới, nhớ tạo thư mục upload theo config (`UPLOAD_DIR`) hoặc để app tự tạo khi startup.
+
+## 10. Ghi chú migration 202603210007 & 202603210008
+
+- `202603210007_auth_lifecycle_foundation.py`
+  - Thêm cột `users.refresh_token_version` để revoke refresh/reset token theo vòng đời auth.
+- `202603210008_add_cancelled_volunteer_status.py`
+  - Bổ sung ENUM `volunteer_status = cancelled` để hỗ trợ lifecycle withdraw/cancel registration.
+
+Lưu ý về downgrade ENUM:
+
+- PostgreSQL không hỗ trợ xóa trực tiếp 1 enum value đơn giản.
+- `downgrade()` của migration `202603210008` để `pass` (no-op) nhằm tránh thao tác phá dữ liệu.
