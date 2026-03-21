@@ -1,5 +1,9 @@
 # LotusHack Backend (FastAPI + PostgreSQL + SQLAlchemy + Alembic)
 
+Database change process for team:
+
+- See [docs/database-change-guide.md](docs/database-change-guide.md)
+
 ## 1. Setup local
 
 ```bash
