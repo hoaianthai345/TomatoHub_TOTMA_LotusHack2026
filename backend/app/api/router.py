@@ -10,6 +10,7 @@ from app.api.endpoints import (
     donations,
     health,
     organizations,
+    recommendations,
     supporters,
     transparency,
     volunteer_registrations,
@@ -27,4 +28,5 @@ api_router.include_router(beneficiaries.router)
 api_router.include_router(donations.router)
 api_router.include_router(volunteer_registrations.router)
 api_router.include_router(supporters.router)
+api_router.include_router(recommendations.router)
 api_router.include_router(transparency.router)

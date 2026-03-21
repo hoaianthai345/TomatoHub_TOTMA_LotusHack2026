@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.api.permissions import ensure_superuser
 from app.core.security import decode_access_token
+from app.db.resilience import is_transient_db_error
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.user import UserRole
@@ -26,7 +27,16 @@ def _resolve_user(
             detail="Invalid or expired token",
         ) from None
 
-    user = db.get(User, user_id)
+    try:
+        user = db.get(User, user_id)
+    except Exception as exc:  # noqa: BLE001
+        if is_transient_db_error(exc):
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database is temporarily unavailable. Please retry.",
+            ) from None
+        raise
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
