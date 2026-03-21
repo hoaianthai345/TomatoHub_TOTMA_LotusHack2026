@@ -5,16 +5,24 @@ import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { useAuth } from "@/lib/auth";
 import {
+  closeCampaign,
   deleteCampaign,
   listCampaignsByOrganization,
   publishCampaign,
+  reopenCampaign,
   updateCampaign,
 } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
-import { listVolunteerRegistrations } from "@/lib/api/volunteer-registrations";
+import {
+  listVolunteerRegistrations,
+  updateVolunteerRegistrationStatus,
+} from "@/lib/api/volunteer-registrations";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
-import type { VolunteerRegistration } from "@/types/volunteer-registration";
+import type {
+  VolunteerRegistration,
+  VolunteerRegistrationStatus,
+} from "@/types/volunteer-registration";
 
 const STATUS_STYLE: Record<string, string> = {
   draft: "bg-surface-muted text-text-muted border-border",
@@ -29,6 +37,9 @@ export default function CampaignsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [loadingCampaignId, setLoadingCampaignId] = useState<string | null>(null);
+  const [loadingRegistrationId, setLoadingRegistrationId] = useState<string | null>(
+    null
+  );
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     title: "",
@@ -50,6 +61,7 @@ export default function CampaignsPage() {
         const [response, registrationList] = await Promise.all([
           listCampaignsByOrganization(organizationId, {
             limit: 200,
+            token: accessToken ?? undefined,
           }),
           accessToken
             ? listVolunteerRegistrations({
@@ -124,6 +136,7 @@ export default function CampaignsPage() {
         approved: number;
         pending: number;
         rejected: number;
+        cancelled: number;
       }
     >();
 
@@ -133,11 +146,13 @@ export default function CampaignsPage() {
         approved: 0,
         pending: 0,
         rejected: 0,
+        cancelled: 0,
       };
       current.total += 1;
       if (registration.status === "approved") current.approved += 1;
       if (registration.status === "pending") current.pending += 1;
       if (registration.status === "rejected") current.rejected += 1;
+      if (registration.status === "cancelled") current.cancelled += 1;
       map.set(registration.campaignId, current);
     });
 
@@ -152,12 +167,32 @@ export default function CampaignsPage() {
           if (registration.status === "approved") acc.approved += 1;
           if (registration.status === "pending") acc.pending += 1;
           if (registration.status === "rejected") acc.rejected += 1;
+          if (registration.status === "cancelled") acc.cancelled += 1;
           return acc;
         },
-        { total: 0, approved: 0, pending: 0, rejected: 0 }
+        { total: 0, approved: 0, pending: 0, rejected: 0, cancelled: 0 }
       ),
     [registrations]
   );
+
+  const registrationsByCampaign = useMemo(() => {
+    const map = new Map<string, VolunteerRegistration[]>();
+    registrations.forEach((registration) => {
+      const current = map.get(registration.campaignId) ?? [];
+      current.push(registration);
+      map.set(registration.campaignId, current);
+    });
+    map.forEach((list, key) => {
+      map.set(
+        key,
+        [...list].sort(
+          (a, b) =>
+            new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime()
+        )
+      );
+    });
+    return map;
+  }, [registrations]);
 
   const startEdit = (campaign: Campaign) => {
     setEditingCampaignId(campaign.id);
@@ -280,6 +315,101 @@ export default function CampaignsPage() {
     }
   };
 
+  const handleClose = async (campaign: Campaign) => {
+    if (!accessToken) {
+      setErrorMessage("Authentication token is missing.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Close campaign "${campaign.title}"? It will stop accepting new donations and registrations.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setLoadingCampaignId(campaign.id);
+    try {
+      const closedCampaign = await closeCampaign(campaign.id, accessToken);
+      setCampaigns((prev) =>
+        prev.map((item) => (item.id === campaign.id ? closedCampaign : item))
+      );
+      setSuccessMessage(`Campaign "${closedCampaign.title}" has been closed.`);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError ? error.message : "Failed to close campaign."
+      );
+    } finally {
+      setLoadingCampaignId(null);
+    }
+  };
+
+  const handleReopen = async (campaign: Campaign) => {
+    if (!accessToken) {
+      setErrorMessage("Authentication token is missing.");
+      return;
+    }
+
+    setLoadingCampaignId(campaign.id);
+    try {
+      const reopenedCampaign = await reopenCampaign(campaign.id, accessToken);
+      setCampaigns((prev) =>
+        prev.map((item) => (item.id === campaign.id ? reopenedCampaign : item))
+      );
+      setSuccessMessage(
+        `Campaign "${reopenedCampaign.title}" reopened as draft.`
+      );
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError ? error.message : "Failed to reopen campaign."
+      );
+    } finally {
+      setLoadingCampaignId(null);
+    }
+  };
+
+  const handleUpdateRegistrationStatus = async (
+    registration: VolunteerRegistration,
+    status: VolunteerRegistrationStatus
+  ) => {
+    if (!accessToken) {
+      setErrorMessage("Authentication token is missing.");
+      return;
+    }
+
+    if (registration.status === status) {
+      return;
+    }
+
+    setLoadingRegistrationId(registration.id);
+    try {
+      const updated = await updateVolunteerRegistrationStatus(
+        {
+          registrationId: registration.id,
+          status,
+        },
+        accessToken
+      );
+      setRegistrations((prev) =>
+        prev.map((item) => (item.id === updated.id ? updated : item))
+      );
+      setSuccessMessage(
+        `Volunteer "${updated.fullName}" updated to ${updated.status}.`
+      );
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Failed to update volunteer registration."
+      );
+    } finally {
+      setLoadingRegistrationId(null);
+    }
+  };
+
   return (
     <RoleGate role="organization" loadingMessage="Loading campaigns...">
       <div className="p-6">
@@ -367,17 +497,113 @@ export default function CampaignsPage() {
                       {registrationStatsByCampaign.get(campaign.id)?.total ?? 0}
                     </span>{" "}
                     (approved {registrationStatsByCampaign.get(campaign.id)?.approved ?? 0}, pending{" "}
-                    {registrationStatsByCampaign.get(campaign.id)?.pending ?? 0})
+                    {registrationStatsByCampaign.get(campaign.id)?.pending ?? 0}, rejected{" "}
+                    {registrationStatsByCampaign.get(campaign.id)?.rejected ?? 0}, cancelled{" "}
+                    {registrationStatsByCampaign.get(campaign.id)?.cancelled ?? 0})
                   </p>
                 </div>
 
+                <div className="mt-4 rounded-lg border border-border bg-surface-muted/30 p-4">
+                  <p className="text-sm font-semibold text-heading">
+                    Volunteer review
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Approve or reject registrations directly from this campaign.
+                  </p>
+
+                  {((registrationsByCampaign.get(campaign.id) ?? []).length > 0) ? (
+                    <div className="mt-3 space-y-3">
+                      {(registrationsByCampaign.get(campaign.id) ?? [])
+                        .slice(0, 5)
+                        .map((registration) => (
+                          <div
+                            key={registration.id}
+                            className="rounded-md border border-border bg-white p-3"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-heading">
+                                  {registration.fullName}
+                                </p>
+                                <p className="text-xs text-text-muted">
+                                  {registration.email} ·{" "}
+                                  {formatDateTime(registration.registeredAt)}
+                                </p>
+                                {registration.message ? (
+                                  <p className="mt-1 text-xs text-text">
+                                    {registration.message}
+                                  </p>
+                                ) : null}
+                              </div>
+                              <span className="rounded-full border border-border bg-surface-muted px-2 py-1 text-xs font-semibold text-text-muted">
+                                {registration.status}
+                              </span>
+                            </div>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {registration.status !== "approved" ? (
+                                <button
+                                  type="button"
+                                  className="btn-base btn-primary text-xs"
+                                  disabled={loadingRegistrationId === registration.id}
+                                  onClick={() =>
+                                    handleUpdateRegistrationStatus(
+                                      registration,
+                                      "approved"
+                                    )
+                                  }
+                                >
+                                  {loadingRegistrationId === registration.id
+                                    ? "Saving..."
+                                    : "Approve"}
+                                </button>
+                              ) : null}
+                              {registration.status !== "rejected" ? (
+                                <button
+                                  type="button"
+                                  className="btn-base text-xs text-white bg-danger rounded-lg"
+                                  disabled={loadingRegistrationId === registration.id}
+                                  onClick={() =>
+                                    handleUpdateRegistrationStatus(
+                                      registration,
+                                      "rejected"
+                                    )
+                                  }
+                                >
+                                  {loadingRegistrationId === registration.id
+                                    ? "Saving..."
+                                    : "Reject"}
+                                </button>
+                              ) : null}
+                              {registration.status !== "pending" ? (
+                                <button
+                                  type="button"
+                                  className="btn-base btn-secondary text-xs"
+                                  disabled={loadingRegistrationId === registration.id}
+                                  onClick={() =>
+                                    handleUpdateRegistrationStatus(
+                                      registration,
+                                      "pending"
+                                    )
+                                  }
+                                >
+                                  {loadingRegistrationId === registration.id
+                                    ? "Saving..."
+                                    : "Set pending"}
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 text-xs text-text-muted">
+                      No volunteer registrations yet for this campaign.
+                    </p>
+                  )}
+                </div>
+
                 <div className="mt-4 flex gap-3">
-                  <Link
-                    href={`/organization/campaigns/${campaign.id}/edit`}
-                    className="btn-base btn-secondary text-sm"
-                  >
-                    Edit page
-                  </Link>
                   <button
                     type="button"
                     onClick={() => startEdit(campaign)}
@@ -394,6 +620,26 @@ export default function CampaignsPage() {
                       disabled={loadingCampaignId === campaign.id}
                     >
                       {loadingCampaignId === campaign.id ? "Publishing..." : "Publish"}
+                    </button>
+                  ) : null}
+                  {campaign.status === "published" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleClose(campaign)}
+                      className="btn-base text-sm text-white bg-danger rounded-lg"
+                      disabled={loadingCampaignId === campaign.id}
+                    >
+                      {loadingCampaignId === campaign.id ? "Closing..." : "Close"}
+                    </button>
+                  ) : null}
+                  {campaign.status === "closed" ? (
+                    <button
+                      type="button"
+                      onClick={() => handleReopen(campaign)}
+                      className="btn-base btn-secondary text-sm"
+                      disabled={loadingCampaignId === campaign.id}
+                    >
+                      {loadingCampaignId === campaign.id ? "Reopening..." : "Reopen"}
                     </button>
                   ) : null}
                   {campaign.status === "published" ? (

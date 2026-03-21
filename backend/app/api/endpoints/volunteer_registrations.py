@@ -12,7 +12,8 @@ from app.api.deps import (
     get_optional_current_user,
 )
 from app.api.permissions import ensure_authenticated_user_matches
-from app.models.campaign import Campaign, CampaignStatus, SupportType
+from app.models.campaign import Campaign, CampaignStatus
+from app.models.credit_event import CreditTargetType
 from app.models.user import User
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 from app.schemas.volunteer_registration import (
@@ -20,6 +21,13 @@ from app.schemas.volunteer_registration import (
     VolunteerRegistrationCreate,
     VolunteerRegistrationRead,
     VolunteerRegistrationUpdateStatus,
+)
+from app.services.credit_service import (
+    VOLUNTEER_APPROVED_ORGANIZATION_POINTS,
+    VOLUNTEER_APPROVED_SUPPORTER_POINTS,
+    VOLUNTEER_REGISTERED_ORGANIZATION_POINTS,
+    VOLUNTEER_REGISTERED_SUPPORTER_POINTS,
+    apply_credit_event,
 )
 
 router = APIRouter(prefix="/volunteer-registrations", tags=["volunteer_registrations"])
@@ -204,6 +212,37 @@ def create_volunteer_registration(
         status=VolunteerStatus.pending,
     )
     db.add(registration)
+    db.flush()
+
+    if user_id is not None:
+        apply_credit_event(
+            db,
+            target_type=CreditTargetType.supporter,
+            target_user_id=user_id,
+            actor_user_id=user_id,
+            event_type="volunteer_registered",
+            points=VOLUNTEER_REGISTERED_SUPPORTER_POINTS,
+            note=f"Registered for volunteer campaign {campaign.title}",
+            context={
+                "campaign_id": str(campaign.id),
+                "registration_id": str(registration.id),
+            },
+        )
+
+    apply_credit_event(
+        db,
+        target_type=CreditTargetType.organization,
+        target_organization_id=campaign.organization_id,
+        actor_user_id=user_id,
+        event_type="volunteer_registration_received",
+        points=VOLUNTEER_REGISTERED_ORGANIZATION_POINTS,
+        note=f"Received volunteer registration for campaign {campaign.title}",
+        context={
+            "campaign_id": str(campaign.id),
+            "registration_id": str(registration.id),
+        },
+    )
+
     try:
         db.commit()
     except IntegrityError:
@@ -264,7 +303,41 @@ def update_volunteer_registration_status(
             detail="Cannot update registration for another organization",
         )
 
+    previous_status = registration.status
     registration.status = payload.status
+    if (
+        previous_status != VolunteerStatus.approved
+        and payload.status == VolunteerStatus.approved
+    ):
+        if registration.user_id is not None:
+            apply_credit_event(
+                db,
+                target_type=CreditTargetType.supporter,
+                target_user_id=registration.user_id,
+                actor_user_id=current_user.id,
+                event_type="volunteer_approved",
+                points=VOLUNTEER_APPROVED_SUPPORTER_POINTS,
+                note=f"Volunteer registration approved for campaign {campaign.title}",
+                context={
+                    "campaign_id": str(campaign.id),
+                    "registration_id": str(registration.id),
+                },
+            )
+
+        apply_credit_event(
+            db,
+            target_type=CreditTargetType.organization,
+            target_organization_id=campaign.organization_id,
+            actor_user_id=current_user.id,
+            event_type="volunteer_approved_organization",
+            points=VOLUNTEER_APPROVED_ORGANIZATION_POINTS,
+            note=f"Approved volunteer registration for campaign {campaign.title}",
+            context={
+                "campaign_id": str(campaign.id),
+                "registration_id": str(registration.id),
+            },
+        )
+
     db.commit()
     db.refresh(registration)
     return registration

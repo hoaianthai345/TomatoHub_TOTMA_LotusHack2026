@@ -38,7 +38,10 @@ export default function SupportersPage() {
             organizationId,
             token: accessToken,
           }),
-          listCampaignsByOrganization(organizationId, { limit: 200 }),
+          listCampaignsByOrganization(organizationId, {
+            limit: 200,
+            token: accessToken,
+          }),
         ]);
 
         if (!cancelled) {

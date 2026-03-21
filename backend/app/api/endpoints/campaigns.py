@@ -13,6 +13,7 @@ from app.api.deps import (
 from app.api.permissions import ensure_matching_organization
 from app.models.campaign_image import CampaignImage
 from app.models.campaign import Campaign, CampaignStatus, SupportType
+from app.models.credit_event import CreditTargetType
 from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
@@ -39,6 +40,11 @@ from app.services.campaign_service import (
     publish_campaign,
     reopen_campaign,
     update_manual_campaign,
+)
+from app.services.credit_service import (
+    CAMPAIGN_CLOSED_ORGANIZATION_POINTS,
+    CAMPAIGN_PUBLISHED_ORGANIZATION_POINTS,
+    apply_credit_event,
 )
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
@@ -367,12 +373,25 @@ def publish_campaign_endpoint(
     current_user: User = Depends(get_current_organization_user),
 ) -> CampaignPublishResponse:
     campaign = get_campaign_or_404(db, campaign_id)
+    was_published = campaign.status == CampaignStatus.published
     ensure_matching_organization(
         current_user,
         campaign.organization_id,
         detail="Cannot publish campaign from another organization",
     )
     campaign = publish_campaign(db, campaign_id)
+    if not was_published:
+        apply_credit_event(
+            db,
+            target_type=CreditTargetType.organization,
+            target_organization_id=campaign.organization_id,
+            actor_user_id=current_user.id,
+            event_type="campaign_published",
+            points=CAMPAIGN_PUBLISHED_ORGANIZATION_POINTS,
+            note=f"Campaign published: {campaign.title}",
+            context={"campaign_id": str(campaign.id)},
+        )
+        db.commit()
     return CampaignPublishResponse(
         message="Campaign published successfully",
         campaign=CampaignRead.model_validate(campaign),
@@ -387,12 +406,25 @@ def close_campaign_endpoint(
     current_user: User = Depends(get_current_organization_user),
 ) -> CampaignCloseResponse:
     campaign = get_campaign_or_404(db, campaign_id)
+    was_closed = campaign.status == CampaignStatus.closed
     ensure_matching_organization(
         current_user,
         campaign.organization_id,
         detail="Cannot close campaign from another organization",
     )
     campaign = close_campaign(db, campaign_id, payload)
+    if not was_closed:
+        apply_credit_event(
+            db,
+            target_type=CreditTargetType.organization,
+            target_organization_id=campaign.organization_id,
+            actor_user_id=current_user.id,
+            event_type="campaign_closed",
+            points=CAMPAIGN_CLOSED_ORGANIZATION_POINTS,
+            note=f"Campaign closed: {campaign.title}",
+            context={"campaign_id": str(campaign.id)},
+        )
+        db.commit()
     return CampaignCloseResponse(
         message="Campaign closed successfully",
         campaign=CampaignRead.model_validate(campaign),

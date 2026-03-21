@@ -52,6 +52,8 @@ class CurrentUserRead(BaseModel):
     role: UserRole
     organization_id: UUID | None
     organization_name: str | None = None
+    organization_credit_score: int | None = None
+    credit_score: int
     location: str | None = None
     support_types: list[UserSupportType] = Field(default_factory=list)
     is_active: bool

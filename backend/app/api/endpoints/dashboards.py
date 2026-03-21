@@ -19,6 +19,7 @@ from app.models.volunteer_attendance import VolunteerAttendance
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 from app.schemas.dashboard import (
     OrganizationActivityItemRead,
+    OrganizationCampaignSnapshotRead,
     OrganizationCampaignPipelineItemRead,
     OrganizationCampaignSnapshotRead,
     OrganizationDashboardRead,
@@ -69,6 +70,8 @@ def _build_organization_campaign_snapshots(
     donations_by_campaign: dict[UUID, list[MonetaryDonation]],
     registrations_by_campaign: dict[UUID, list[VolunteerRegistration]],
     beneficiaries_by_campaign: dict[UUID, list[Beneficiary]],
+    *,
+    limit: int = 8,
 ) -> list[OrganizationCampaignSnapshotRead]:
     snapshots: list[OrganizationCampaignSnapshotRead] = []
     for campaign in campaigns:
@@ -78,29 +81,45 @@ def _build_organization_campaign_snapshots(
         if goal_amount > 0:
             progress_percent = max(0, min(100, int((raised_amount / goal_amount) * 100)))
 
-        support_label = ", ".join(campaign.support_types) if campaign.support_types else "No support type"
-        beneficiary_count = len(beneficiaries_by_campaign.get(campaign.id, []))
-        registration_count = len(registrations_by_campaign.get(campaign.id, []))
         donation_count = len(donations_by_campaign.get(campaign.id, []))
+        registration_count = len(registrations_by_campaign.get(campaign.id, []))
+        beneficiary_count = len(beneficiaries_by_campaign.get(campaign.id, []))
+
+        status_label = _campaign_status_label(campaign.status)
+        support_label = (
+            ", ".join(campaign.support_types)
+            if campaign.support_types
+            else "No support type"
+        )
+        if campaign.status == CampaignStatus.draft:
+            note = "Draft: complete details before publishing."
+        elif campaign.status == CampaignStatus.closed:
+            note = (
+                f"Closed campaign with {donation_count} donation(s), "
+                f"{registration_count} volunteer registration(s), "
+                f"{beneficiary_count} beneficiary record(s)."
+            )
+        else:
+            note = (
+                f"{donation_count} donation(s), "
+                f"{registration_count} volunteer registration(s), "
+                f"{beneficiary_count} beneficiary record(s)."
+            )
 
         snapshots.append(
             OrganizationCampaignSnapshotRead(
-                id=f"org-campaign-{campaign.id}",
+                id=f"campaign-snapshot-{campaign.id}",
                 campaign_id=campaign.id,
                 campaign_title=campaign.title,
                 location=_campaign_location_label(campaign) or "Location pending",
-                status_label=_campaign_status_label(campaign.status),
+                status_label=status_label,
                 support_label=support_label,
                 progress_percent=progress_percent,
-                note=(
-                    f"{beneficiary_count} beneficiary(ies), "
-                    f"{registration_count} volunteer registration(s), "
-                    f"{donation_count} donation(s)."
-                ),
+                note=note,
             )
         )
 
-    return snapshots[:8]
+    return snapshots[:limit]
 
 
 def _build_organization_recent_activities(
@@ -109,25 +128,15 @@ def _build_organization_recent_activities(
     donations: list[MonetaryDonation],
     registrations: list[VolunteerRegistration],
     beneficiaries: list[Beneficiary],
+    *,
+    limit: int = 12,
 ) -> list[OrganizationActivityItemRead]:
+    del campaigns  # covered by campaigns_by_id
     activities: list[OrganizationActivityItemRead] = []
 
-    for campaign in campaigns[:10]:
-        activities.append(
-            OrganizationActivityItemRead(
-                id=f"campaign-{campaign.id}",
-                actor="Organization",
-                title="Campaign updated",
-                detail=f'"{campaign.title}" status is {_campaign_status_label(campaign.status).lower()}.',
-                time_label=_relative_time_label(campaign.updated_at),
-                created_at=campaign.updated_at,
-            )
-        )
-
-    for donation in donations[:10]:
+    for donation in donations:
         campaign = campaigns_by_id.get(donation.campaign_id)
-        if campaign is None:
-            continue
+        campaign_title = campaign.title if campaign is not None else str(donation.campaign_id)
         activities.append(
             OrganizationActivityItemRead(
                 id=f"donation-{donation.id}",
@@ -135,18 +144,17 @@ def _build_organization_recent_activities(
                 title="Donation received",
                 detail=(
                     f'{donation.donor_name} donated {donation.amount} '
-                    f'{donation.currency} to "{campaign.title}".'
+                    f'{donation.currency} to "{campaign_title}".'
                 ),
                 time_label=_relative_time_label(donation.donated_at),
                 created_at=donation.donated_at,
             )
         )
 
-    for registration in registrations[:10]:
+    for registration in registrations:
         campaign = campaigns_by_id.get(registration.campaign_id)
-        if campaign is None:
-            continue
-        status_value = (
+        campaign_title = campaign.title if campaign is not None else str(registration.campaign_id)
+        status_label = (
             registration.status.value
             if hasattr(registration.status, "value")
             else str(registration.status)
@@ -157,36 +165,43 @@ def _build_organization_recent_activities(
                 actor=registration.full_name,
                 title="Volunteer registration updated",
                 detail=(
-                    f'{registration.full_name} registration is {status_value} '
-                    f'on "{campaign.title}".'
+                    f'{registration.full_name} registration is {status_label} on '
+                    f'"{campaign_title}".'
                 ),
                 time_label=_relative_time_label(registration.registered_at),
                 created_at=registration.registered_at,
             )
         )
 
-    for beneficiary in beneficiaries[:10]:
+    for beneficiary in beneficiaries:
         if beneficiary.campaign_id is None:
             continue
         campaign = campaigns_by_id.get(beneficiary.campaign_id)
-        if campaign is None:
-            continue
+        campaign_title = campaign.title if campaign is not None else str(beneficiary.campaign_id)
+        beneficiary_status = (
+            beneficiary.status.value
+            if hasattr(beneficiary.status, "value")
+            else str(beneficiary.status)
+        )
         activities.append(
             OrganizationActivityItemRead(
                 id=f"beneficiary-{beneficiary.id}",
                 actor=beneficiary.full_name,
-                title="Beneficiary profile updated",
-                detail=f'Beneficiary "{beneficiary.full_name}" linked to "{campaign.title}".',
+                title="Beneficiary status updated",
+                detail=(
+                    f'{beneficiary.full_name} is currently "{beneficiary_status}" '
+                    f'in "{campaign_title}".'
+                ),
                 time_label=_relative_time_label(beneficiary.created_at),
                 created_at=beneficiary.created_at,
             )
         )
 
     activities.sort(
-        key=lambda item: item.created_at or datetime.now(timezone.utc),
+        key=lambda item: item.created_at or datetime.min.replace(tzinfo=timezone.utc),
         reverse=True,
     )
-    return activities[:12]
+    return activities[:limit]
 
 
 def _build_supporter_participation_cards(
@@ -194,8 +209,10 @@ def _build_supporter_participation_cards(
     donations: list[MonetaryDonation],
     registrations: list[VolunteerRegistration],
     now: datetime,
+    *,
+    limit: int = 8,
 ) -> list[SupporterParticipationCardRead]:
-    _ = now
+    del now  # relative label uses server current time
     cards_with_time: list[tuple[datetime, SupporterParticipationCardRead]] = []
     seen_campaign_ids: set[UUID] = set()
 
@@ -203,7 +220,7 @@ def _build_supporter_participation_cards(
         campaign = campaigns_by_id.get(registration.campaign_id)
         if campaign is None:
             continue
-
+        seen_campaign_ids.add(campaign.id)
         if registration.status == VolunteerStatus.approved:
             next_step = "Arrive at checkpoint and scan QR to check in."
         elif registration.status == VolunteerStatus.pending:
@@ -217,14 +234,11 @@ def _build_supporter_participation_cards(
             (
                 registration.registered_at,
                 SupporterParticipationCardRead(
-                    id=f"volunteer-{registration.id}",
+                    id=f"participation-{registration.id}",
                     campaign_id=campaign.id,
                     campaign_title=campaign.title,
-                    campaign_location=_campaign_location_label(campaign) or "Location updating",
-                    cover_image_url=(
-                        campaign.cover_image_url
-                        or (campaign.media_urls[0] if campaign.media_urls else None)
-                    ),
+                    campaign_location=_campaign_location_label(campaign) or "Location pending",
+                    cover_image_url=campaign.cover_image_url or None,
                     role_label="Volunteer",
                     status_label=registration.status.value,
                     next_step=next_step,
@@ -232,25 +246,20 @@ def _build_supporter_participation_cards(
                 ),
             )
         )
-        seen_campaign_ids.add(campaign.id)
 
     for donation in donations:
         campaign = campaigns_by_id.get(donation.campaign_id)
         if campaign is None or campaign.id in seen_campaign_ids:
             continue
-
         cards_with_time.append(
             (
                 donation.donated_at,
                 SupporterParticipationCardRead(
-                    id=f"donation-{donation.id}",
+                    id=f"participation-{donation.id}",
                     campaign_id=campaign.id,
                     campaign_title=campaign.title,
-                    campaign_location=_campaign_location_label(campaign) or "Location updating",
-                    cover_image_url=(
-                        campaign.cover_image_url
-                        or (campaign.media_urls[0] if campaign.media_urls else None)
-                    ),
+                    campaign_location=_campaign_location_label(campaign) or "Location pending",
+                    cover_image_url=campaign.cover_image_url or None,
                     role_label="Money Donor",
                     status_label="contributed",
                     next_step="Track campaign progress in transparency logs.",
@@ -260,24 +269,27 @@ def _build_supporter_participation_cards(
         )
 
     cards_with_time.sort(key=lambda item: item[0], reverse=True)
-    return [card for _, card in cards_with_time[:6]]
+    return [item for _, item in cards_with_time[:limit]]
 
 
 def _build_supporter_contribution_items(
     campaigns_by_id: dict[UUID, Campaign],
     donations: list[MonetaryDonation],
     registrations: list[VolunteerRegistration],
+    *,
+    limit: int = 12,
 ) -> list[SupporterContributionItemRead]:
     items: list[SupporterContributionItemRead] = []
 
     for donation in donations:
         campaign = campaigns_by_id.get(donation.campaign_id)
-        campaign_title = campaign.title if campaign is not None else str(donation.campaign_id)
+        if campaign is None:
+            continue
         items.append(
             SupporterContributionItemRead(
                 id=f"money-{donation.id}",
-                campaign_id=donation.campaign_id,
-                campaign_title=campaign_title,
+                campaign_id=campaign.id,
+                campaign_title=campaign.title,
                 contribution_type="money",
                 summary=f"Donated {donation.amount} {donation.currency}.",
                 status_label="received",
@@ -288,70 +300,88 @@ def _build_supporter_contribution_items(
 
     for registration in registrations:
         campaign = campaigns_by_id.get(registration.campaign_id)
-        campaign_title = campaign.title if campaign is not None else str(registration.campaign_id)
-        status_value = (
-            registration.status.value
-            if hasattr(registration.status, "value")
-            else str(registration.status)
-        )
+        if campaign is None:
+            continue
+        if registration.status == VolunteerStatus.approved:
+            summary = "Volunteer registration approved."
+            status_label = "approved"
+        elif registration.status == VolunteerStatus.pending:
+            summary = "Volunteer registration is pending approval."
+            status_label = "pending"
+        elif registration.status == VolunteerStatus.rejected:
+            summary = "Volunteer registration was rejected."
+            status_label = "rejected"
+        else:
+            summary = "Volunteer registration was cancelled."
+            status_label = "cancelled"
+
         items.append(
             SupporterContributionItemRead(
-                id=f"volunteer-registration-{registration.id}",
-                campaign_id=registration.campaign_id,
-                campaign_title=campaign_title,
+                id=f"volunteer-{registration.id}",
+                campaign_id=campaign.id,
+                campaign_title=campaign.title,
                 contribution_type="volunteer",
-                summary=f"Volunteer registration is {status_value}.",
-                status_label=status_value,
+                summary=summary,
+                status_label=status_label,
                 date_label=_relative_time_label(registration.registered_at),
                 created_at=registration.registered_at,
             )
         )
 
-    items.sort(key=lambda item: item.created_at or datetime.now(timezone.utc), reverse=True)
-    return items[:10]
+    items.sort(
+        key=lambda item: item.created_at or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    return items[:limit]
 
 
 def _build_supporter_task_items(
     campaigns_by_id: dict[UUID, Campaign],
     registrations: list[VolunteerRegistration],
     now: datetime,
+    *,
+    limit: int = 12,
 ) -> list[SupporterTaskItemRead]:
-    _ = now
+    del now  # reserved for future due-date logic
     items: list[SupporterTaskItemRead] = []
     for registration in registrations:
         campaign = campaigns_by_id.get(registration.campaign_id)
-        campaign_title = campaign.title if campaign is not None else str(registration.campaign_id)
+        if campaign is None:
+            continue
         if registration.status == VolunteerStatus.approved:
-            title = "Check in at campaign checkpoint"
+            task_title = "Check in at campaign checkpoint"
             status_label = "ready"
             due_label = "As scheduled by organization"
         elif registration.status == VolunteerStatus.pending:
-            title = "Wait for registration approval"
+            task_title = "Wait for registration approval"
             status_label = "pending"
             due_label = "Awaiting organization review"
         elif registration.status == VolunteerStatus.rejected:
-            title = "Registration closed by organization"
+            task_title = "Registration closed by organization"
             status_label = "rejected"
             due_label = "No action required"
         else:
-            title = "Registration cancelled"
+            task_title = "Registration cancelled"
             status_label = "cancelled"
             due_label = "No action required"
 
         items.append(
             SupporterTaskItemRead(
                 id=f"task-{registration.id}",
-                campaign_id=registration.campaign_id,
-                campaign_title=campaign_title,
-                title=title,
+                campaign_id=campaign.id,
+                campaign_title=campaign.title,
+                title=task_title,
                 status_label=status_label,
                 due_label=due_label,
                 created_at=registration.registered_at,
             )
         )
 
-    items.sort(key=lambda item: item.created_at or datetime.now(timezone.utc), reverse=True)
-    return items[:8]
+    items.sort(
+        key=lambda item: item.created_at or datetime.min.replace(tzinfo=timezone.utc),
+        reverse=True,
+    )
+    return items[:limit]
 
 
 @router.get("/organization/{organization_id}", response_model=OrganizationDashboardRead)

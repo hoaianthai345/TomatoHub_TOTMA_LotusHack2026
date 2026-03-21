@@ -68,8 +68,16 @@ Demo accounts after seed:
 - `admin@lotushack.local` / `Admin@123456` (superuser)
 - `mai.giang@example.com` / `Supporter@123` (supporter)
 - `nguyen.tuan@example.com` / `Supporter@123` (supporter)
+- all other seeded supporter accounts use password `Supporter@123`
 - `info@tomatorelief.org` / `Org@123456` (organization)
 - `contact@communityaid.org` / `Org@123456` (organization)
+- `hello@mekongcare.org` / `Org@123456` (organization)
+
+Seed script now includes richer mock data for:
+- organizations, supporters, and operators
+- published, draft, and closed campaigns with detailed descriptions
+- beneficiaries, donations, volunteer registrations
+- QR/checkpoint flow (campaign checkpoints, attendance, scan logs, goods check-ins) when related tables exist
 
 ## 5. Start API
 
@@ -273,6 +281,10 @@ curl -X POST "http://127.0.0.1:8000/api/v1/auth/reset-password" \
 - `POST /api/v1/campaigns/{campaign_id}/images` (`multipart/form-data`, auth required)
 - `POST /api/v1/campaigns/{campaign_id}/images/{image_id}/set-cover` (organization owner/superuser)
 - `DELETE /api/v1/campaigns/{campaign_id}/images/{image_id}` (organization owner/uploader/superuser)
+- `GET /api/v1/credits/me` (auth required)
+- `GET /api/v1/credits/supporter/{supporter_id}` (self/superuser)
+- `GET /api/v1/credits/organization/{organization_id}` (public)
+- `POST /api/v1/credits/adjust` (superuser)
 - `POST /api/v1/campaigns/{campaign_id}/close` (organization owner, body optional: `closed_at`)
 - `POST /api/v1/campaigns/{campaign_id}/reopen` (organization owner)
 - `PATCH /api/v1/organizations/{organization_id}` (owner org/superuser)
@@ -285,6 +297,10 @@ Notes:
 - `GET /campaigns/by-organization/{organization_id}` only returns `published` campaigns for public users. Querying `draft`/`closed` requires organization owner or superuser token.
 - Checkpoint QR in current phase supports volunteer check-in/check-out flow with approved registrations.
 - Volunteer registration is linked to `campaign` (not organization directly). A supporter has at most one linked registration per campaign.
+- Credit scoring auto-events:
+  - donation created (supporter + organization)
+  - volunteer registration created/approved (supporter + organization)
+  - campaign publish/close (organization)
 
 ## 5E. Volunteer QR check-in / check-out flow
 

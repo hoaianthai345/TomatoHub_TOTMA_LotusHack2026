@@ -6,6 +6,7 @@ from app.models.campaign import Campaign  # noqa: F401
 from app.models.campaign_image import CampaignImage  # noqa: F401
 from app.models.campaign_checkpoint import CampaignCheckpoint  # noqa: F401
 from app.models.checkpoint_scan_log import CheckpointScanLog  # noqa: F401
+from app.models.credit_event import CreditEvent  # noqa: F401
 from app.models.goods_checkin import GoodsCheckin  # noqa: F401
 from app.models.monetary_donation import MonetaryDonation  # noqa: F401
 from app.models.organization import Organization  # noqa: F401

@@ -5,6 +5,7 @@ __all__ = [
     "beneficiaries",
     "campaign_checkpoints",
     "campaigns",
+    "credits",
     "dashboards",
     "donations",
     "health",

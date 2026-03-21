@@ -27,6 +27,7 @@ class OrganizationUpdate(BaseModel):
 class OrganizationRead(OrganizationBase):
     id: UUID
     verified: bool
+    credit_score: int
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
