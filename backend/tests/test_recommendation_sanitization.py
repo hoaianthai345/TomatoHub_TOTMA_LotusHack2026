@@ -55,6 +55,33 @@ class RecommendationSanitizationTestCase(unittest.TestCase):
         self.assertEqual(merged.risk_notes, ["Data mismatch risk"])
         self.assertEqual(merged.transparency_notes, ["Post weekly logs"])
 
+    def test_campaign_draft_merge_strips_title_prefix_from_short_description(self) -> None:
+        payload = CampaignDraftRecommendationRequest(
+            title="Book",
+            campaign_goal="Donate books for children",
+            beneficiary_context="Students in rural schools",
+            location_hint="District 9",
+            support_types_hint=[SupportType.money],
+            constraints=[],
+            tone="clear and practical",
+        )
+        heuristic = recommendation_service._heuristic_campaign_draft_recommendation(payload)
+
+        merged = recommendation_service._merge_campaign_draft_llm_output(
+            heuristic=heuristic,
+            llm_data={
+                "short_description": "Book: mobilize money support to address urgent community needs with a transparent execution plan.",
+            },
+            model="demo-model",
+            generated_by="groq-light",
+            campaign_title=payload.title,
+        )
+
+        self.assertEqual(
+            merged.short_description,
+            "mobilize money support to address urgent community needs with a transparent execution plan.",
+        )
+
     def test_sanitize_generated_text_converts_escaped_newlines(self) -> None:
         raw = "Line 1\\nLine 2\\r\\nLine 3"
         cleaned = recommendation_service._sanitize_generated_text(raw, allow_newlines=True)
@@ -74,6 +101,23 @@ class RecommendationSanitizationTestCase(unittest.TestCase):
         recommendation = recommendation_service._heuristic_campaign_draft_recommendation(payload)
         self.assertIn("\n", recommendation.description)
         self.assertNotIn("\\n", recommendation.description)
+
+    def test_heuristic_short_description_does_not_include_title_prefix(self) -> None:
+        payload = CampaignDraftRecommendationRequest(
+            title="Book",
+            campaign_goal="Donate books for children",
+            beneficiary_context="Students in rural schools",
+            location_hint="District 9",
+            support_types_hint=[SupportType.money],
+            constraints=[],
+            tone="clear and practical",
+        )
+
+        recommendation = recommendation_service._heuristic_campaign_draft_recommendation(payload)
+        self.assertEqual(
+            recommendation.short_description,
+            "mobilize money support to address urgent community needs with a transparent execution plan.",
+        )
 
 
 if __name__ == "__main__":
