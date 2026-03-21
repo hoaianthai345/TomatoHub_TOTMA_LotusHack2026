@@ -106,7 +106,7 @@ This route is not linked from frontend navigation.
 curl -X GET "http://127.0.0.1:8000/api/v1/organizations/"
 ```
 
-2. Create campaign manually in `draft` status:
+2. Create campaign manually in `draft` status (`ends_at` optional):
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/" \
@@ -130,6 +130,16 @@ curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/" \
 
 ```bash
 curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/publish"
+```
+
+4. Manually close campaign when finished (optional custom `closed_at`):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/close" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "closed_at": "2026-05-01T18:00:00Z"
+  }'
 ```
 
 ## 5C. Auth API (for frontend login/signup)
@@ -204,6 +214,7 @@ curl -X GET "http://127.0.0.1:8000/api/v1/auth/me" \
 - `POST /api/v1/campaigns/{campaign_id}/images` (`multipart/form-data`, auth required)
 - `POST /api/v1/campaigns/{campaign_id}/images/{image_id}/set-cover` (organization owner/superuser)
 - `DELETE /api/v1/campaigns/{campaign_id}/images/{image_id}` (organization owner/uploader/superuser)
+- `POST /api/v1/campaigns/{campaign_id}/close` (organization owner, body optional: `closed_at`)
 
 Notes:
 
