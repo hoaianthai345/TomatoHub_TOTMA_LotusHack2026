@@ -7,7 +7,11 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from app.api.endpoints.campaigns import create_campaign, publish_campaign_endpoint
+from app.api.endpoints.campaigns import (
+    create_campaign,
+    list_campaigns,
+    publish_campaign_endpoint,
+)
 from app.models.campaign import CampaignStatus, SupportType
 from app.schemas.campaign import CampaignCreate
 
@@ -155,6 +159,39 @@ class CampaignEndpointTestCase(unittest.TestCase):
             "Cannot publish campaign from another organization",
         )
         mock_publish.assert_not_called()
+
+    def test_list_campaigns_allows_location_and_support_type_filters(self) -> None:
+        captured_stmt = {}
+
+        class _FakeScalarResult:
+            def all(self):
+                return []
+
+        class _FakeDb:
+            def scalars(self, stmt):
+                captured_stmt["value"] = stmt
+                return _FakeScalarResult()
+
+        response = list_campaigns(
+            limit=20,
+            campaign_status=CampaignStatus.published,
+            organization_id=self.organization_id,
+            province="Can Tho",
+            district="Ninh Kieu",
+            support_type=SupportType.volunteer,
+            db=_FakeDb(),
+        )
+
+        self.assertEqual(response, [])
+        self.assertIn("value", captured_stmt)
+
+        stmt = captured_stmt["value"]
+        compiled = stmt.compile()
+        params = list(compiled.params.values())
+
+        self.assertTrue(any(value == "%Can Tho%" for value in params))
+        self.assertTrue(any(value == "%Ninh Kieu%" for value in params))
+        self.assertTrue(any(value == ["volunteer"] for value in params))
 
 
 if __name__ == "__main__":
