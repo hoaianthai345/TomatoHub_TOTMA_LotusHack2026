@@ -30,6 +30,14 @@ export default function RegisterSupportPage() {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [preferredCampaignId, setPreferredCampaignId] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setPreferredCampaignId(params.get("campaignId"));
+  }, []);
 
   useEffect(() => {
     if (
@@ -58,7 +66,18 @@ export default function RegisterSupportPage() {
           setCampaigns(campaignList);
           setRegistrations(registrationList);
           if (campaignList.length > 0) {
-            setSelectedCampaignId((previous) => previous || campaignList[0].id);
+            setSelectedCampaignId((previous) => {
+              if (previous) {
+                return previous;
+              }
+              if (
+                preferredCampaignId &&
+                campaignList.some((campaign) => campaign.id === preferredCampaignId)
+              ) {
+                return preferredCampaignId;
+              }
+              return campaignList[0].id;
+            });
           }
           setErrorMessage(null);
         }
@@ -78,7 +97,7 @@ export default function RegisterSupportPage() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, currentUser?.id, currentUser?.role, isLoading]);
+  }, [accessToken, currentUser?.id, currentUser?.role, isLoading, preferredCampaignId]);
 
   const campaignTitleById = useMemo(
     () => new Map(campaigns.map((campaign) => [campaign.id, campaign.title])),

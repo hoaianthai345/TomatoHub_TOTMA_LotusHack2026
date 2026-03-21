@@ -92,7 +92,6 @@ export default function SupporterSignupPage() {
               type="password"
               required
               minLength={8}
-              maxLength={72}
               value={formData.password}
               onChange={(event) =>
                 setFormData((prev) => ({ ...prev, password: event.target.value }))
@@ -100,9 +99,6 @@ export default function SupporterSignupPage() {
               className="input-base"
               placeholder="At least 8 characters"
             />
-            <p className="mt-1 text-xs text-text-muted">
-              Max 72 bytes (bcrypt limit).
-            </p>
           </div>
 
           <VietnamLocationFields

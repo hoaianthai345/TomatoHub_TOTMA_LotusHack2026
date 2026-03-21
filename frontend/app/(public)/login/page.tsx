@@ -64,7 +64,6 @@ export default function LoginPage() {
             <input
               type="password"
               required
-              maxLength={72}
               className="input-base"
               placeholder="Your password"
               value={formData.password}
@@ -72,9 +71,6 @@ export default function LoginPage() {
                 setFormData((prev) => ({ ...prev, password: event.target.value }))
               }
             />
-            <p className="mt-1 text-xs text-text-muted">
-              Max 72 bytes.
-            </p>
           </div>
 
           {errorMessage ? (
