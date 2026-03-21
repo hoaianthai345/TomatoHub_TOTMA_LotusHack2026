@@ -205,11 +205,6 @@ def close_campaign(
         return campaign
 
     closed_at = payload.closed_at if payload and payload.closed_at else datetime.now(timezone.utc)
-    if closed_at < campaign.starts_at:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="closed_at must be greater than or equal to starts_at",
-        )
 
     campaign.status = CampaignStatus.closed
     campaign.is_active = False
