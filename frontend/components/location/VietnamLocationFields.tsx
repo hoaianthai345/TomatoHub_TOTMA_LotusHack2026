@@ -232,7 +232,11 @@ export default function VietnamLocationFields({
 
   return (
     <div className="grid gap-4">
-      <div className={`grid gap-4 ${includeWard ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+      <div
+        className={`grid gap-4 ${
+          includeWard ? "md:grid-cols-2 xl:grid-cols-3" : "md:grid-cols-2"
+        }`}
+      >
         <label className="grid gap-2 text-sm text-text">
           <span>{labels?.province ?? "Province / City"}</span>
           <select
