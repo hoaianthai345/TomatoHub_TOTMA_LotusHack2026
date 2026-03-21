@@ -61,5 +61,35 @@ class CurrentUserRead(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = "bearer"
     user: CurrentUserRead
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str = Field(min_length=20)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=8, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_token: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    reset_token: str = Field(min_length=20)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class UserProfileUpdateRequest(BaseModel):
+    full_name: str | None = Field(default=None, min_length=2, max_length=255)
+    location: str | None = Field(default=None, max_length=120)
+    support_types: list[UserSupportType] | None = None

@@ -162,3 +162,8 @@ class CampaignCloseRequest(BaseModel):
 class CampaignCloseResponse(BaseModel):
     message: str
     campaign: CampaignRead
+
+
+class CampaignReopenResponse(BaseModel):
+    message: str
+    campaign: CampaignRead
