@@ -3,6 +3,7 @@
 Database change process for team:
 
 - See [docs/database-change-guide.md](docs/database-change-guide.md)
+- Current schema snapshot: [docs/database-current-schema.md](docs/database-current-schema.md)
 
 ## 1. Setup local
 
