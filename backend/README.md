@@ -95,6 +95,12 @@ If signup/login preflight fails with `OPTIONS ... 400`:
 2. Ensure `NEXT_PUBLIC_API_BASE_URL` points to backend host (this repo auto-appends `/api/v1` if missing).
 3. Ensure backend CORS allows your frontend origin.
 
+Auth/API resilience note:
+
+- Auth endpoints now include per-IP/per-email rate-limit to protect backend/database.
+- On transient Supabase/PostgreSQL outages, auth endpoints return `503` (retry later) instead of crashing with `500`.
+- If you hit `429`, respect `Retry-After` response header.
+
 ## 5A. Admin dashboard (hidden route)
 
 Admin dashboard is available at:
@@ -430,3 +436,31 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 For production VM, put `uvicorn` behind Nginx and run with a process manager (systemd/supervisor).
+
+## 7. Supabase stability tuning (important)
+
+Set these vars in production `.env` when database is intermittently unstable:
+
+```env
+DB_POOL_SIZE=5
+DB_MAX_OVERFLOW=10
+DB_POOL_TIMEOUT_SECONDS=15
+DB_POOL_RECYCLE_SECONDS=300
+DB_CONNECT_TIMEOUT_SECONDS=10
+DB_STATEMENT_TIMEOUT_MS=15000
+DB_RETRY_MAX_ATTEMPTS=2
+DB_RETRY_BASE_DELAY_MS=200
+DB_RETRY_MAX_DELAY_MS=1200
+AUTH_RATE_LIMIT_WINDOW_SECONDS=60
+AUTH_LOGIN_RATE_LIMIT_PER_IP=25
+AUTH_LOGIN_RATE_LIMIT_PER_EMAIL=8
+AUTH_SIGNUP_RATE_LIMIT_PER_IP=12
+AUTH_REFRESH_RATE_LIMIT_PER_IP=60
+AUTH_FORGOT_PASSWORD_RATE_LIMIT_PER_IP=20
+```
+
+Practical behavior:
+
+- `POST /api/v1/auth/login` is rate-limited by both IP and email.
+- `POST /api/v1/auth/signup/*`, `POST /api/v1/auth/refresh`, `POST /api/v1/auth/forgot-password` are rate-limited by IP.
+- Auth read operations use short retry/backoff for transient DB failures.

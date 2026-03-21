@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from collections.abc import Callable
+from typing import TypeVar
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db, get_user_role
+from app.api.rate_limit import InMemorySlidingWindowRateLimiter, enforce_rate_limit, get_client_ip
 from app.core.config import settings
 from app.core.security import (
     create_access_token,
@@ -14,6 +18,7 @@ from app.core.security import (
     get_password_hash,
     verify_and_update_password,
 )
+from app.db.resilience import is_transient_db_error, run_with_db_retry
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.auth import (
@@ -34,6 +39,101 @@ from app.schemas.auth import (
 from app.schemas.user import UserSupportType
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+T = TypeVar("T")
+
+_login_ip_limiter = InMemorySlidingWindowRateLimiter(
+    window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max_requests=settings.AUTH_LOGIN_RATE_LIMIT_PER_IP,
+)
+_login_email_limiter = InMemorySlidingWindowRateLimiter(
+    window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max_requests=settings.AUTH_LOGIN_RATE_LIMIT_PER_EMAIL,
+)
+_signup_ip_limiter = InMemorySlidingWindowRateLimiter(
+    window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max_requests=settings.AUTH_SIGNUP_RATE_LIMIT_PER_IP,
+)
+_refresh_ip_limiter = InMemorySlidingWindowRateLimiter(
+    window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max_requests=settings.AUTH_REFRESH_RATE_LIMIT_PER_IP,
+)
+_forgot_password_ip_limiter = InMemorySlidingWindowRateLimiter(
+    window_seconds=settings.AUTH_RATE_LIMIT_WINDOW_SECONDS,
+    max_requests=settings.AUTH_FORGOT_PASSWORD_RATE_LIMIT_PER_IP,
+)
+
+
+def _service_unavailable() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Authentication service is temporarily unavailable. Please retry.",
+    )
+
+
+def _run_auth_db_read_with_retry(db: Session, operation: Callable[[], T]) -> T:
+    try:
+        return run_with_db_retry(
+            operation,
+            max_attempts=settings.DB_RETRY_MAX_ATTEMPTS,
+            base_delay_seconds=max(0.01, settings.DB_RETRY_BASE_DELAY_MS / 1000),
+            max_delay_seconds=max(0.05, settings.DB_RETRY_MAX_DELAY_MS / 1000),
+            on_retry=lambda _attempt, _exc: db.rollback(),
+        )
+    except Exception as exc:  # noqa: BLE001
+        if is_transient_db_error(exc):
+            raise _service_unavailable() from None
+        raise
+
+
+def _run_auth_db_write(db: Session, operation: Callable[[], T]) -> T:
+    try:
+        return operation()
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        if is_transient_db_error(exc):
+            raise _service_unavailable() from None
+        raise
+
+
+def _enforce_login_rate_limit(request: Request, email: str) -> None:
+    ip = get_client_ip(request)
+    enforce_rate_limit(
+        limiter=_login_ip_limiter,
+        key=f"login-ip:{ip}",
+        detail="Too many login requests from this IP. Please retry later.",
+    )
+    enforce_rate_limit(
+        limiter=_login_email_limiter,
+        key=f"login-email:{email.strip().lower()}",
+        detail="Too many login attempts for this email. Please retry later.",
+    )
+
+
+def _enforce_signup_rate_limit(request: Request) -> None:
+    ip = get_client_ip(request)
+    enforce_rate_limit(
+        limiter=_signup_ip_limiter,
+        key=f"signup-ip:{ip}",
+        detail="Too many signup requests from this IP. Please retry later.",
+    )
+
+
+def _enforce_refresh_rate_limit(request: Request) -> None:
+    ip = get_client_ip(request)
+    enforce_rate_limit(
+        limiter=_refresh_ip_limiter,
+        key=f"refresh-ip:{ip}",
+        detail="Too many refresh requests from this IP. Please retry later.",
+    )
+
+
+def _enforce_forgot_password_rate_limit(request: Request) -> None:
+    ip = get_client_ip(request)
+    enforce_rate_limit(
+        limiter=_forgot_password_ip_limiter,
+        key=f"forgot-password-ip:{ip}",
+        detail="Too many forgot-password requests from this IP. Please retry later.",
+    )
 
 
 def _to_current_user_read(user: User) -> CurrentUserRead:
@@ -76,9 +176,15 @@ def _build_token_response(user: User) -> TokenResponse:
 @router.post("/signup/supporter", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def signup_supporter(
     payload: SupporterSignupRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    existing = db.scalar(select(User.id).where(User.email == payload.email))
+    _enforce_signup_rate_limit(request)
+
+    existing = _run_auth_db_read_with_retry(
+        db,
+        lambda: db.scalar(select(User.id).where(User.email == payload.email)),
+    )
     if existing is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -94,25 +200,43 @@ def signup_supporter(
         is_active=True,
         is_superuser=False,
     )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
+    def _persist_supporter() -> None:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    try:
+        _run_auth_db_write(db, _persist_supporter)
+    except IntegrityError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Email already registered",
+        ) from None
     return _build_token_response(user)
 
 
 @router.post("/signup/organization", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def signup_organization(
     payload: OrganizationSignupRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    existing_user = db.scalar(select(User.id).where(User.email == payload.email))
+    _enforce_signup_rate_limit(request)
+
+    existing_user = _run_auth_db_read_with_retry(
+        db,
+        lambda: db.scalar(select(User.id).where(User.email == payload.email)),
+    )
     if existing_user is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         )
 
-    existing_org = db.scalar(select(Organization.id).where(Organization.name == payload.organization_name))
+    existing_org = _run_auth_db_read_with_retry(
+        db,
+        lambda: db.scalar(select(Organization.id).where(Organization.name == payload.organization_name)),
+    )
     if existing_org is not None:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -139,20 +263,29 @@ def signup_organization(
     )
     db.add(user)
     try:
-        db.commit()
+        _run_auth_db_write(db, db.commit)
     except IntegrityError:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Failed to create organization account",
         ) from None
-    db.refresh(user)
+    _run_auth_db_write(db, lambda: db.refresh(user))
     return _build_token_response(user)
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    user = db.scalar(select(User).where(User.email == payload.email))
+def login(
+    payload: LoginRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    _enforce_login_rate_limit(request, payload.email)
+
+    user = _run_auth_db_read_with_retry(
+        db,
+        lambda: db.scalar(select(User).where(User.email == payload.email)),
+    )
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -171,9 +304,12 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 
     if updated_hash is not None:
         user.hashed_password = updated_hash
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        def _persist_password_upgrade() -> None:
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        _run_auth_db_write(db, _persist_password_upgrade)
 
     if not user.is_active:
         raise HTTPException(
@@ -311,8 +447,11 @@ def update_my_profile(
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_tokens(
     payload: RefreshTokenRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
+    _enforce_refresh_rate_limit(request)
+
     try:
         decoded_refresh = decode_refresh_token(payload.refresh_token)
     except ValueError:
@@ -321,7 +460,10 @@ def refresh_tokens(
             detail="Invalid or expired refresh token",
         ) from None
 
-    user = db.get(User, decoded_refresh.subject)
+    user = _run_auth_db_read_with_retry(
+        db,
+        lambda: db.get(User, decoded_refresh.subject),
+    )
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -364,17 +506,25 @@ def change_password(
 
     current_user.hashed_password = get_password_hash(payload.new_password)
     current_user.refresh_token_version += 1
-    db.add(current_user)
-    db.commit()
+    def _persist_changed_password() -> None:
+        db.add(current_user)
+        db.commit()
+
+    _run_auth_db_write(db, _persist_changed_password)
     return {"message": "Password changed successfully"}
 
 
 @router.post("/forgot-password", response_model=ForgotPasswordResponse)
 def forgot_password(
     payload: ForgotPasswordRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> ForgotPasswordResponse:
-    user = db.scalar(select(User).where(User.email == payload.email))
+    _enforce_forgot_password_rate_limit(request)
+    user = _run_auth_db_read_with_retry(
+        db,
+        lambda: db.scalar(select(User).where(User.email == payload.email)),
+    )
     reset_token: str | None = None
     if user is not None and user.is_active:
         generated_token = create_password_reset_token(user.id, user.refresh_token_version)
@@ -400,7 +550,10 @@ def reset_password(
             detail="Invalid or expired reset token",
         ) from None
 
-    user = db.get(User, decoded.subject)
+    user = _run_auth_db_read_with_retry(
+        db,
+        lambda: db.get(User, decoded.subject),
+    )
     if user is None or not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -414,8 +567,11 @@ def reset_password(
 
     user.hashed_password = get_password_hash(payload.new_password)
     user.refresh_token_version += 1
-    db.add(user)
-    db.commit()
+    def _persist_reset_password() -> None:
+        db.add(user)
+        db.commit()
+
+    _run_auth_db_write(db, _persist_reset_password)
     return {"message": "Password reset successfully"}
 
 
@@ -431,6 +587,9 @@ def logout_all_sessions(
     current_user: User = Depends(get_current_active_user),
 ) -> dict[str, str]:
     current_user.refresh_token_version += 1
-    db.add(current_user)
-    db.commit()
+    def _persist_logout_all() -> None:
+        db.add(current_user)
+        db.commit()
+
+    _run_auth_db_write(db, _persist_logout_all)
     return {"message": "Logged out from all sessions"}

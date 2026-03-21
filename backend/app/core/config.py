@@ -32,6 +32,21 @@ class Settings(BaseSettings):
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_TIMEOUT_SECONDS: int = 20
     SUPPORTER_RECOMMENDATION_MAX_LIMIT: int = 20
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT_SECONDS: int = 15
+    DB_POOL_RECYCLE_SECONDS: int = 300
+    DB_CONNECT_TIMEOUT_SECONDS: int = 10
+    DB_STATEMENT_TIMEOUT_MS: int = 15000
+    DB_RETRY_MAX_ATTEMPTS: int = 2
+    DB_RETRY_BASE_DELAY_MS: int = 200
+    DB_RETRY_MAX_DELAY_MS: int = 1200
+    AUTH_RATE_LIMIT_WINDOW_SECONDS: int = 60
+    AUTH_LOGIN_RATE_LIMIT_PER_IP: int = 25
+    AUTH_LOGIN_RATE_LIMIT_PER_EMAIL: int = 8
+    AUTH_SIGNUP_RATE_LIMIT_PER_IP: int = 12
+    AUTH_REFRESH_RATE_LIMIT_PER_IP: int = 60
+    AUTH_FORGOT_PASSWORD_RATE_LIMIT_PER_IP: int = 20
 
     DATABASE_URL: str = Field(
         default="postgresql+psycopg2://postgres:postgres@localhost:5432/lotushack"
