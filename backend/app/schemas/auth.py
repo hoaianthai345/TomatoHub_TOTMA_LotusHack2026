@@ -1,29 +1,14 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field
 
 from app.schemas.user import UserRole, UserSupportType
-
-MAX_BCRYPT_PASSWORD_BYTES = 72
-
-
-def _validate_bcrypt_password_bytes(password: str) -> str:
-    if len(password.encode("utf-8")) > MAX_BCRYPT_PASSWORD_BYTES:
-        raise ValueError(
-            "Password cannot exceed 72 bytes in UTF-8 encoding."
-        )
-    return password
 
 
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_bytes(cls, value: str) -> str:
-        return _validate_bcrypt_password_bytes(value)
 
 
 class SupporterSignupRequest(BaseModel):
@@ -32,11 +17,6 @@ class SupporterSignupRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
     location: str | None = Field(default=None, max_length=120)
     support_types: list[UserSupportType] = Field(default_factory=list)
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_bytes(cls, value: str) -> str:
-        return _validate_bcrypt_password_bytes(value)
 
 
 class OrganizationSignupRequest(BaseModel):
@@ -48,11 +28,6 @@ class OrganizationSignupRequest(BaseModel):
     description: str | None = None
     website: str | None = Field(default=None, max_length=255)
     logo_url: str | None = Field(default=None, max_length=500)
-
-    @field_validator("password")
-    @classmethod
-    def validate_password_bytes(cls, value: str) -> str:
-        return _validate_bcrypt_password_bytes(value)
 
 
 class CurrentUserRead(BaseModel):
