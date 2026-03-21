@@ -16,6 +16,7 @@ from app.schemas.campaign_checkpoint import (
     CampaignCheckpointScanResponse,
     CampaignCheckpointUpdate,
     CheckpointScanLogRead,
+    GoodsCheckinRead,
     VolunteerAttendanceRead,
 )
 from app.schemas.common import HealthResponse
@@ -56,6 +57,7 @@ __all__ = [
     "CampaignCheckpointScanRequest",
     "CampaignCheckpointScanResponse",
     "VolunteerAttendanceRead",
+    "GoodsCheckinRead",
     "CheckpointScanLogRead",
     "BeneficiaryCreate",
     "BeneficiaryRead",

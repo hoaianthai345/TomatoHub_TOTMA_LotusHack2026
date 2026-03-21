@@ -11,6 +11,12 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.models.beneficiary import Beneficiary, BeneficiaryStatus
 from app.models.campaign import Campaign
+from app.models.campaign_checkpoint import CampaignCheckpoint, CheckpointType
+from app.models.checkpoint_scan_log import (
+    CheckpointScanLog,
+    CheckpointScanResult,
+    CheckpointScanType,
+)
 from app.models.monetary_donation import MonetaryDonation
 from app.models.volunteer_registration import VolunteerRegistration
 from app.schemas.transparency import TransparencyLogRead, TransparencyLogType
@@ -137,6 +143,49 @@ def list_transparency_logs(
                 title="Beneficiary marked as received",
                 description=f"{row.full_name} has received support.",
                 created_at=row.created_at,
+            )
+        )
+
+    scan_log_stmt = (
+        select(
+            CheckpointScanLog.id,
+            CheckpointScanLog.campaign_id,
+            CheckpointScanLog.scan_type,
+            CheckpointScanLog.result,
+            CheckpointScanLog.message,
+            CheckpointScanLog.scanned_at,
+            CampaignCheckpoint.name,
+            CampaignCheckpoint.checkpoint_type,
+        )
+        .join(Campaign, Campaign.id == CheckpointScanLog.campaign_id)
+        .join(CampaignCheckpoint, CampaignCheckpoint.id == CheckpointScanLog.checkpoint_id)
+    )
+    scan_log_stmt = _apply_campaign_filters(scan_log_stmt, campaign_id, organization_id)
+    for row in db.execute(scan_log_stmt).all():
+        if row.result != CheckpointScanResult.success.value:
+            continue
+
+        if row.checkpoint_type == CheckpointType.volunteer.value:
+            title = (
+                "Volunteer check-in confirmed"
+                if row.scan_type == CheckpointScanType.check_in.value
+                else "Volunteer check-out confirmed"
+            )
+            event_type: TransparencyLogType = "distribution"
+        else:
+            title = "Goods check-in confirmed"
+            event_type = "ledger"
+
+        checkpoint_name = row.name or "checkpoint"
+        detail_message = row.message or "QR scan recorded."
+        events.append(
+            _TransparencyEvent(
+                id=f"scan-log:{row.id}",
+                campaign_id=row.campaign_id,
+                event_type=event_type,
+                title=title,
+                description=f"[{checkpoint_name}] {detail_message}",
+                created_at=row.scanned_at,
             )
         )
 

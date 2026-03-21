@@ -6,6 +6,7 @@ from app.models.checkpoint_scan_log import (
     CheckpointScanResult,
     CheckpointScanType,
 )
+from app.models.goods_checkin import GoodsCheckin
 from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
 from app.models.user import User
@@ -23,6 +24,7 @@ __all__ = [
     "CheckpointScanLog",
     "CheckpointScanType",
     "CheckpointScanResult",
+    "GoodsCheckin",
     "Beneficiary",
     "BeneficiaryStatus",
     "MonetaryDonation",
