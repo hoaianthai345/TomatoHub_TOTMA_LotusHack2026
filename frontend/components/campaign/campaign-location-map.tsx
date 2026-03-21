@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Campaign, CampaignCoordinates } from "@/types/campaign";
+import { getMapMarkerColors } from "@/lib/ui/tokens";
 import { formatCurrency } from "@/utils/format";
 
 interface CampaignLocationMapProps {
@@ -130,14 +131,15 @@ export default function CampaignLocationMap({
       }).addTo(mapInstance);
 
       const bounds = L.latLngBounds([]);
+      const markerColors = getMapMarkerColors();
 
       pinnedCampaigns.forEach((item) => {
         const marker = L.circleMarker(
           [item.coordinates.latitude, item.coordinates.longitude],
           {
             radius: 8,
-            color: "#d9480f",
-            fillColor: "#ff8c42",
+            color: markerColors.campaignSecondaryStroke,
+            fillColor: markerColors.campaignSecondaryFill,
             fillOpacity: 0.95,
             weight: 2,
           }

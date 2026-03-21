@@ -4,6 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Container from "@/components/common/container";
 import SectionTitle from "@/components/common/section-title";
 import RoleGate from "@/components/auth/RoleGate";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
 import { listBeneficiaries } from "@/lib/api/beneficiaries";
 import { listCampaignsByOrganization } from "@/lib/api/campaigns";
@@ -11,13 +14,6 @@ import { ApiError } from "@/lib/api/http";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 import type { Beneficiary } from "@/types/beneficiary";
 import type { Campaign } from "@/types/campaign";
-
-const STATUS_STYLE: Record<string, string> = {
-  added: "bg-surface-muted text-text-muted border-border",
-  verified: "bg-info/10 text-info border-info/30",
-  assigned: "bg-primary/10 text-primary border-primary/30",
-  received: "bg-success/10 text-success border-success/30",
-};
 
 export default function BeneficiariesPage() {
   const { currentUser, accessToken, isLoading } = useAuth();
@@ -95,9 +91,7 @@ export default function BeneficiariesPage() {
           />
 
           {errorMessage ? (
-            <p className="mb-6 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-              {errorMessage}
-            </p>
+            <StatePanel variant="error" className="mb-6" message={errorMessage} />
           ) : null}
 
           {beneficiaries.length > 0 ? (
@@ -120,20 +114,20 @@ export default function BeneficiariesPage() {
                       className="border-t border-border transition-colors hover:bg-surface-muted/50"
                     >
                       <td className="px-4 py-3 font-medium text-heading">{item.fullName}</td>
-                      <td className="px-4 py-3 text-text">{item.location || "Not provided"}</td>
+                      <td className="px-4 py-3 text-text">
+                        {item.location ? <span>{item.location}</span> : <MissingValue />}
+                      </td>
                       <td className="px-4 py-3 text-text">
                         {item.campaignId
                           ? campaignTitleById.get(item.campaignId) ?? item.campaignId
-                          : "Unassigned"}
+                          : <MissingValue text="Unassigned" />}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${
-                            STATUS_STYLE[item.status] ?? "bg-surface-muted text-text-muted border-border"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
+                        <StatusBadge
+                          kind="beneficiary_status"
+                          value={item.status}
+                          size={14}
+                        />
                       </td>
                       <td className="px-4 py-3 text-text">
                         {formatCurrency(item.targetSupportAmount)}
@@ -147,9 +141,10 @@ export default function BeneficiariesPage() {
               </table>
             </div>
           ) : (
-            <div className="card-base p-6 text-sm text-text-muted">
-              No beneficiaries found for this organization.
-            </div>
+            <StatePanel
+              variant="empty"
+              message="No beneficiaries found for this organization."
+            />
           )}
         </Container>
       </div>

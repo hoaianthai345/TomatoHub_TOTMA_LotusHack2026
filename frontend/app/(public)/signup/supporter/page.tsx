@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import FormField from "@/components/common/form-field";
 import { useAuth } from "@/lib/auth";
 import { useSupporterSignupFlow } from "@/lib/auth/SupporterSignupFlowContext";
 import VietnamLocationFields from "@/components/location/VietnamLocationFields";
@@ -70,8 +71,11 @@ export default function SupporterSignupPage() {
 				</div>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
-					<div>
-						<label className="label-text block mb-1">Full Name</label>
+					<FormField
+						label="Full Name"
+						required
+						error={showErrors ? nameError : null}
+					>
 						<input
 							type="text"
 							required
@@ -80,11 +84,13 @@ export default function SupporterSignupPage() {
 							className="input-base"
 							placeholder="Your name"
 						/>
-						{showErrors && nameError ? <p className="mt-1 text-xs text-danger">{nameError}</p> : null}
-					</div>
+					</FormField>
 
-					<div>
-						<label className="label-text block mb-1">Email</label>
+					<FormField
+						label="Email"
+						required
+						error={showErrors ? emailError : null}
+					>
 						<input
 							type="email"
 							required
@@ -93,11 +99,14 @@ export default function SupporterSignupPage() {
 							className="input-base"
 							placeholder="your@email.com"
 						/>
-						{showErrors && emailError ? <p className="mt-1 text-xs text-danger">{emailError}</p> : null}
-					</div>
+					</FormField>
 
-					<div>
-						<label className="label-text block mb-1">Password</label>
+					<FormField
+						label="Password"
+						required
+						helper="Max 72 bytes (bcrypt limit)."
+						error={showErrors ? passwordError : null}
+					>
 						<input
 							type="password"
 							required
@@ -108,9 +117,7 @@ export default function SupporterSignupPage() {
 							className="input-base"
 							placeholder="At least 8 characters"
 						/>
-						<p className="mt-1 text-xs text-text-muted">Max 72 bytes (bcrypt limit).</p>
-						{showErrors && passwordError ? <p className="mt-1 text-xs text-danger">{passwordError}</p> : null}
-					</div>
+					</FormField>
 
 					<VietnamLocationFields
 						value={locationValue}

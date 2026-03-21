@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
 import { useAuth } from "@/lib/auth";
 import { listCampaignsByOrganization } from "@/lib/api/campaigns";
 import { listDonations } from "@/lib/api/donations";
@@ -102,9 +104,7 @@ export default function DonationsPage() {
         </div>
 
         {errorMessage ? (
-          <p className="mb-6 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-            {errorMessage}
-          </p>
+          <StatePanel variant="error" className="mb-6" message={errorMessage} />
         ) : null}
 
         {donations.length > 0 ? (
@@ -134,16 +134,19 @@ export default function DonationsPage() {
                     <td className="px-4 py-3 text-text-muted">
                       {formatDateTime(item.createdAt)}
                     </td>
-                    <td className="px-4 py-3 text-text-muted">{item.note ?? "-"}</td>
+                    <td className="px-4 py-3 text-text-muted">
+                      {item.note ? <span>{item.note}</span> : <MissingValue text="N/A" />}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <div className="card-container p-6 text-center text-muted">
-            <p>No donations found for this organization yet.</p>
-          </div>
+          <StatePanel
+            variant="empty"
+            message="No donations found for this organization yet."
+          />
         )}
       </div>
     </RoleGate>

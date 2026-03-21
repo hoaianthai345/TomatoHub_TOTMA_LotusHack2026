@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import RoleGate from "@/components/auth/RoleGate";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
 import { ApiError } from "@/lib/api/http";
 import {
   listMyGoodsCheckins,
@@ -151,14 +153,10 @@ export default function SupporterScanQrPage() {
         </p>
 
         {errorMessage ? (
-          <p className="mb-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-            {errorMessage}
-          </p>
+          <StatePanel variant="error" className="mb-4" message={errorMessage} />
         ) : null}
         {successMessage ? (
-          <p className="mb-4 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-            {successMessage}
-          </p>
+          <StatePanel variant="success" className="mb-4" message={successMessage} />
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -300,9 +298,15 @@ export default function SupporterScanQrPage() {
                       <tr key={item.id} className="border-t border-border">
                         <td className="px-4 py-3">{formatDateTime(item.checkInAt)}</td>
                         <td className="px-4 py-3">
-                          {item.checkOutAt ? formatDateTime(item.checkOutAt) : "-"}
+                          {item.checkOutAt ? (
+                            formatDateTime(item.checkOutAt)
+                          ) : (
+                            <MissingValue text="N/A" />
+                          )}
                         </td>
-                        <td className="px-4 py-3">{item.durationMinutes ?? "-"}</td>
+                        <td className="px-4 py-3">
+                          {item.durationMinutes ?? <MissingValue text="N/A" />}
+                        </td>
                         <td className="px-4 py-3 text-text-muted">{item.campaignId}</td>
                       </tr>
                     ))}

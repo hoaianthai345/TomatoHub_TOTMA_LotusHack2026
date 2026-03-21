@@ -58,9 +58,12 @@ def build_campaign_stub(
 
 class CampaignEndpointTestCase(unittest.TestCase):
     def setUp(self) -> None:
-        self.db = SimpleNamespace(name="db")
+        self.db = SimpleNamespace(name="db", commit=lambda: None)
         self.organization_id = uuid4()
-        self.current_user = SimpleNamespace(organization_id=self.organization_id)
+        self.current_user = SimpleNamespace(
+            id=uuid4(),
+            organization_id=self.organization_id,
+        )
 
     def build_payload(self, organization_id=None) -> CampaignCreate:
         return CampaignCreate(
@@ -109,9 +112,15 @@ class CampaignEndpointTestCase(unittest.TestCase):
         )
         mock_create.assert_not_called()
 
+    @patch("app.api.endpoints.campaigns.apply_credit_event")
     @patch("app.api.endpoints.campaigns.publish_campaign")
     @patch("app.api.endpoints.campaigns.get_campaign_or_404")
-    def test_publish_campaign_allows_owner(self, mock_get_campaign, mock_publish) -> None:
+    def test_publish_campaign_allows_owner(
+        self,
+        mock_get_campaign,
+        mock_publish,
+        mock_apply_credit_event,
+    ) -> None:
         campaign_id = uuid4()
         mock_get_campaign.return_value = build_campaign_stub(
             self.organization_id,
@@ -134,6 +143,7 @@ class CampaignEndpointTestCase(unittest.TestCase):
         self.assertEqual(response.message, "Campaign published successfully")
         self.assertEqual(response.campaign.status, CampaignStatus.published)
         mock_publish.assert_called_once_with(self.db, campaign_id)
+        mock_apply_credit_event.assert_called_once()
 
     @patch("app.api.endpoints.campaigns.publish_campaign")
     @patch("app.api.endpoints.campaigns.get_campaign_or_404")

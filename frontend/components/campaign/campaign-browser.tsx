@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import CampaignLocationMap from "@/components/campaign/campaign-location-map";
+import FormField from "@/components/common/form-field";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
-import {
-  getCampaignPhase,
-  getCampaignPhaseBadgeClass,
-  getCampaignPhaseLabel,
-} from "@/lib/campaign-phase";
+import { getCampaignPhase } from "@/lib/campaign-phase";
 import type { Campaign, CampaignSupportType } from "@/types/campaign";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 
@@ -288,8 +288,7 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
         </div>
 
         <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,0.8fr)]">
-          <label className="block text-sm text-text">
-            <span className="mb-2 block font-medium text-heading">Search</span>
+          <FormField label="Search">
             <input
               type="text"
               value={keyword}
@@ -297,10 +296,9 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
               className="input-base"
               placeholder="Search by title, tag, or location"
             />
-          </label>
+          </FormField>
 
-          <label className="block text-sm text-text">
-            <span className="mb-2 block font-medium text-heading">Province / City</span>
+          <FormField label="Province / City">
             <select
               value={provinceFilter}
               onChange={(event) => setProvinceFilter(event.target.value)}
@@ -311,12 +309,11 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
                 <option key={province} value={province}>
                   {province}
                 </option>
-              ))}
+                ))}
             </select>
-          </label>
+          </FormField>
 
-          <label className="block text-sm text-text">
-            <span className="mb-2 block font-medium text-heading">Support type</span>
+          <FormField label="Support type">
             <select
               value={supportFilter}
               onChange={(event) => setSupportFilter(event.target.value as SupportFilter)}
@@ -326,9 +323,9 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
-              ))}
+                ))}
             </select>
-          </label>
+          </FormField>
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
@@ -384,9 +381,7 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
 
                 <div className="flex flex-1 flex-col p-5">
                   <div className="mb-3 flex flex-wrap gap-2">
-                    <span className={getCampaignPhaseBadgeClass(phase)}>
-                      {getCampaignPhaseLabel(phase)}
-                    </span>
+                    <StatusBadge kind="campaign_phase" value={phase} size={14} />
                     {(campaign.tags.length ? campaign.tags : ["campaign"]).slice(0, 3).map((tag) => (
                       <span
                         key={`${campaign.id}-${tag}`}
@@ -429,7 +424,7 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
                     <p className="flex items-start justify-between gap-3">
                       <span className="text-text-muted">Location</span>
                       <span className="text-right font-medium text-text">
-                        {campaign.location || "Location pending"}
+                        {campaign.location ? <span>{campaign.location}</span> : <MissingValue />}
                       </span>
                     </p>
                     <p className="flex items-start justify-between gap-3">
@@ -461,10 +456,12 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
           })}
         </div>
       ) : (
-        <div className="mt-6 card-base p-6 text-sm text-text-muted">
-          No campaigns match your current filters. Try resetting filters or switching
-          support type.
-        </div>
+        <StatePanel
+          variant="empty"
+          className="mt-6"
+          title="No matching campaigns"
+          message="Try resetting filters or switching support type."
+        />
       )}
     </>
   );

@@ -43,7 +43,7 @@ export default function SignupPage() {
 
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-main"></div>
+            <div className="w-full divider-line"></div>
           </div>
           <div className="relative flex justify-center text-sm">
             <span className="px-2 bg-page text-muted">Already have account?</span>

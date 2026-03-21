@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import CampaignLocationMap from "@/components/campaign/campaign-location-map";
+import FormField from "@/components/common/form-field";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
 import {
   closeCampaign,
@@ -24,12 +28,6 @@ import type {
   VolunteerRegistration,
   VolunteerRegistrationStatus,
 } from "@/types/volunteer-registration";
-
-const STATUS_STYLE: Record<string, string> = {
-  draft: "bg-surface-muted text-text-muted border-border",
-  published: "bg-success/10 text-success border-success/30",
-  closed: "bg-danger/10 text-danger border-danger/30",
-};
 
 export default function CampaignsPage() {
   const { currentUser, accessToken, isLoading } = useAuth();
@@ -432,14 +430,10 @@ export default function CampaignsPage() {
         </div>
 
         {errorMessage ? (
-          <p className="mb-6 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-            {errorMessage}
-          </p>
+          <StatePanel variant="error" className="mb-6" message={errorMessage} />
         ) : null}
         {successMessage ? (
-          <p className="mb-6 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-            {successMessage}
-          </p>
+          <StatePanel variant="success" className="mb-6" message={successMessage} />
         ) : null}
 
         <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -482,13 +476,11 @@ export default function CampaignsPage() {
               <article key={campaign.id} className="card-base p-5">
                 <div className="flex items-start justify-between gap-4">
                   <h3 className="text-lg font-semibold text-heading">{campaign.title}</h3>
-                  <span
-                    className={`rounded-full border px-2 py-1 text-xs font-semibold ${
-                      STATUS_STYLE[campaign.status] ?? "bg-surface-muted text-text-muted border-border"
-                    }`}
-                  >
-                    {campaign.status}
-                  </span>
+                  <StatusBadge
+                    kind="campaign_status"
+                    value={campaign.status}
+                    size={14}
+                  />
                 </div>
                 <p className="mt-2 text-sm text-text-muted line-clamp-2">
                   {campaign.shortDescription || campaign.description}
@@ -502,7 +494,10 @@ export default function CampaignsPage() {
                     </span>{" "}
                     / {formatCurrency(campaign.goalAmount ?? campaign.targetAmount)}
                   </p>
-                  <p>Location: {campaign.location || "Not specified"}</p>
+                  <p>
+                    Location:{" "}
+                    {campaign.location ? <span>{campaign.location}</span> : <MissingValue />}
+                  </p>
                   <p>Created: {formatDateTime(campaign.createdAt)}</p>
                   <p>
                     Volunteers:{" "}
@@ -539,7 +534,7 @@ export default function CampaignsPage() {
                                   {registration.fullName}
                                 </p>
                                 <p className="text-xs text-text-muted">
-                                  {registration.email} ·{" "}
+                                  {registration.email} |{" "}
                                   {formatDateTime(registration.registeredAt)}
                                 </p>
                                 {registration.message ? (
@@ -548,9 +543,11 @@ export default function CampaignsPage() {
                                   </p>
                                 ) : null}
                               </div>
-                              <span className="rounded-full border border-border bg-surface-muted px-2 py-1 text-xs font-semibold text-text-muted">
-                                {registration.status}
-                              </span>
+                              <StatusBadge
+                                kind="registration_status"
+                                value={registration.status}
+                                size={14}
+                              />
                             </div>
 
                             <div className="mt-3 flex flex-wrap gap-2">
@@ -574,7 +571,7 @@ export default function CampaignsPage() {
                               {registration.status !== "rejected" ? (
                                 <button
                                   type="button"
-                                  className="btn-base text-xs text-white bg-danger rounded-lg"
+                                  className="btn-base btn-danger text-xs"
                                   disabled={loadingRegistrationId === registration.id}
                                   onClick={() =>
                                     handleUpdateRegistrationStatus(
@@ -610,9 +607,11 @@ export default function CampaignsPage() {
                         ))}
                     </div>
                   ) : (
-                    <p className="mt-3 text-xs text-text-muted">
-                      No volunteer registrations yet for this campaign.
-                    </p>
+                    <StatePanel
+                      variant="empty"
+                      className="mt-3"
+                      message="No volunteer registrations yet for this campaign."
+                    />
                   )}
                 </div>
 
@@ -645,7 +644,7 @@ export default function CampaignsPage() {
                     <button
                       type="button"
                       onClick={() => handleClose(campaign)}
-                      className="btn-base text-sm text-white bg-danger rounded-lg whitespace-nowrap"
+                      className="btn-base btn-danger text-sm whitespace-nowrap"
                       disabled={loadingCampaignId === campaign.id}
                     >
                       {loadingCampaignId === campaign.id ? "Closing..." : "Close"}
@@ -672,7 +671,7 @@ export default function CampaignsPage() {
                   <button
                     type="button"
                     onClick={() => handleDelete(campaign)}
-                    className="btn-base text-sm text-white bg-danger rounded-lg whitespace-nowrap"
+                    className="btn-base btn-danger text-sm whitespace-nowrap"
                     disabled={loadingCampaignId === campaign.id}
                   >
                     {loadingCampaignId === campaign.id ? "Working..." : "Delete"}
@@ -681,8 +680,7 @@ export default function CampaignsPage() {
 
                 {editingCampaignId === campaign.id ? (
                   <div className="mt-4 space-y-3 rounded-lg border border-border bg-surface-muted/40 p-4">
-                    <div>
-                      <label className="label-text mb-1 block">Title</label>
+                    <FormField label="Title">
                       <input
                         className="input-base"
                         value={editForm.title}
@@ -690,9 +688,8 @@ export default function CampaignsPage() {
                           setEditForm((prev) => ({ ...prev, title: event.target.value }))
                         }
                       />
-                    </div>
-                    <div>
-                      <label className="label-text mb-1 block">Short Description</label>
+                    </FormField>
+                    <FormField label="Short Description">
                       <input
                         className="input-base"
                         value={editForm.shortDescription}
@@ -703,9 +700,8 @@ export default function CampaignsPage() {
                           }))
                         }
                       />
-                    </div>
-                    <div>
-                      <label className="label-text mb-1 block">Description</label>
+                    </FormField>
+                    <FormField label="Description">
                       <textarea
                         className="input-base min-h-24"
                         value={editForm.description}
@@ -716,9 +712,8 @@ export default function CampaignsPage() {
                           }))
                         }
                       />
-                    </div>
-                    <div>
-                      <label className="label-text mb-1 block">Goal Amount</label>
+                    </FormField>
+                    <FormField label="Goal Amount">
                       <input
                         type="number"
                         min={1}
@@ -728,7 +723,7 @@ export default function CampaignsPage() {
                           setEditForm((prev) => ({ ...prev, goalAmount: event.target.value }))
                         }
                       />
-                    </div>
+                    </FormField>
                     <div className="flex gap-3">
                       <button
                         type="button"
@@ -753,11 +748,11 @@ export default function CampaignsPage() {
             ))}
           </div>
         ) : (
-          <div className="card-container p-6 text-center text-muted">
-            <p>No campaigns created yet.</p>
-          </div>
+          <StatePanel variant="empty" message="No campaigns created yet." />
         )}
       </div>
     </RoleGate>
   );
 }
+
+

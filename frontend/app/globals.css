@@ -2,47 +2,78 @@
 @import "leaflet/dist/leaflet.css";
 
 @theme {
-  /* Colors - Core */
+  /* Color tokens */
   --color-primary: #e94f37;
   --color-secondary: #ff8c42;
   --color-accent: #ffd166;
-  
-  /* Backgrounds & Surfaces */
   --color-background: #fffaf5;
   --color-surface: #ffffff;
   --color-surface-muted: #f8f4ef;
+  --color-surface-strong: #f4ede5;
   --color-border: #eadfd6;
-
-  /* Typography Colors */
+  --color-border-emphasis: #d7c8bc;
+  --color-divider: #ecdfd5;
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
   --color-heading: #111827;
-
-  /* State Colors */
   --color-success: #16a34a;
   --color-warning: #d97706;
   --color-danger: #dc2626;
   --color-info: #2563eb;
+  --color-neutral: #6b7280;
 
-  /* Roles & Roles Colors */
+  /* Workspace role tokens */
   --color-org: #7c3aed;
   --color-supporter: #ea580c;
   --color-beneficiary: #0891b2;
 
-  /* Border Radius */
+  /* Layout tokens */
+  --layout-max-width: 1280px;
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-40: 40px;
+
+  /* Radius tokens */
   --radius-xs: 8px;
   --radius-sm: 10px;
   --radius-md: 14px;
   --radius-lg: 18px;
   --radius-xl: 24px;
 
-  /* Shadows */
+  /* Shadow tokens */
   --shadow-soft: 0 2px 10px rgba(17, 24, 39, 0.05);
   --shadow-card: 0 8px 24px rgba(17, 24, 39, 0.08);
+  --shadow-popover: 0 12px 30px rgba(17, 24, 39, 0.12);
+  --shadow-focus: 0 0 0 4px color-mix(in oklab, var(--color-primary) 15%, white);
 
-  /* Fonts */
+  /* Typography tokens */
   --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-size-heading: 2rem;
+  --line-height-heading: 1.15;
+  --font-size-body: 1rem;
+  --line-height-body: 1.6;
+  --font-size-caption: 0.75rem;
+  --line-height-caption: 1.4;
+
+  /* Interaction and icon scale tokens */
   --ease-default: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --icon-14: 14px;
+  --icon-16: 16px;
+  --icon-18: 18px;
+  --icon-20: 20px;
+
+  /* Leaflet marker color tokens */
+  --map-user-stroke: var(--color-info);
+  --map-user-fill: color-mix(in oklab, var(--color-info) 90%, white);
+  --map-campaign-stroke: color-mix(in oklab, var(--color-primary) 85%, black);
+  --map-campaign-fill: color-mix(in oklab, var(--color-primary) 80%, white);
+  --map-campaign-secondary-stroke: color-mix(in oklab, var(--color-secondary) 85%, black);
+  --map-campaign-secondary-fill: color-mix(in oklab, var(--color-secondary) 80%, white);
 }
 
 html {
@@ -68,14 +99,14 @@ body {
 /* Custom Utilities - Named properly for Tailwind v4 */
 @utility page-container {
   width: 100%;
-  max-width: 1280px;
+  max-width: var(--layout-max-width);
   margin-inline: auto;
   padding-inline: 1rem;
 }
 
 @utility heading-page {
-  font-size: 2rem;
-  line-height: 1.15;
+  font-size: var(--font-size-heading);
+  line-height: var(--line-height-heading);
   font-weight: 800;
   color: var(--color-heading);
 }
@@ -111,6 +142,12 @@ body {
   border: 1px solid var(--color-border);
 }
 
+@utility btn-danger {
+  background: var(--color-danger);
+  color: white;
+  box-shadow: var(--shadow-soft);
+}
+
 @utility input-base {
   width: 100%;
   border: 1px solid var(--color-border);
@@ -119,6 +156,119 @@ body {
   border-radius: var(--radius-md);
   padding: 0.875rem 1rem;
   transition: border-color 180ms var(--ease-default), box-shadow 180ms var(--ease-default);
+}
+
+@utility divider-line {
+  border-top: 1px solid var(--color-divider);
+}
+
+@utility border-emphasis {
+  border-color: var(--color-border-emphasis);
+}
+
+@utility section-gap {
+  display: grid;
+  gap: var(--space-24);
+}
+
+@utility shadow-soft-token {
+  box-shadow: var(--shadow-soft);
+}
+
+@utility shadow-card-token {
+  box-shadow: var(--shadow-card);
+}
+
+@utility shadow-popover-token {
+  box-shadow: var(--shadow-popover);
+}
+
+@utility hero-gradient {
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-accent) 18%, white),
+    var(--color-background)
+  );
+}
+
+@utility accent-pill {
+  background: color-mix(in oklab, var(--color-success) 18%, white);
+  color: color-mix(in oklab, var(--color-success) 78%, black);
+}
+
+@utility icon-14 {
+  width: var(--icon-14);
+  height: var(--icon-14);
+}
+
+@utility icon-16 {
+  width: var(--icon-16);
+  height: var(--icon-16);
+}
+
+@utility icon-18 {
+  width: var(--icon-18);
+  height: var(--icon-18);
+}
+
+@utility icon-20 {
+  width: var(--icon-20);
+  height: var(--icon-20);
+}
+
+@utility label-required {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+@utility label-helper {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+@utility label-error {
+  color: var(--color-danger);
+  font-size: var(--font-size-caption);
+  line-height: var(--line-height-caption);
+}
+
+@utility state-panel {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-12) var(--space-16);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@utility state-panel-neutral {
+  border-color: var(--color-border);
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+@utility state-panel-success {
+  border-color: color-mix(in oklab, var(--color-success) 30%, var(--color-border));
+  background: color-mix(in oklab, var(--color-success) 9%, white);
+  color: var(--color-success);
+}
+
+@utility state-panel-error {
+  border-color: color-mix(in oklab, var(--color-danger) 30%, var(--color-border));
+  background: color-mix(in oklab, var(--color-danger) 8%, white);
+  color: var(--color-danger);
+}
+
+@utility state-panel-warning {
+  border-color: color-mix(in oklab, var(--color-warning) 35%, var(--color-border));
+  background: color-mix(in oklab, var(--color-warning) 10%, white);
+  color: var(--color-warning);
+}
+
+@utility state-panel-info {
+  border-color: color-mix(in oklab, var(--color-info) 28%, var(--color-border));
+  background: color-mix(in oklab, var(--color-info) 10%, white);
+  color: var(--color-info);
 }
 
 /* ==================== UTILITY COLORS ==================== */
@@ -269,11 +419,14 @@ body {
 
 /* Badges */
 @utility badge-base {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
+  border: 1px solid transparent;
 }
 
 @utility badge-primary {
@@ -359,9 +512,8 @@ body {
   background: var(--color-surface-muted);
 }
 
-/* Sidebar link active state */
-.sidebar-link:hover {
-  background: var(--color-surface-muted);
+.btn-danger:hover {
+  background: color-mix(in oklab, var(--color-danger) 90%, black);
 }
 
 /* Form input focus state */
@@ -370,7 +522,7 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-primary) 10%, white);
+  box-shadow: var(--shadow-focus);
 }
 
 .input-base::placeholder {
@@ -380,7 +532,24 @@ select:focus {
 .input-base:focus {
   outline: none;
   border-color: color-mix(in oklab, var(--color-primary) 45%, white);
-  box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-primary) 15%, white);
+  box-shadow: var(--shadow-focus);
+}
+
+.input-base.input-error,
+.input-base[aria-invalid="true"] {
+  border-color: color-mix(in oklab, var(--color-danger) 55%, white);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-danger) 15%, white);
+}
+
+.input-base:disabled {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.input-base[readonly] {
+  background: color-mix(in oklab, var(--color-surface-muted) 70%, white);
+  color: color-mix(in oklab, var(--color-text) 88%, white);
 }
 
 .nearby-map {

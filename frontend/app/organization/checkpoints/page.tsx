@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import RoleGate from "@/components/auth/RoleGate";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
 import { listCampaignsByOrganization } from "@/lib/api/campaigns";
 import {
@@ -43,13 +46,6 @@ function checkpointStatusClass(isActive: boolean): string {
   return isActive
     ? "rounded-full border border-success/30 bg-success/10 px-2 py-1 text-xs font-semibold text-success"
     : "rounded-full border border-border bg-surface-muted px-2 py-1 text-xs font-semibold text-text-muted";
-}
-
-function scanResultClass(result: CheckpointScanLog["result"]): string {
-  if (result === "success") {
-    return "text-success";
-  }
-  return "text-danger";
 }
 
 export default function OrganizationCheckpointsPage() {
@@ -452,14 +448,10 @@ export default function OrganizationCheckpointsPage() {
         </section>
 
         {errorMessage ? (
-          <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-            {errorMessage}
-          </p>
+          <StatePanel variant="error" message={errorMessage} />
         ) : null}
         {successMessage ? (
-          <p className="rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-            {successMessage}
-          </p>
+          <StatePanel variant="success" message={successMessage} />
         ) : null}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -622,7 +614,7 @@ export default function OrganizationCheckpointsPage() {
 
                         <button
                           type="button"
-                          className="btn-base rounded-lg bg-danger text-xs text-white"
+                          className="btn-base btn-danger text-xs"
                           disabled={actingCheckpointId === checkpoint.id}
                           onClick={() => {
                             void handleDeleteCheckpoint(checkpoint);
@@ -807,7 +799,9 @@ export default function OrganizationCheckpointsPage() {
                         <td className="px-4 py-3 text-text-muted">
                           {checkpointNameById.get(item.checkpointId) ?? item.checkpointId}
                         </td>
-                        <td className="px-4 py-3 text-text-muted">{item.note ?? "-"}</td>
+                        <td className="px-4 py-3 text-text-muted">
+                          {item.note ? <span>{item.note}</span> : <MissingValue text="N/A" />}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -845,11 +839,19 @@ export default function OrganizationCheckpointsPage() {
                       <tr key={log.id} className="border-t border-border">
                         <td className="px-4 py-3">{formatDateTime(log.scannedAt)}</td>
                         <td className="px-4 py-3">{log.scanType}</td>
-                        <td className={`px-4 py-3 font-semibold ${scanResultClass(log.result)}`}>
-                          {log.result}
+                        <td className="px-4 py-3 font-semibold">
+                          <StatusBadge
+                            kind="checkpoint_result"
+                            value={log.result}
+                            size={14}
+                          />
                         </td>
-                        <td className="px-4 py-3 text-text-muted">{log.userId ?? "-"}</td>
-                        <td className="px-4 py-3 text-text-muted">{log.message ?? "-"}</td>
+                        <td className="px-4 py-3 text-text-muted">
+                          {log.userId ? <span>{log.userId}</span> : <MissingValue text="N/A" />}
+                        </td>
+                        <td className="px-4 py-3 text-text-muted">
+                          {log.message ? <span>{log.message}</span> : <MissingValue text="N/A" />}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -864,4 +866,3 @@ export default function OrganizationCheckpointsPage() {
     </RoleGate>
   );
 }
-

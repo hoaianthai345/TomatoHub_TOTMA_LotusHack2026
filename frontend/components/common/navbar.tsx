@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { NAV_LINKS } from "@/lib/constants";
 import Container from "./container";
@@ -26,11 +27,13 @@ export default function Navbar() {
       <Container className="relative flex h-16 items-center">
         <div className="flex flex-1 items-center">
           <Link href="/" className="flex items-center gap-3">
-            <img
+            <Image
               src="/images/logo.svg"
               alt="TomatoHub"
-              style={{ height: "36px", width: "auto" }}
-              className="md:h-10"
+              width={160}
+              height={36}
+              className="h-9 w-auto md:h-10"
+              priority
             />
             <span className="hidden text-xs font-semibold uppercase tracking-[0.3em] text-primary/80 lg:inline-block">
               Relief Network
@@ -62,7 +65,7 @@ export default function Navbar() {
                 </button>
 
                 <div className="pointer-events-none invisible absolute right-0 top-full z-50 pt-2 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100">
-                  <div className="w-56 rounded-xl border border-border bg-white p-2 shadow-[0_12px_28px_rgba(17,24,39,0.12)]">
+                  <div className="shadow-popover-token w-56 rounded-xl border border-border bg-white p-2">
                     <div className="rounded-lg bg-surface-light px-3 py-2">
                       <p className="text-sm font-semibold text-heading">{displayName}</p>
                       <p className="text-xs capitalize text-text-muted">{currentUser?.role}</p>

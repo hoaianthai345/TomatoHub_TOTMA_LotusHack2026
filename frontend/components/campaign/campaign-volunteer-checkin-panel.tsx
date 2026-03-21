@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { X } from "lucide-react";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api/http";
 import {
@@ -58,49 +62,6 @@ const VOLUNTEER_ROLE_LABEL: Record<VolunteerRole, string> = {
   medic: "Medic",
   online: "Online",
 };
-
-function attendanceStatusLabel(status: VolunteerAttendanceStatus): string {
-  return (
-    ATTENDANCE_STATUS_OPTIONS.find((item) => item.value === status)?.label ??
-    "Not marked"
-  );
-}
-
-function attendanceStatusClass(status: VolunteerAttendanceStatus): string {
-  if (status === "arrived" || status === "completed") {
-    return "border border-success/30 bg-success/10 text-success";
-  }
-  if (status === "absent" || status === "left_early") {
-    return "border border-danger/30 bg-danger/10 text-danger";
-  }
-  return "border border-border bg-surface-muted text-text-muted";
-}
-
-function registrationStatusLabel(status: VolunteerRegistrationStatus): string {
-  if (status === "approved") {
-    return "Approved";
-  }
-  if (status === "pending") {
-    return "Pending";
-  }
-  if (status === "rejected") {
-    return "Rejected";
-  }
-  return "Cancelled";
-}
-
-function registrationStatusClass(status: VolunteerRegistrationStatus): string {
-  if (status === "approved") {
-    return "border border-success/30 bg-success/10 text-success";
-  }
-  if (status === "pending") {
-    return "border border-warning/30 bg-warning/10 text-warning";
-  }
-  if (status === "rejected") {
-    return "border border-danger/30 bg-danger/10 text-danger";
-  }
-  return "border border-border bg-surface-muted text-text-muted";
-}
 
 function volunteerRoleLabel(role?: VolunteerRole): string {
   if (!role) {
@@ -423,24 +384,22 @@ export default function CampaignVolunteerCheckinPanel({
       </div>
 
       {errorMessage ? (
-        <p className="mt-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-          {errorMessage}
-        </p>
+        <StatePanel variant="error" className="mt-4" message={errorMessage} />
       ) : null}
       {successMessage ? (
-        <p className="mt-4 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-          {successMessage}
-        </p>
+        <StatePanel variant="success" className="mt-4" message={successMessage} />
       ) : null}
 
       {loading ? (
-        <p className="mt-4 text-sm text-text-muted">Loading volunteer list...</p>
+        <StatePanel variant="loading" className="mt-4" message="Loading volunteer list..." />
       ) : null}
 
       {!loading && sortedRegistrations.length === 0 ? (
-        <p className="mt-4 text-sm text-text-muted">
-          No approved or pending volunteers yet for this campaign.
-        </p>
+        <StatePanel
+          variant="empty"
+          className="mt-4"
+          message="No approved or pending volunteers yet for this campaign."
+        />
       ) : null}
 
       {!loading && sortedRegistrations.length > 0 && isOwnerOrg ? (
@@ -476,27 +435,23 @@ export default function CampaignVolunteerCheckinPanel({
                     {volunteerShiftLabel(registration)}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-semibold ${registrationStatusClass(
-                        registration.status
-                      )}`}
-                    >
-                      {registrationStatusLabel(registration.status)}
-                    </span>
+                    <StatusBadge
+                      kind="registration_status"
+                      value={registration.status}
+                      size={14}
+                    />
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={`rounded-full px-2 py-1 text-xs font-semibold ${attendanceStatusClass(
-                        registration.attendanceStatus
-                      )}`}
-                    >
-                      {attendanceStatusLabel(registration.attendanceStatus)}
-                    </span>
+                    <StatusBadge
+                      kind="attendance_status"
+                      value={registration.attendanceStatus}
+                      size={14}
+                    />
                   </td>
                   <td className="px-4 py-3 text-xs text-text-muted">
                     {registration.attendanceMarkedAt
                       ? formatDateTime(registration.attendanceMarkedAt)
-                      : "-"}
+                      : <MissingValue text="N/A" />}
                   </td>
                 </tr>
               ))}
@@ -520,20 +475,16 @@ export default function CampaignVolunteerCheckinPanel({
                 {volunteerShiftLabel(registration)}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
-                <span
-                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${registrationStatusClass(
-                    registration.status
-                  )}`}
-                >
-                  {registrationStatusLabel(registration.status)}
-                </span>
-                <span
-                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${attendanceStatusClass(
-                    registration.attendanceStatus
-                  )}`}
-                >
-                  {attendanceStatusLabel(registration.attendanceStatus)}
-                </span>
+                <StatusBadge
+                  kind="registration_status"
+                  value={registration.status}
+                  size={14}
+                />
+                <StatusBadge
+                  kind="attendance_status"
+                  value={registration.attendanceStatus}
+                  size={14}
+                />
               </div>
             </article>
           ))}
@@ -560,43 +511,29 @@ export default function CampaignVolunteerCheckinPanel({
                 aria-label="Close popup"
                 title="Close"
               >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                >
-                  <path
-                    d="M6 6L18 18M18 6L6 18"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
+                <X className="icon-16" aria-hidden="true" />
               </button>
             </div>
 
             <div className="mt-3 flex flex-wrap gap-2">
-              <span
-                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${registrationStatusClass(
-                  selectedRegistration.status
-                )}`}
-              >
-                {registrationStatusLabel(selectedRegistration.status)}
-              </span>
-              <span
-                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${attendanceStatusClass(
-                  selectedRegistration.attendanceStatus
-                )}`}
-              >
-                Current: {attendanceStatusLabel(selectedRegistration.attendanceStatus)}
-              </span>
+              <StatusBadge
+                kind="registration_status"
+                value={selectedRegistration.status}
+                size={14}
+              />
+              <StatusBadge
+                kind="attendance_status"
+                value={selectedRegistration.attendanceStatus}
+                size={14}
+              />
             </div>
 
             {!canSaveSelectedAttendance ? (
-              <p className="mt-3 rounded-lg border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
-                Attendance cannot be updated for rejected or cancelled registrations.
-              </p>
+              <StatePanel
+                variant="warning"
+                className="mt-3"
+                message="Attendance cannot be updated for rejected or cancelled registrations."
+              />
             ) : null}
 
             <div className="mt-4 space-y-2">
