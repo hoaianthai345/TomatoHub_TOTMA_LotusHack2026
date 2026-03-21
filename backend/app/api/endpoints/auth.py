@@ -4,7 +4,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_active_user, get_db, get_user_role
-from app.core.security import create_access_token, get_password_hash, verify_password
+from app.core.security import (
+    create_access_token,
+    get_password_hash,
+    verify_and_update_password,
+)
 from app.models.organization import Organization
 from app.models.user import User
 from app.schemas.auth import (
@@ -130,11 +134,28 @@ def signup_organization(
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
     user = db.scalar(select(User).where(User.email == payload.email))
-    if user is None or not verify_password(payload.password, user.hashed_password):
+    if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
+
+    is_valid_password, updated_hash = verify_and_update_password(
+        payload.password,
+        user.hashed_password,
+    )
+    if not is_valid_password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    if updated_hash is not None:
+        user.hashed_password = updated_hash
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

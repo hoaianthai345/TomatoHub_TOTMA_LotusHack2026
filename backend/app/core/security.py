@@ -6,18 +6,18 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def _normalize_password(password: str) -> str:
-    # bcrypt accepts at most 72 bytes. Pre-hash long input to keep behavior deterministic.
-    if len(password.encode("utf-8")) > 72:
-        return hashlib.sha256(password.encode("utf-8")).hexdigest()
-    return password
+pwd_context = CryptContext(
+    schemes=["argon2", "bcrypt"],
+    deprecated="auto",
+)
 
 
 def _is_bcrypt_password_length_error(exc: Exception) -> bool:
     return "password cannot be longer than 72 bytes" in str(exc)
+
+
+def _legacy_prehashed_password(password: str) -> str:
+    return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 def _safe_hash_password(password: str) -> str:
@@ -26,8 +26,8 @@ def _safe_hash_password(password: str) -> str:
     except ValueError as exc:
         if not _is_bcrypt_password_length_error(exc):
             raise
-        # Fallback for environments where bcrypt still rejects long input unexpectedly.
-        fallback = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        # Fallback for environments that still route through strict bcrypt behavior.
+        fallback = _legacy_prehashed_password(password)
         return pwd_context.hash(fallback)
 
 
@@ -37,16 +37,51 @@ def _safe_verify_password(plain_password: str, hashed_password: str) -> bool:
     except ValueError as exc:
         if not _is_bcrypt_password_length_error(exc):
             raise
-        fallback = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
+        fallback = _legacy_prehashed_password(plain_password)
         return pwd_context.verify(fallback, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    return _safe_hash_password(_normalize_password(password))
+    return _safe_hash_password(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return _safe_verify_password(_normalize_password(plain_password), hashed_password)
+    is_valid, _ = verify_and_update_password(plain_password, hashed_password)
+    return is_valid
+
+
+def verify_and_update_password(
+    plain_password: str,
+    hashed_password: str,
+) -> tuple[bool, str | None]:
+    """
+    Verify password and return optional new hash when algorithm migration is needed.
+
+    Supports legacy hashes created from SHA-256 pre-hashed input (old workaround for
+    bcrypt length limit). When legacy verification succeeds, rehashes original plain
+    password with current default algorithm.
+    """
+    try:
+        is_valid, new_hash = pwd_context.verify_and_update(plain_password, hashed_password)
+    except ValueError as exc:
+        if not _is_bcrypt_password_length_error(exc):
+            raise
+        is_valid, new_hash = False, None
+
+    if is_valid:
+        return True, new_hash
+
+    legacy_password = _legacy_prehashed_password(plain_password)
+    try:
+        legacy_valid = _safe_verify_password(legacy_password, hashed_password)
+    except ValueError:
+        legacy_valid = False
+
+    if legacy_valid:
+        # Migrate legacy hash to current default (argon2) using original password.
+        return True, get_password_hash(plain_password)
+
+    return False, None
 
 
 def _token_serializer() -> URLSafeTimedSerializer:
