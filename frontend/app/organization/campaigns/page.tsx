@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { useAuth } from "@/lib/auth";
-import { listCampaignsByOrganization } from "@/lib/api/campaigns";
+import { listCampaignsByOrganization, publishCampaign } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
@@ -16,9 +17,12 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function CampaignsPage() {
-  const { currentUser, isLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const { currentUser, accessToken, isLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [publishingCampaignId, setPublishingCampaignId] = useState<string | null>(null);
 
   useEffect(() => {
     const organizationId = currentUser?.organizationId;
@@ -53,6 +57,46 @@ export default function CampaignsPage() {
     };
   }, [currentUser?.organizationId, currentUser?.role, isLoading]);
 
+  useEffect(() => {
+    const createdCampaignId = searchParams.get("created");
+    if (!createdCampaignId) {
+      return;
+    }
+
+    const createdCampaign = campaigns.find((campaign) => campaign.id === createdCampaignId);
+    setSuccessMessage(
+      createdCampaign
+        ? `Draft "${createdCampaign.title}" was created successfully.`
+        : "Draft campaign created successfully."
+    );
+  }, [campaigns, searchParams]);
+
+  const handlePublish = async (campaignId: string) => {
+    if (!accessToken) {
+      setErrorMessage("Organization authentication is required to publish a campaign.");
+      return;
+    }
+
+    setPublishingCampaignId(campaignId);
+    setErrorMessage(null);
+
+    try {
+      const publishedCampaign = await publishCampaign(campaignId, accessToken);
+      setCampaigns((current) =>
+        current.map((campaign) =>
+          campaign.id === publishedCampaign.id ? publishedCampaign : campaign
+        )
+      );
+      setSuccessMessage(`Campaign "${publishedCampaign.title}" is now published.`);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError ? error.message : "Failed to publish campaign."
+      );
+    } finally {
+      setPublishingCampaignId(null);
+    }
+  };
+
   return (
     <RoleGate role="organization" loadingMessage="Loading campaigns...">
       <div className="p-6">
@@ -69,6 +113,12 @@ export default function CampaignsPage() {
         {errorMessage ? (
           <p className="mb-6 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
             {errorMessage}
+          </p>
+        ) : null}
+
+        {successMessage ? (
+          <p className="mb-6 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
+            {successMessage}
           </p>
         ) : null}
 
@@ -103,6 +153,16 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="mt-4 flex gap-3">
+                  {campaign.status === "draft" ? (
+                    <button
+                      type="button"
+                      onClick={() => handlePublish(campaign.id)}
+                      disabled={publishingCampaignId === campaign.id}
+                      className="btn-base btn-primary text-sm disabled:opacity-50"
+                    >
+                      {publishingCampaignId === campaign.id ? "Publishing..." : "Publish"}
+                    </button>
+                  ) : null}
                   <Link
                     href={`/campaigns/${campaign.slug}`}
                     className="btn-base btn-secondary text-sm"

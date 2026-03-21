@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import RoleGate from "@/components/auth/RoleGate";
 import Container from "@/components/common/container";
 import SectionTitle from "@/components/common/section-title";
 import VietnamLocationFields from "@/components/location/VietnamLocationFields";
@@ -24,6 +26,7 @@ function buildDefaultDateTime(hour: number): string {
 }
 
 export default function CreateCampaignPage() {
+  const router = useRouter();
   const { currentUser, accessToken } = useAuth();
   const [formData, setFormData] = useState({
     title: "",
@@ -38,7 +41,6 @@ export default function CreateCampaignPage() {
   });
   const [locationValue, setLocationValue] = useState<VietnamLocationValue>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = useMemo(
@@ -61,7 +63,6 @@ export default function CreateCampaignPage() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setErrorMessage(null);
-    setSuccessMessage(null);
 
     if (!currentUser?.organizationId || !accessToken) {
       setErrorMessage("Organization authentication is required to create a campaign.");
@@ -74,14 +75,14 @@ export default function CreateCampaignPage() {
       const campaign = await createCampaign(
         {
           organizationId: currentUser.organizationId,
-          title: formData.title,
-          shortDescription: formData.shortDescription,
-          description: formData.description,
+          title: formData.title.trim(),
+          shortDescription: formData.shortDescription.trim() || undefined,
+          description: formData.description.trim() || undefined,
           goalAmount: Number(formData.goalAmount),
           province: locationValue.provinceName,
           district: locationValue.districtName,
-          addressLine: locationValue.addressLine,
-          coverImageUrl: formData.coverImageUrl,
+          addressLine: locationValue.addressLine?.trim() || undefined,
+          coverImageUrl: formData.coverImageUrl.trim() || undefined,
           tags: formData.tags
             .split(",")
             .map((value) => value.trim())
@@ -95,21 +96,7 @@ export default function CreateCampaignPage() {
         accessToken
       );
 
-      setSuccessMessage(
-        `Campaign "${campaign.title}" was created successfully as a ${campaign.status} campaign.`
-      );
-      setFormData({
-        title: "",
-        shortDescription: "",
-        description: "",
-        goalAmount: "5000",
-        coverImageUrl: "",
-        tags: "",
-        startsAt: buildDefaultDateTime(8),
-        endsAt: buildDefaultDateTime(18),
-        supportTypes: ["money"],
-      });
-      setLocationValue({});
+      router.replace(`/organization/campaigns?created=${campaign.id}`);
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Failed to create campaign."
@@ -120,158 +107,184 @@ export default function CreateCampaignPage() {
   };
 
   return (
-    <div className="py-10">
-      <Container>
-        <SectionTitle
-          title="Create Campaign"
-          description="This form now submits a real draft campaign to the FastAPI backend."
-        />
+    <RoleGate role="organization" loadingMessage="Loading create campaign form...">
+      <div className="py-10">
+        <Container>
+          <SectionTitle
+            title="Create Campaign"
+            description="Create a real draft campaign, then manage or publish it from your organization workspace."
+          />
 
-        <div className="max-w-3xl card-base p-6">
-          <form className="grid gap-4" onSubmit={handleSubmit}>
-            <input
-              className="input-base"
-              placeholder="Campaign title"
-              required
-              value={formData.title}
-              onChange={(event) =>
-                setFormData((prev) => ({ ...prev, title: event.target.value }))
-              }
-            />
-            <input
-              className="input-base"
-              placeholder="Short description"
-              value={formData.shortDescription}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  shortDescription: event.target.value,
-                }))
-              }
-            />
-            <textarea
-              className="min-h-36 input-base"
-              placeholder="Campaign description"
-              value={formData.description}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  description: event.target.value,
-                }))
-              }
-            />
-            <div className="grid gap-4 md:grid-cols-2">
-              <input
-                className="input-base"
-                placeholder="Goal amount"
-                inputMode="decimal"
-                required
-                value={formData.goalAmount}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    goalAmount: event.target.value,
-                  }))
-                }
-              />
-              <input
-                className="input-base"
-                placeholder="Tags (comma separated)"
-                value={formData.tags}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, tags: event.target.value }))
-                }
-              />
-            </div>
-            <VietnamLocationFields
-              value={locationValue}
-              onChange={setLocationValue}
-              includeWard={false}
-              includeAddressLine
-              helperText="This shared Vietnam location picker currently uses province and district because the backend campaign schema still stores those fields separately."
-            />
-            <input
-              className="input-base"
-              placeholder="Cover image URL"
-              value={formData.coverImageUrl}
-              onChange={(event) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  coverImageUrl: event.target.value,
-                }))
-              }
-            />
-            <div className="grid gap-4 md:grid-cols-2">
+          <div className="max-w-3xl card-base p-6">
+            <form className="grid gap-4" onSubmit={handleSubmit}>
               <label className="grid gap-2 text-sm text-text">
-                <span>Starts at</span>
+                <span>Campaign title</span>
                 <input
-                  type="datetime-local"
                   className="input-base"
+                  placeholder="Campaign title"
                   required
-                  value={formData.startsAt}
+                  value={formData.title}
                   onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      startsAt: event.target.value,
-                    }))
+                    setFormData((prev) => ({ ...prev, title: event.target.value }))
                   }
                 />
               </label>
+
               <label className="grid gap-2 text-sm text-text">
-                <span>Ends at</span>
+                <span>Short description</span>
                 <input
-                  type="datetime-local"
                   className="input-base"
-                  value={formData.endsAt}
+                  placeholder="Short description"
+                  value={formData.shortDescription}
                   onChange={(event) =>
                     setFormData((prev) => ({
                       ...prev,
-                      endsAt: event.target.value,
+                      shortDescription: event.target.value,
                     }))
                   }
                 />
               </label>
-            </div>
-            <div className="grid gap-2">
-              <p className="text-sm font-medium text-heading">Support types</p>
-              <div className="flex flex-wrap gap-3">
-                {supportTypeOptions.map((option) => (
-                  <label
-                    key={option.value}
-                    className="flex items-center gap-2 text-sm text-text"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.supportTypes.includes(option.value)}
-                      onChange={() => toggleSupportType(option.value)}
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
+
+              <label className="grid gap-2 text-sm text-text">
+                <span>Campaign description</span>
+                <textarea
+                  className="min-h-36 input-base"
+                  placeholder="Campaign description"
+                  value={formData.description}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      description: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm text-text">
+                  <span>Goal amount</span>
+                  <input
+                    className="input-base"
+                    placeholder="Goal amount"
+                    inputMode="decimal"
+                    required
+                    value={formData.goalAmount}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        goalAmount: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+
+                <label className="grid gap-2 text-sm text-text">
+                  <span>Tags</span>
+                  <input
+                    className="input-base"
+                    placeholder="Tags (comma separated)"
+                    value={formData.tags}
+                    onChange={(event) =>
+                      setFormData((prev) => ({ ...prev, tags: event.target.value }))
+                    }
+                  />
+                </label>
               </div>
-            </div>
 
-            {errorMessage ? (
-              <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-                {errorMessage}
+              <VietnamLocationFields
+                value={locationValue}
+                onChange={setLocationValue}
+                includeWard={false}
+                includeAddressLine
+                helperText="This shared Vietnam location picker currently uses province and district because the backend campaign schema still stores those fields separately."
+              />
+
+              <label className="grid gap-2 text-sm text-text">
+                <span>Cover image URL</span>
+                <input
+                  className="input-base"
+                  placeholder="Cover image URL"
+                  value={formData.coverImageUrl}
+                  onChange={(event) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      coverImageUrl: event.target.value,
+                    }))
+                  }
+                />
+              </label>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="grid gap-2 text-sm text-text">
+                  <span>Starts at</span>
+                  <input
+                    type="datetime-local"
+                    className="input-base"
+                    required
+                    value={formData.startsAt}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        startsAt: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+                <label className="grid gap-2 text-sm text-text">
+                  <span>Ends at</span>
+                  <input
+                    type="datetime-local"
+                    className="input-base"
+                    value={formData.endsAt}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        endsAt: event.target.value,
+                      }))
+                    }
+                  />
+                </label>
+              </div>
+
+              <div className="grid gap-2">
+                <p className="text-sm font-medium text-heading">Support types</p>
+                <div className="flex flex-wrap gap-3">
+                  {supportTypeOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-2 text-sm text-text"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.supportTypes.includes(option.value)}
+                        onChange={() => toggleSupportType(option.value)}
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <p className="rounded-lg border border-border bg-surface-muted p-3 text-sm text-text-muted">
+                New campaigns are created as drafts. You can publish them from the campaign management page after review.
               </p>
-            ) : null}
 
-            {successMessage ? (
-              <p className="rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-                {successMessage}
-              </p>
-            ) : null}
+              {errorMessage ? (
+                <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
+                  {errorMessage}
+                </p>
+              ) : null}
 
-            <button
-              className="w-fit btn-base btn-primary disabled:opacity-50"
-              disabled={!canSubmit || isSubmitting}
-            >
-              {isSubmitting ? "Creating..." : "Create Draft Campaign"}
-            </button>
-          </form>
-        </div>
-      </Container>
-    </div>
+              <button
+                className="w-fit btn-base btn-primary disabled:opacity-50"
+                disabled={!canSubmit || isSubmitting}
+              >
+                {isSubmitting ? "Creating..." : "Create Draft Campaign"}
+              </button>
+            </form>
+          </div>
+        </Container>
+      </div>
+    </RoleGate>
   );
 }

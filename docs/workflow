@@ -4,7 +4,12 @@ Completed in this sprint
 - Frontend public campaign list and campaign detail now load from backend API instead of `frontend/mocks`.
 - Frontend home page featured campaigns now load from backend API.
 - Organization dashboard and supporter dashboard now load live metrics from backend endpoints.
+- Organization and supporter dashboard detail panels are now backed by enriched dashboard API responses instead of `frontend/mocks/dashboard-experience.ts`.
 - Organization create campaign page now submits a real draft campaign to backend with authenticated organization token.
+- Organization campaign management is now closer to end-to-end:
+  - `frontend/app/organization/campaigns/create/page.tsx` now redirects back to campaign management after creating a draft.
+  - `frontend/app/organization/campaigns/page.tsx` can publish draft campaigns through the real backend publish endpoint.
+  - `frontend/lib/api/campaigns.ts` now exposes `publishCampaign(...)` for organization workspace actions.
 - Frontend now has a shared API layer in `frontend/lib/api/*` and normalized domain types for campaigns and dashboards.
 - Auth context now exposes `accessToken` so protected client pages can call backend without reading localStorage in many places.
 - Frontend auth/user types are now centralized in `frontend/types/user.ts`; `frontend/lib/auth/types.ts` re-exports those shared types instead of drifting separately.
@@ -17,18 +22,24 @@ Completed in this sprint
   - Supporters can only view their own dashboard.
   - Organizations can only view their own dashboard.
 - Frontend dashboard workspaces for `/supporter` and `/organization` were refreshed visually with improved sidebars, hero sections, and activity panels.
-- Sample frontend-only engagement data now exists in `frontend/mocks/dashboard-experience.ts` to support UI work for:
+- Backend dashboard responses now include richer detail data for:
   - supporter joined campaigns
   - supporter contribution history
   - supporter task states
   - organization campaign pipeline cards
   - organization recent activity feed
+- Demo seed data now includes:
+  - more linked supporter accounts
+  - additional donation and volunteer activity
+  - one more published campaign
+  - one draft campaign for organization pipeline testing
 - Backend write authorization is tighter:
   - `POST/PATCH /campaigns` and `POST /campaigns/{id}/publish` require organization ownership.
   - `POST /donations` cannot spoof `donor_user_id`; linked donations require authenticated matching user.
   - `POST /volunteer-registrations` cannot spoof `user_id`; linked registrations require authenticated matching user and always start as `pending`.
   - `POST /organizations` now requires superuser.
 - Repo hygiene improved with `.gitignore` updates and minimal permission tests added in `backend/tests/test_permissions.py`.
+- Backend endpoint regression coverage now includes organization campaign ownership rules in `backend/tests/test_campaign_endpoints.py`.
 
 Important files added or reshaped
 - `frontend/lib/api/http.ts`
@@ -44,6 +55,8 @@ Important files added or reshaped
 - `frontend/components/auth/RoleGate.tsx`
 - `frontend/components/location/VietnamLocationFields.tsx`
 - `backend/app/api/permissions.py`
+- `backend/app/api/endpoints/dashboards.py`
+- `backend/scripts/seed_demo_data.py`
 - `docs/vietnam-location-checklist.md`
 - `docs/next-feature-checklist.md`
 
@@ -52,9 +65,9 @@ Known gaps for next sprint
 - `frontend/app/(public)/campaigns/[id]/page.tsx` still sends users to separate support pages instead of offering a campaign-aware integrated support flow.
 - `frontend/app/organization/transparency/page.tsx` is read-only; there is no manual transparency authoring or management flow yet.
 - There is not yet an edit-profile flow for supporter or organization accounts.
-- Some richer dashboard panels still use sample frontend data even though headline KPIs are live.
 - Login is unified by email/password and redirects by returned backend role; there is still no dedicated role chooser for sign-in because backend already resolves the role from the account.
-- There is still no end-to-end test coverage; current tests only cover permission helpers.
+- There is still no end-to-end test coverage; backend tests now cover permission helpers and campaign create/publish ownership, but broader endpoint coverage is still thin.
+- There is still no edit-campaign flow in the organization workspace, even though create/list/publish are now wired.
 - Read-side access for organization-specific draft listings may need a dedicated authenticated endpoint later if the team wants a real organization campaign management screen.
 
 Recommended next sprint order
@@ -62,7 +75,7 @@ Recommended next sprint order
 2. Integrate campaign-aware support actions directly into campaign detail.
 3. Add supporter and organization profile edit flows.
 4. Decide and implement the next transparency step beyond read-only logs.
-5. Replace sample-only dashboard detail panels where backend data is already sufficient.
+5. Add direct regression tests for the enriched dashboard endpoints and seed flow.
 
 Run notes
 - Backend env example: `backend/.env.example`

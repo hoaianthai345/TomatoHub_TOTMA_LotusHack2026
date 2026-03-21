@@ -56,6 +56,11 @@ export interface CampaignActivitySummary {
   supporterCount: number;
 }
 
+interface BackendPublishCampaignResponse {
+  message: string;
+  campaign: BackendCampaign;
+}
+
 export interface CreateCampaignInput {
   organizationId: string;
   title: string;
@@ -234,4 +239,19 @@ export async function createCampaign(
   });
 
   return mapCampaign(campaign);
+}
+
+export async function publishCampaign(
+  campaignId: string,
+  token: string
+): Promise<Campaign> {
+  const response = await requestJson<BackendPublishCampaignResponse>(
+    `/campaigns/${encodeURIComponent(campaignId)}/publish`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+
+  return mapCampaign(response.campaign);
 }
