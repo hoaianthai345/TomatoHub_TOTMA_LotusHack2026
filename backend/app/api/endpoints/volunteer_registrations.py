@@ -12,10 +12,11 @@ from app.api.deps import (
     get_optional_current_user,
 )
 from app.api.permissions import ensure_authenticated_user_matches
-from app.models.campaign import Campaign, CampaignStatus
+from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.user import User
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 from app.schemas.volunteer_registration import (
+    VolunteerQuickJoinCreate,
     VolunteerRegistrationCreate,
     VolunteerRegistrationRead,
     VolunteerRegistrationUpdateStatus,
@@ -91,6 +92,11 @@ def create_volunteer_registration(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Campaign is not open for volunteer registration",
+        )
+    if SupportType.volunteer.value not in (campaign.support_types or []):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campaign does not accept volunteer registration",
         )
 
     if (
@@ -208,6 +214,33 @@ def create_volunteer_registration(
         ) from None
     db.refresh(registration)
     return registration
+
+
+@router.post("/quick-join", response_model=VolunteerRegistrationRead)
+def quick_join_volunteer_registration(
+    payload: VolunteerQuickJoinCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> VolunteerRegistration:
+    if current_user.organization_id is not None and not current_user.is_superuser:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization account cannot register as volunteer",
+        )
+
+    create_payload = VolunteerRegistrationCreate(
+        campaign_id=payload.campaign_id,
+        user_id=current_user.id,
+        full_name=current_user.full_name,
+        email=current_user.email,
+        phone_number=payload.phone_number,
+        message=payload.message,
+    )
+    return create_volunteer_registration(
+        payload=create_payload,
+        db=db,
+        current_user=current_user,
+    )
 
 
 @router.patch("/{registration_id}/status", response_model=VolunteerRegistrationRead)

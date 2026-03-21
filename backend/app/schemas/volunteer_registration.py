@@ -19,6 +19,12 @@ class VolunteerRegistrationCreate(VolunteerRegistrationBase):
     status: VolunteerStatus = VolunteerStatus.pending
 
 
+class VolunteerQuickJoinCreate(BaseModel):
+    campaign_id: UUID
+    phone_number: str | None = None
+    message: str | None = None
+
+
 class VolunteerRegistrationUpdateStatus(BaseModel):
     status: VolunteerStatus
 

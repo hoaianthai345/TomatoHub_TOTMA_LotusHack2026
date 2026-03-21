@@ -26,12 +26,18 @@ const SUPPORT_BADGE_LABEL: Record<CampaignSupportType, string> = {
   volunteer: "Volunteer",
 };
 
+const SUPPORT_BADGE_CLASS: Record<CampaignSupportType, string> = {
+  money: "badge-support-money",
+  goods: "badge-support-goods",
+  volunteer: "badge-support-volunteer",
+};
+
 function normalizeText(value: string): string {
   return value
     .normalize("NFD")
     .replaceAll(/[\u0300-\u036f]/g, "")
-    .replaceAll("đ", "d")
-    .replaceAll("Đ", "d")
+    .replaceAll("\u0111", "d")
+    .replaceAll("\u0110", "d")
     .toLowerCase()
     .trim();
 }
@@ -208,8 +214,8 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
           <div>
             <h1 className="text-3xl font-bold text-heading">Campaign List</h1>
             <p className="mt-2 max-w-3xl text-sm text-text-muted">
-              Find campaigns by support type and location, then jump directly to donate
-              or volunteer flows.
+              Find campaigns by support type and location, then open each campaign
+              detail page to take action.
             </p>
           </div>
           <div className="rounded-xl border border-border bg-surface-muted px-3 py-2 text-xs text-text-muted">
@@ -332,11 +338,14 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
           {filteredCampaigns.map((campaign) => {
             const goalAmount = campaign.goalAmount ?? campaign.targetAmount ?? 0;
             const raisedAmount = campaign.raisedAmount ?? 0;
-            const progress = goalAmount > 0 ? Math.min(100, (raisedAmount / goalAmount) * 100) : 0;
-            const allowsVolunteer = campaign.supportTypes?.includes("volunteer") ?? false;
+            const progress =
+              goalAmount > 0 ? Math.min(100, (raisedAmount / goalAmount) * 100) : 0;
 
             return (
-              <article key={campaign.id} className="card-base card-hover overflow-hidden">
+              <article
+                key={campaign.id}
+                className="card-base card-hover flex h-full flex-col overflow-hidden"
+              >
                 <Link href={`/campaigns/${campaign.slug}`} className="block">
                   <div
                     className="h-52 w-full border-b border-border bg-cover bg-center"
@@ -344,7 +353,7 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
                   />
                 </Link>
 
-                <div className="p-5">
+                <div className="flex flex-1 flex-col p-5">
                   <div className="mb-3 flex flex-wrap gap-2">
                     {(campaign.tags.length ? campaign.tags : ["campaign"]).slice(0, 3).map((tag) => (
                       <span
@@ -358,21 +367,21 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
 
                   <Link
                     href={`/campaigns/${campaign.slug}`}
-                    className="text-xl font-bold text-heading hover:text-primary"
+                    className="line-clamp-2 min-h-[3.5rem] text-xl font-bold text-heading hover:text-primary"
                   >
                     {campaign.title}
                   </Link>
 
-                  <p className="mt-2 line-clamp-3 text-sm text-text-muted">
+                  <p className="mt-2 line-clamp-3 min-h-[4.5rem] text-sm text-text-muted">
                     {campaign.shortDescription || campaign.description}
                   </p>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
+                  <div className="mt-4 flex min-h-[2rem] flex-wrap gap-2">
                     {campaign.supportTypes?.length ? (
                       campaign.supportTypes.map((type) => (
                         <span
                           key={`${campaign.id}-${type}`}
-                          className="rounded-full border border-border bg-surface-muted px-3 py-1 text-xs font-semibold text-text"
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${SUPPORT_BADGE_CLASS[type]}`}
                         >
                           {SUPPORT_BADGE_LABEL[type]}
                         </span>
@@ -413,23 +422,6 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
                     <div className="h-2 overflow-hidden rounded-full bg-border">
                       <div className="h-full bg-primary" style={{ width: `${progress}%` }} />
                     </div>
-                  </div>
-
-                  <div className={`mt-4 ${allowsVolunteer ? "grid gap-2 sm:grid-cols-2" : ""}`}>
-                    <Link
-                      href={`/campaigns/${campaign.slug}`}
-                      className="btn-base btn-primary w-full text-center"
-                    >
-                      View details
-                    </Link>
-                    {allowsVolunteer ? (
-                      <Link
-                        href={`/supporter/register?campaignId=${campaign.id}`}
-                        className="btn-base btn-secondary w-full text-center"
-                      >
-                        Join volunteer
-                      </Link>
-                    ) : null}
                   </div>
                 </div>
               </article>

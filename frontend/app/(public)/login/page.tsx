@@ -6,6 +6,10 @@ import { useState } from "react";
 import { AuthApiError } from "@/lib/auth/api";
 import { useAuth } from "@/lib/auth";
 
+function isSafeNextPath(value: string): boolean {
+	return value.startsWith("/") && !value.startsWith("//");
+}
+
 export default function LoginPage() {
 	const router = useRouter();
 	const { login, isLoading } = useAuth();
@@ -14,6 +18,14 @@ export default function LoginPage() {
 		password: "",
 	});
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
+	const [nextPath] = useState<string | null>(() => {
+		if (typeof window === "undefined") {
+			return null;
+		}
+		const params = new URLSearchParams(window.location.search);
+		const next = params.get("next");
+		return next && isSafeNextPath(next) ? next : null;
+	});
 
 	const handleSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
@@ -24,6 +36,10 @@ export default function LoginPage() {
 				email: formData.email,
 				password: formData.password,
 			});
+			if (nextPath && isSafeNextPath(nextPath)) {
+				router.push(nextPath);
+				return;
+			}
 			router.push(user.role === "organization" ? "/organization" : "/supporter");
 		} catch (error) {
 			if (error instanceof AuthApiError) {

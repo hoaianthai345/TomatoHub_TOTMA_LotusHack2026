@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { useAuth } from "@/lib/auth";
@@ -14,6 +15,7 @@ const STATUS_STYLE: Record<string, string> = {
   pending: "bg-surface-muted text-text-muted border-border",
   approved: "bg-success/10 text-success border-success/30",
   rejected: "bg-danger/10 text-danger border-danger/30",
+  cancelled: "bg-warning/10 text-warning border-warning/30",
 };
 
 export default function RegistrationsPage() {
@@ -68,16 +70,16 @@ export default function RegistrationsPage() {
     };
   }, [accessToken, currentUser?.id, currentUser?.role, isLoading]);
 
-  const campaignTitleById = useMemo(
-    () => new Map(campaigns.map((campaign) => [campaign.id, campaign.title])),
+  const campaignById = useMemo(
+    () => new Map(campaigns.map((campaign) => [campaign.id, campaign])),
     [campaigns]
   );
 
   return (
     <RoleGate role="supporter" loadingMessage="Loading your registrations...">
       <div className="p-6">
-        <h1 className="mb-2 text-3xl font-bold">My Registrations</h1>
-        <p className="mb-6 text-body">Campaigns you have registered to support</p>
+        <h1 className="mb-2 text-3xl font-bold">My Joined Campaigns</h1>
+        <p className="mb-6 text-body">Campaigns where you already joined as a volunteer</p>
 
         {errorMessage ? (
           <p className="mb-6 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
@@ -97,26 +99,39 @@ export default function RegistrationsPage() {
                 </tr>
               </thead>
               <tbody>
-                {registrations.map((item) => (
-                  <tr key={item.id} className="border-t border-border">
-                    <td className="px-4 py-3 text-text">
-                      {campaignTitleById.get(item.campaignId) ?? item.campaignId}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`rounded-full border px-2 py-1 text-xs font-semibold ${
-                          STATUS_STYLE[item.status] ?? "bg-surface-muted text-text-muted border-border"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-text-muted">
-                      {formatDateTime(item.registeredAt)}
-                    </td>
-                    <td className="px-4 py-3 text-text-muted">{item.message ?? "-"}</td>
-                  </tr>
-                ))}
+                {registrations.map((item) => {
+                  const campaign = campaignById.get(item.campaignId);
+
+                  return (
+                    <tr key={item.id} className="border-t border-border">
+                      <td className="px-4 py-3 text-text">
+                        {campaign ? (
+                          <Link
+                            href={`/campaigns/${campaign.slug}`}
+                            className="font-medium text-heading hover:text-primary"
+                          >
+                            {campaign.title}
+                          </Link>
+                        ) : (
+                          item.campaignId
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${
+                            STATUS_STYLE[item.status] ?? "bg-surface-muted text-text-muted border-border"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {formatDateTime(item.registeredAt)}
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">{item.message ?? "-"}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

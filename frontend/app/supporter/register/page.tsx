@@ -18,6 +18,7 @@ const STATUS_STYLE: Record<string, string> = {
   pending: "bg-surface-muted text-text-muted border-border",
   approved: "bg-success/10 text-success border-success/30",
   rejected: "bg-danger/10 text-danger border-danger/30",
+  cancelled: "bg-warning/10 text-warning border-warning/30",
 };
 
 export default function RegisterSupportPage() {
