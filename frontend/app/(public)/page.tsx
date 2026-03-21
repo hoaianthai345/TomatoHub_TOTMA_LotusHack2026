@@ -1,4 +1,6 @@
 import Link from "next/link";
+import type { LucideIcon } from "lucide-react";
+import { HandHeart, HeartHandshake, LifeBuoy, MoveRight } from "lucide-react";
 import Container from "@/components/common/container";
 import CampaignCard from "@/components/campaign/campaign-card";
 import NearbyCampaignMap from "@/components/campaign/nearby-campaign-map";
@@ -43,12 +45,14 @@ function ActionCard({
   description,
   eyebrow,
   href,
+  icon: Icon,
   variant,
 }: {
   title: string;
   description: string;
   eyebrow: string;
   href: string;
+  icon: LucideIcon;
   variant: "primary" | "light";
 }) {
   const palette =
@@ -57,14 +61,18 @@ function ActionCard({
       : "bg-white text-heading border-border";
 
   const bodyText = variant === "primary" ? "text-white/80" : "text-text-muted";
+  const iconPalette =
+    variant === "primary"
+      ? "border-white/35 bg-white/20 text-white"
+      : "border-primary/20 bg-primary/10 text-primary";
 
   return (
     <Link
       href={href}
       className={`group flex min-h-[250px] flex-col justify-between rounded-[2rem] border p-6 shadow-[0_14px_34px_rgba(17,24,39,0.05)] transition duration-200 hover:-translate-y-0.5 ${palette}`}
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-lg font-bold text-heading">
-        +
+      <div className={`flex h-11 w-11 items-center justify-center rounded-full border ${iconPalette}`}>
+        <Icon className="h-5 w-5" strokeWidth={2.2} />
       </div>
 
       <div>
@@ -77,7 +85,7 @@ function ActionCard({
 
       <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold">
         Learn more
-        <span className="transition group-hover:translate-x-1">-&gt;</span>
+        <MoveRight className="h-4 w-4 transition group-hover:translate-x-1" />
       </div>
     </Link>
   );
@@ -153,16 +161,10 @@ export default async function HomePage() {
                   Donate now
                 </Link>
                 <Link
-                  href="/signup/supporter"
+                  href="/signup/organization"
                   className="btn-base rounded-full !px-6 btn-secondary"
                 >
-                  Become a supporter
-                </Link>
-                <Link
-                  href="/signup/organization"
-                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-lg font-semibold text-heading"
-                >
-                  -&gt;
+                  Join as organization
                 </Link>
               </div>
             </div>
@@ -226,6 +228,7 @@ export default async function HomePage() {
               title="Make a donation"
               description="Fund urgent needs, recovery efforts, and direct campaign goals in just a few taps."
               href="/campaigns"
+              icon={HeartHandshake}
               variant="light"
             />
             <ActionCard
@@ -233,6 +236,7 @@ export default async function HomePage() {
               title="Get support"
               description="Start a campaign, share verified updates, and connect your cause with people who care."
               href="/signup/organization"
+              icon={LifeBuoy}
               variant="light"
             />
             <ActionCard
@@ -240,6 +244,7 @@ export default async function HomePage() {
               title="Become a volunteer"
               description="Join campaigns that need time, hands, and field support in your area."
               href="/signup/supporter"
+              icon={HandHeart}
               variant="primary"
             />
           </div>
