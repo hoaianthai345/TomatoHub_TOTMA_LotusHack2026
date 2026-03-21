@@ -52,6 +52,12 @@ from app.schemas.dashboard import (
 )
 from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
 from app.schemas.organization import OrganizationCreate, OrganizationRead, OrganizationUpdate
+from app.schemas.recommendation import (
+    CampaignDraftRecommendationRequest,
+    CampaignDraftRecommendationResponse,
+    SupporterCampaignRecommendationItem,
+    SupporterCampaignRecommendationResponse,
+)
 from app.schemas.supporter import SupporterRead, SupporterUpdate
 from app.schemas.transparency import TransparencyLogRead, TransparencyLogType
 from app.schemas.user import UserCreate, UserRead
@@ -90,6 +96,10 @@ __all__ = [
     "OrganizationCreate",
     "OrganizationUpdate",
     "OrganizationRead",
+    "CampaignDraftRecommendationRequest",
+    "CampaignDraftRecommendationResponse",
+    "SupporterCampaignRecommendationItem",
+    "SupporterCampaignRecommendationResponse",
     "CampaignCreate",
     "CampaignUpdate",
     "CampaignRead",

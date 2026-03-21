@@ -12,7 +12,7 @@ from app.api.deps import (
     get_optional_current_user,
 )
 from app.api.permissions import ensure_authenticated_user_matches
-from app.models.campaign import Campaign, CampaignStatus
+from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.credit_event import CreditTargetType
 from app.models.user import User
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
