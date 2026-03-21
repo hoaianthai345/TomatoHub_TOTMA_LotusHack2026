@@ -65,6 +65,125 @@ def _campaign_status_label(status: CampaignStatus) -> str:
     return "Draft"
 
 
+def _normalize_datetime(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
+
+
+def _format_schedule_datetime(value: datetime | None) -> str | None:
+    normalized = _normalize_datetime(value)
+    if normalized is None:
+        return None
+    return normalized.strftime("%d/%m %H:%M")
+
+
+def _registration_role_label(registration: VolunteerRegistration) -> str:
+    role_value = registration.role.value if hasattr(registration.role, "value") else registration.role
+    role_map = {
+        "packing": "Packing volunteer",
+        "delivery": "Delivery volunteer",
+        "medic": "Medic volunteer",
+        "online": "Online volunteer",
+    }
+    return role_map.get(role_value, "Volunteer")
+
+
+def _resolve_approved_schedule_state(
+    registration: VolunteerRegistration,
+    campaign: Campaign,
+    now: datetime,
+) -> tuple[str, str, str]:
+    shift_start = _normalize_datetime(registration.shift_start_at) or _normalize_datetime(campaign.starts_at)
+    shift_end = _normalize_datetime(registration.shift_end_at) or _normalize_datetime(campaign.ends_at)
+
+    if shift_start is not None and now < shift_start:
+        start_label = _format_schedule_datetime(shift_start)
+        due_label = f"Chờ tới lịch ({start_label})" if start_label else "Chờ tới lịch"
+        return (
+            "waiting_shift",
+            due_label,
+            "Chờ tới lịch volunteer và đến checkpoint đúng giờ để scan QR check-in.",
+        )
+
+    if shift_start is not None and shift_end is not None and shift_start <= now <= shift_end:
+        end_label = _format_schedule_datetime(shift_end)
+        due_label = f"Đang trong ca (đến {end_label})" if end_label else "Đang trong ca"
+        return (
+            "in_shift",
+            due_label,
+            "Bạn đang trong ca volunteer. Hãy scan QR check-in/check-out tại checkpoint.",
+        )
+
+    if shift_end is not None and now > shift_end:
+        end_label = _format_schedule_datetime(shift_end)
+        due_label = f"Quá ca/chưa check-in ({end_label})" if end_label else "Quá ca/chưa check-in"
+        return (
+            "past_shift",
+            due_label,
+            "Ca volunteer đã qua. Nếu bạn chưa check-in, hãy liên hệ organization để được hỗ trợ.",
+        )
+
+    if shift_start is not None and shift_end is None and now >= shift_start:
+        return (
+            "in_shift",
+            "Đang trong ca",
+            "Bạn đang trong ca volunteer. Hãy scan QR check-in/check-out tại checkpoint.",
+        )
+
+    return (
+        "ready",
+        "Sẵn sàng check-in",
+        "Arrive at checkpoint and scan QR to check in.",
+    )
+
+
+def _resolve_registration_task_state(
+    registration: VolunteerRegistration,
+    campaign: Campaign,
+    now: datetime,
+) -> tuple[str, str, str, str]:
+    if registration.status == VolunteerStatus.pending:
+        return (
+            "Wait for registration approval",
+            "pending",
+            "Awaiting organization review",
+            "Wait for organization approval.",
+        )
+    if registration.status == VolunteerStatus.rejected:
+        return (
+            "Registration closed by organization",
+            "rejected",
+            "No action required",
+            "Registration was rejected.",
+        )
+    if registration.status == VolunteerStatus.cancelled:
+        return (
+            "Registration cancelled",
+            "cancelled",
+            "No action required",
+            "Registration was cancelled.",
+        )
+
+    schedule_status, due_label, next_step = _resolve_approved_schedule_state(
+        registration,
+        campaign,
+        now,
+    )
+    if schedule_status == "waiting_shift":
+        task_title = "Chờ tới lịch volunteer"
+    elif schedule_status == "in_shift":
+        task_title = "Đang trong ca volunteer"
+    elif schedule_status == "past_shift":
+        task_title = "Quá ca/chưa check-in"
+    else:
+        task_title = "Check in at campaign checkpoint"
+
+    return task_title, schedule_status, due_label, next_step
+
+
 def _build_organization_campaign_snapshots(
     campaigns: list[Campaign],
     donations_by_campaign: dict[UUID, list[MonetaryDonation]],
@@ -212,7 +331,6 @@ def _build_supporter_participation_cards(
     *,
     limit: int = 8,
 ) -> list[SupporterParticipationCardRead]:
-    del now  # relative label uses server current time
     cards_with_time: list[tuple[datetime, SupporterParticipationCardRead]] = []
     seen_campaign_ids: set[UUID] = set()
 
@@ -221,14 +339,16 @@ def _build_supporter_participation_cards(
         if campaign is None:
             continue
         seen_campaign_ids.add(campaign.id)
-        if registration.status == VolunteerStatus.approved:
-            next_step = "Arrive at checkpoint and scan QR to check in."
-        elif registration.status == VolunteerStatus.pending:
-            next_step = "Wait for organization approval."
-        elif registration.status == VolunteerStatus.rejected:
-            next_step = "Registration was rejected."
-        else:
-            next_step = "Registration was cancelled."
+        _, schedule_status, _, next_step = _resolve_registration_task_state(
+            registration,
+            campaign,
+            now,
+        )
+        status_label = (
+            registration.status.value
+            if registration.status != VolunteerStatus.approved
+            else schedule_status
+        )
 
         cards_with_time.append(
             (
@@ -239,8 +359,8 @@ def _build_supporter_participation_cards(
                     campaign_title=campaign.title,
                     campaign_location=_campaign_location_label(campaign) or "Location pending",
                     cover_image_url=campaign.cover_image_url or None,
-                    role_label="Volunteer",
-                    status_label=registration.status.value,
+                    role_label=_registration_role_label(registration),
+                    status_label=status_label,
                     next_step=next_step,
                     date_label=_relative_time_label(registration.registered_at),
                 ),
@@ -342,28 +462,17 @@ def _build_supporter_task_items(
     *,
     limit: int = 12,
 ) -> list[SupporterTaskItemRead]:
-    del now  # reserved for future due-date logic
     items: list[SupporterTaskItemRead] = []
     for registration in registrations:
         campaign = campaigns_by_id.get(registration.campaign_id)
         if campaign is None:
             continue
-        if registration.status == VolunteerStatus.approved:
-            task_title = "Check in at campaign checkpoint"
-            status_label = "ready"
-            due_label = "As scheduled by organization"
-        elif registration.status == VolunteerStatus.pending:
-            task_title = "Wait for registration approval"
-            status_label = "pending"
-            due_label = "Awaiting organization review"
-        elif registration.status == VolunteerStatus.rejected:
-            task_title = "Registration closed by organization"
-            status_label = "rejected"
-            due_label = "No action required"
-        else:
-            task_title = "Registration cancelled"
-            status_label = "cancelled"
-            due_label = "No action required"
+
+        task_title, status_label, due_label, _ = _resolve_registration_task_state(
+            registration,
+            campaign,
+            now,
+        )
 
         items.append(
             SupporterTaskItemRead(
@@ -776,6 +885,7 @@ def supporter_participations(
 
     items: list[SupporterParticipationItemRead] = []
     seen_campaign_ids: set[UUID] = set()
+    now = datetime.now(timezone.utc)
 
     registration_rows = db.execute(
         select(VolunteerRegistration, Campaign)
@@ -786,22 +896,24 @@ def supporter_participations(
     ).all()
     for registration, campaign in registration_rows:
         seen_campaign_ids.add(campaign.id)
-        if registration.status == VolunteerStatus.approved:
-            next_step = "Arrive at checkpoint and scan QR to check in."
-        elif registration.status == VolunteerStatus.pending:
-            next_step = "Wait for organization approval."
-        elif registration.status == VolunteerStatus.rejected:
-            next_step = "Registration was rejected."
-        else:
-            next_step = "Registration was cancelled."
+        _, schedule_status, _, next_step = _resolve_registration_task_state(
+            registration,
+            campaign,
+            now,
+        )
+        status_label = (
+            registration.status.value
+            if registration.status != VolunteerStatus.approved
+            else schedule_status
+        )
         items.append(
             SupporterParticipationItemRead(
                 id=f"volunteer-{registration.id}",
                 campaign_id=campaign.id,
                 campaign_title=campaign.title,
                 campaign_location=_campaign_location_label(campaign),
-                role_label="Volunteer",
-                status_label=registration.status.value,
+                role_label=_registration_role_label(registration),
+                status_label=status_label,
                 next_step=next_step,
                 date_label=_relative_time_label(registration.registered_at),
                 created_at=registration.registered_at,
@@ -859,23 +971,13 @@ def supporter_tasks(
     ).all()
 
     items: list[SupporterTaskItemRead] = []
+    now = datetime.now(timezone.utc)
     for registration, campaign in registration_rows:
-        if registration.status == VolunteerStatus.approved:
-            task_title = "Check in at campaign checkpoint"
-            status_label = "ready"
-            due_label = "As scheduled by organization"
-        elif registration.status == VolunteerStatus.pending:
-            task_title = "Wait for registration approval"
-            status_label = "pending"
-            due_label = "Awaiting organization review"
-        elif registration.status == VolunteerStatus.rejected:
-            task_title = "Registration closed by organization"
-            status_label = "rejected"
-            due_label = "No action required"
-        else:
-            task_title = "Registration cancelled"
-            status_label = "cancelled"
-            due_label = "No action required"
+        task_title, status_label, due_label, _ = _resolve_registration_task_state(
+            registration,
+            campaign,
+            now,
+        )
 
         items.append(
             SupporterTaskItemRead(

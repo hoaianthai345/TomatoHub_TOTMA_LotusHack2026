@@ -10,6 +10,61 @@ import { formatDateTime } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
 import type { VolunteerRegistration } from "@/types/volunteer-registration";
 
+function parseDate(value?: string): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function resolveTaskPhase(registration: VolunteerRegistration): {
+  title: string;
+  hint: string;
+} {
+  if (registration.status !== "approved") {
+    return {
+      title: "Pending approval",
+      hint: "Wait for organization approval before check-in.",
+    };
+  }
+
+  const now = new Date();
+  const shiftStart = parseDate(registration.shiftStartAt);
+  const shiftEnd = parseDate(registration.shiftEndAt);
+
+  if (shiftStart && now < shiftStart) {
+    return {
+      title: "Chờ tới lịch",
+      hint: `Shift starts at ${formatDateTime(registration.shiftStartAt)}.`,
+    };
+  }
+
+  if (shiftStart && shiftEnd && now >= shiftStart && now <= shiftEnd) {
+    return {
+      title: "Đang trong ca",
+      hint: `Shift ends at ${formatDateTime(registration.shiftEndAt)}.`,
+    };
+  }
+
+  if (shiftEnd && now > shiftEnd) {
+    return {
+      title: "Quá ca/chưa check-in",
+      hint: `Shift ended at ${formatDateTime(registration.shiftEndAt)}.`,
+    };
+  }
+
+  return {
+    title: "Ready to check in",
+    hint: "Scan QR at checkpoint to record attendance.",
+  };
+}
+
 export default function TasksPage() {
   const { currentUser, accessToken, isLoading } = useAuth();
   const [registrations, setRegistrations] = useState<VolunteerRegistration[]>([]);
@@ -103,9 +158,22 @@ export default function TasksPage() {
                 <h3 className="text-lg font-semibold text-heading">
                   {campaignTitleById.get(task.campaignId) ?? task.campaignId}
                 </h3>
+                <p className="mt-2 text-sm font-semibold text-supporter">
+                  {resolveTaskPhase(task).title}
+                </p>
                 <p className="mt-2 text-sm text-text-muted">
                   Approved on {formatDateTime(task.registeredAt)}
                 </p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Role: {task.role ?? "volunteer"}
+                </p>
+                <p className="mt-1 text-sm text-text-muted">
+                  Shift:{" "}
+                  {task.shiftStartAt || task.shiftEndAt
+                    ? `${formatDateTime(task.shiftStartAt)} - ${formatDateTime(task.shiftEndAt)}`
+                    : "Not specified"}
+                </p>
+                <p className="mt-1 text-sm text-text-muted">{resolveTaskPhase(task).hint}</p>
                 <p className="mt-1 text-sm text-text">
                   {task.message || "No additional message provided."}
                 </p>

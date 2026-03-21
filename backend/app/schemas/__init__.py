@@ -62,8 +62,10 @@ from app.schemas.supporter import SupporterRead, SupporterUpdate
 from app.schemas.transparency import TransparencyLogRead, TransparencyLogType
 from app.schemas.user import UserCreate, UserRead
 from app.schemas.volunteer_registration import (
+    CampaignVolunteerParticipantRead,
     VolunteerRegistrationCreate,
     VolunteerRegistrationRead,
+    VolunteerRegistrationUpdateAttendance,
     VolunteerRegistrationUpdateStatus,
 )
 
@@ -130,5 +132,7 @@ __all__ = [
     "TransparencyLogRead",
     "VolunteerRegistrationCreate",
     "VolunteerRegistrationRead",
+    "VolunteerRegistrationUpdateAttendance",
     "VolunteerRegistrationUpdateStatus",
+    "CampaignVolunteerParticipantRead",
 ]

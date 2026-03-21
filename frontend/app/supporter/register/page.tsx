@@ -12,7 +12,10 @@ import {
 } from "@/lib/api/volunteer-registrations";
 import { formatDateTime } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
-import type { VolunteerRegistration } from "@/types/volunteer-registration";
+import type {
+  VolunteerRegistration,
+  VolunteerRole,
+} from "@/types/volunteer-registration";
 
 const STATUS_STYLE: Record<string, string> = {
   pending: "bg-surface-muted text-text-muted border-border",
@@ -21,12 +24,35 @@ const STATUS_STYLE: Record<string, string> = {
   cancelled: "bg-warning/10 text-warning border-warning/30",
 };
 
+const VOLUNTEER_ROLE_OPTIONS: Array<{ value: VolunteerRole; label: string }> = [
+  { value: "delivery", label: "Delivery" },
+  { value: "packing", label: "Packing" },
+  { value: "medic", label: "Medic" },
+  { value: "online", label: "Online support" },
+];
+
+function toIsoDateTime(value: string): string | undefined {
+  if (!value.trim()) {
+    return undefined;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date.toISOString();
+}
+
 export default function RegisterSupportPage() {
   const { currentUser, accessToken, isLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [registrations, setRegistrations] = useState<VolunteerRegistration[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
   const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [role, setRole] = useState<VolunteerRole>("delivery");
+  const [shiftStartAt, setShiftStartAt] = useState<string>("");
+  const [shiftEndAt, setShiftEndAt] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -120,6 +146,21 @@ export default function RegisterSupportPage() {
       return;
     }
 
+    const shiftStartIso = toIsoDateTime(shiftStartAt);
+    const shiftEndIso = toIsoDateTime(shiftEndAt);
+    if (shiftStartAt.trim() && !shiftStartIso) {
+      setErrorMessage("Shift start time is invalid.");
+      return;
+    }
+    if (shiftEndAt.trim() && !shiftEndIso) {
+      setErrorMessage("Shift end time is invalid.");
+      return;
+    }
+    if (shiftStartIso && shiftEndIso && new Date(shiftEndIso) <= new Date(shiftStartIso)) {
+      setErrorMessage("Shift end time must be after shift start time.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const created = await createVolunteerRegistration(
@@ -129,6 +170,9 @@ export default function RegisterSupportPage() {
           fullName: currentUser.name,
           email: currentUser.email,
           phoneNumber: phoneNumber.trim() || undefined,
+          role,
+          shiftStartAt: shiftStartIso,
+          shiftEndAt: shiftEndIso,
           message: message.trim() || undefined,
         },
         accessToken
@@ -136,6 +180,8 @@ export default function RegisterSupportPage() {
 
       setRegistrations((prev) => [created, ...prev]);
       setPhoneNumber("");
+      setShiftStartAt("");
+      setShiftEndAt("");
       setMessage("");
       setSuccessMessage("Registration submitted successfully.");
       setErrorMessage(null);
@@ -210,6 +256,58 @@ export default function RegisterSupportPage() {
               </div>
 
               <div>
+                <label htmlFor="role" className="mb-2 block text-sm font-medium text-text">
+                  Volunteer role
+                </label>
+                <select
+                  id="role"
+                  className="input-base"
+                  value={role}
+                  onChange={(event) => setRole(event.target.value as VolunteerRole)}
+                >
+                  {VOLUNTEER_ROLE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="shift-start"
+                    className="mb-2 block text-sm font-medium text-text"
+                  >
+                    Shift start (optional)
+                  </label>
+                  <input
+                    id="shift-start"
+                    type="datetime-local"
+                    className="input-base"
+                    value={shiftStartAt}
+                    onChange={(event) => setShiftStartAt(event.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="shift-end"
+                    className="mb-2 block text-sm font-medium text-text"
+                  >
+                    Shift end (optional)
+                  </label>
+                  <input
+                    id="shift-end"
+                    type="datetime-local"
+                    className="input-base"
+                    value={shiftEndAt}
+                    onChange={(event) => setShiftEndAt(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div>
                 <label htmlFor="message" className="mb-2 block text-sm font-medium text-text">
                   Message (optional)
                 </label>
@@ -262,6 +360,8 @@ export default function RegisterSupportPage() {
                 <thead className="bg-surface-muted text-text-muted">
                   <tr>
                     <th className="px-4 py-3 font-semibold">Campaign</th>
+                    <th className="px-4 py-3 font-semibold">Role</th>
+                    <th className="px-4 py-3 font-semibold">Shift</th>
                     <th className="px-4 py-3 font-semibold">Status</th>
                     <th className="px-4 py-3 font-semibold">Registered At</th>
                   </tr>
@@ -271,6 +371,12 @@ export default function RegisterSupportPage() {
                     <tr key={item.id} className="border-t border-border">
                       <td className="px-4 py-3 text-text">
                         {campaignTitleById.get(item.campaignId) ?? item.campaignId}
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">{item.role ?? "-"}</td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {item.shiftStartAt || item.shiftEndAt
+                          ? `${formatDateTime(item.shiftStartAt)} - ${formatDateTime(item.shiftEndAt)}`
+                          : "-"}
                       </td>
                       <td className="px-4 py-3">
                         <span

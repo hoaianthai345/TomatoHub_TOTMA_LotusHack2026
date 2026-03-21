@@ -66,6 +66,11 @@ class CampaignCheckpointScanRequest(BaseModel):
     note: str | None = None
 
 
+class CampaignCheckpointManualAttendanceRequest(BaseModel):
+    registration_id: UUID
+    scan_type: CheckpointScanType
+
+
 class GoodsCheckinRead(BaseModel):
     id: UUID
     campaign_id: UUID
