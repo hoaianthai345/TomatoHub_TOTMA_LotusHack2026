@@ -296,6 +296,24 @@ body {
   color: var(--color-org);
 }
 
+@utility badge-support-money {
+  border: 1px solid color-mix(in oklab, var(--color-success) 35%, var(--color-border));
+  background: color-mix(in oklab, var(--color-success) 15%, white);
+  color: var(--color-success);
+}
+
+@utility badge-support-volunteer {
+  border: 1px solid color-mix(in oklab, var(--color-supporter) 35%, var(--color-border));
+  background: color-mix(in oklab, var(--color-supporter) 14%, white);
+  color: var(--color-supporter);
+}
+
+@utility badge-support-goods {
+  border: 1px solid color-mix(in oklab, var(--color-accent) 42%, var(--color-border));
+  background: color-mix(in oklab, var(--color-accent) 25%, white);
+  color: var(--color-heading);
+}
+
 /* Role badge circle */
 @utility role-badge {
   width: 2.5rem;

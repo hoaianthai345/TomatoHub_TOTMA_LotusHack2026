@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import Container from "@/components/common/container";
 import CampaignLocationMap from "@/components/campaign/campaign-location-map";
+import CampaignDetailActionBar from "@/components/campaign/campaign-detail-action-bar";
 import { getCampaignActivitySummary, getCampaignBySlug } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
 import { formatCurrency, formatDateTime } from "@/utils/format";
@@ -158,39 +158,13 @@ export default async function CampaignDetailPage({
         </Container>
 
         {hasActionBar ? (
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white/95 backdrop-blur">
-            <Container className="py-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-text-muted">
-                    Ready to support
-                  </p>
-                  <p className="truncate text-sm font-semibold text-heading md:text-base">
-                    {campaign.title}
-                  </p>
-                </div>
-
-                <div className="flex w-full flex-wrap gap-2 sm:w-auto">
-                  {supportsMoney ? (
-                    <Link
-                      href={`/donate?campaignId=${campaign.id}`}
-                      className="btn-base btn-primary flex-1 text-center sm:flex-none"
-                    >
-                      Donate money
-                    </Link>
-                  ) : null}
-                  {supportsVolunteer ? (
-                    <Link
-                      href={`/supporter/register?campaignId=${campaign.id}`}
-                      className="btn-base btn-secondary flex-1 text-center sm:flex-none"
-                    >
-                      Join volunteer
-                    </Link>
-                  ) : null}
-                </div>
-              </div>
-            </Container>
-          </div>
+          <CampaignDetailActionBar
+            campaignId={campaign.id}
+            campaignSlug={campaign.slug}
+            campaignTitle={campaign.title}
+            supportsMoney={supportsMoney}
+            supportsVolunteer={supportsVolunteer}
+          />
         ) : null}
       </div>
     );

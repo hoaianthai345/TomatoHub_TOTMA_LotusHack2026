@@ -21,6 +21,7 @@ from app.schemas.dashboard import (
     OrganizationActivityItemRead,
     OrganizationCampaignSnapshotRead,
     OrganizationCampaignPipelineItemRead,
+    OrganizationCampaignSnapshotRead,
     OrganizationDashboardRead,
     SupporterContributionItemRead,
     SupporterDashboardRead,
