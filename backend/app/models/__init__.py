@@ -1,8 +1,16 @@
 from app.models.beneficiary import Beneficiary, BeneficiaryStatus
 from app.models.campaign import Campaign, CampaignStatus, SupportType
+from app.models.campaign_checkpoint import CampaignCheckpoint, CheckpointType
+from app.models.checkpoint_scan_log import (
+    CheckpointScanLog,
+    CheckpointScanResult,
+    CheckpointScanType,
+)
+from app.models.goods_checkin import GoodsCheckin
 from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
 from app.models.user import User
+from app.models.volunteer_attendance import VolunteerAttendance
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 
 __all__ = [
@@ -11,9 +19,16 @@ __all__ = [
     "Campaign",
     "CampaignStatus",
     "SupportType",
+    "CampaignCheckpoint",
+    "CheckpointType",
+    "CheckpointScanLog",
+    "CheckpointScanType",
+    "CheckpointScanResult",
+    "GoodsCheckin",
     "Beneficiary",
     "BeneficiaryStatus",
     "MonetaryDonation",
+    "VolunteerAttendance",
     "VolunteerRegistration",
     "VolunteerStatus",
 ]

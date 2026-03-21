@@ -3,6 +3,7 @@
 __all__ = [
     "auth",
     "beneficiaries",
+    "campaign_checkpoints",
     "campaigns",
     "dashboards",
     "donations",

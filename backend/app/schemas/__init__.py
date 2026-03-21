@@ -7,6 +7,18 @@ from app.schemas.auth import (
 )
 from app.schemas.beneficiary import BeneficiaryCreate, BeneficiaryRead, BeneficiaryUpdate
 from app.schemas.campaign import CampaignCreate, CampaignPublishResponse, CampaignRead, CampaignUpdate
+from app.schemas.campaign_checkpoint import (
+    CampaignCheckpointCreate,
+    CampaignCheckpointGenerateQrRequest,
+    CampaignCheckpointGenerateQrResponse,
+    CampaignCheckpointRead,
+    CampaignCheckpointScanRequest,
+    CampaignCheckpointScanResponse,
+    CampaignCheckpointUpdate,
+    CheckpointScanLogRead,
+    GoodsCheckinRead,
+    VolunteerAttendanceRead,
+)
 from app.schemas.common import HealthResponse
 from app.schemas.dashboard import OrganizationDashboardRead, SupporterDashboardRead
 from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
@@ -37,6 +49,16 @@ __all__ = [
     "CampaignUpdate",
     "CampaignRead",
     "CampaignPublishResponse",
+    "CampaignCheckpointCreate",
+    "CampaignCheckpointUpdate",
+    "CampaignCheckpointRead",
+    "CampaignCheckpointGenerateQrRequest",
+    "CampaignCheckpointGenerateQrResponse",
+    "CampaignCheckpointScanRequest",
+    "CampaignCheckpointScanResponse",
+    "VolunteerAttendanceRead",
+    "GoodsCheckinRead",
+    "CheckpointScanLogRead",
     "BeneficiaryCreate",
     "BeneficiaryRead",
     "BeneficiaryUpdate",
