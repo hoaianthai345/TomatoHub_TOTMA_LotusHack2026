@@ -42,6 +42,11 @@ export function resolveApiAssetUrl(value: string | null | undefined): string | u
     return trimmed;
   }
 
+  // Frontend public assets should stay on the Next.js origin instead of API origin.
+  if (trimmed.startsWith("/images/")) {
+    return trimmed;
+  }
+
   if (!API_ORIGIN) {
     return trimmed;
   }

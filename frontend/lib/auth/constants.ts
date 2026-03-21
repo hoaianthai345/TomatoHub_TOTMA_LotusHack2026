@@ -28,6 +28,8 @@ export const PUBLIC_ROUTES = [
   "/",
   "/campaigns",
   "/campaigns/[id]",
+  "/organizations",
+  "/organizations/[id]",
   "/donate",
   "/transparency",
   "/login",
@@ -56,6 +58,7 @@ export const SUPPORTER_ROUTES = [
  */
 export const ORG_ROUTES = [
   "/organization",
+  "/organization/checkpoints",
   "/organization/campaigns",
   "/organization/campaigns/create",
   "/organization/beneficiaries",

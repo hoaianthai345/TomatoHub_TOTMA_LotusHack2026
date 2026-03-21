@@ -24,6 +24,7 @@ export default function OrganizationLayout({
   const sidebarLinks = [
     { label: "Dashboard", href: "/organization" },
     { label: "Campaigns", href: "/organization/campaigns" },
+    { label: "Checkpoints", href: "/organization/checkpoints" },
     { label: "Beneficiaries", href: "/organization/beneficiaries" },
     { label: "Supporters", href: "/organization/supporters" },
     { label: "Donations", href: "/organization/donations" },

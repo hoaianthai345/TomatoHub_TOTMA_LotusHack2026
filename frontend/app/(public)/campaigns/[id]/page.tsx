@@ -1,15 +1,53 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import Container from "@/components/common/container";
 import CampaignLocationMap from "@/components/campaign/campaign-location-map";
 import CampaignDetailActionBar from "@/components/campaign/campaign-detail-action-bar";
+import CampaignVolunteerCheckinPanel from "@/components/campaign/campaign-volunteer-checkin-panel";
+import {
+  getCampaignPhase,
+  getCampaignPhaseBadgeClass,
+  getCampaignPhaseLabel,
+} from "@/lib/campaign-phase";
 import { getCampaignActivitySummary, getCampaignBySlug } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
+import { getOrganizationById } from "@/lib/api/organizations";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 
 interface CampaignDetailPageProps {
   params: Promise<{
     id: string;
   }>;
+}
+
+function buildPhaseHint(campaign: {
+  phase?: "upcoming" | "live" | "ended";
+  startsAt?: string;
+  endsAt?: string;
+  closedAt?: string;
+  status: "draft" | "published" | "closed";
+  isActive?: boolean;
+}): string {
+  const phase = campaign.phase ?? getCampaignPhase(campaign);
+
+  if (phase === "upcoming") {
+    return campaign.startsAt
+      ? `Starts ${formatDateTime(campaign.startsAt)}`
+      : "Campaign is upcoming";
+  }
+
+  if (phase === "live") {
+    return campaign.endsAt ? `Ends ${formatDateTime(campaign.endsAt)}` : "Campaign is live now";
+  }
+
+  if (campaign.closedAt) {
+    return `Closed ${formatDateTime(campaign.closedAt)}`;
+  }
+  if (campaign.endsAt) {
+    return `Ended ${formatDateTime(campaign.endsAt)}`;
+  }
+
+  return "Campaign ended";
 }
 
 export default async function CampaignDetailPage({
@@ -19,10 +57,15 @@ export default async function CampaignDetailPage({
 
   try {
     const campaign = await getCampaignBySlug(id);
-    const summary = await getCampaignActivitySummary(campaign.id);
+    const [summary, organization] = await Promise.all([
+      getCampaignActivitySummary(campaign.id),
+      getOrganizationById(campaign.organizationId).catch(() => null),
+    ]);
     const supportsMoney = campaign.supportTypes?.includes("money") ?? false;
     const supportsVolunteer = campaign.supportTypes?.includes("volunteer") ?? false;
     const hasActionBar = supportsMoney || supportsVolunteer;
+    const phase = campaign.phase ?? getCampaignPhase(campaign);
+    const phaseHint = buildPhaseHint(campaign);
     const goalAmount = campaign.goalAmount ?? campaign.targetAmount ?? 0;
     const raisedAmount = campaign.raisedAmount ?? 0;
     const progressPercent =
@@ -38,6 +81,9 @@ export default async function CampaignDetailPage({
             />
             <div className="p-6 md:p-8">
               <div className="mb-3 flex flex-wrap gap-2">
+                <span className={getCampaignPhaseBadgeClass(phase)}>
+                  {getCampaignPhaseLabel(phase)}
+                </span>
                 {campaign.tags.map((tag) => (
                   <span
                     key={tag}
@@ -53,6 +99,9 @@ export default async function CampaignDetailPage({
               </h1>
               <p className="mt-3 max-w-4xl text-sm leading-7 text-text-muted md:text-base">
                 {campaign.description || campaign.shortDescription}
+              </p>
+              <p className="mt-2 text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+                {phaseHint}
               </p>
 
               <div className="mt-6 rounded-2xl border border-border bg-surface-muted p-4">
@@ -81,6 +130,14 @@ export default async function CampaignDetailPage({
                 according to its active support modes. Use the sticky action bar to go to
                 the exact flow you need.
               </p>
+              {organization ? (
+                <Link
+                  href={`/organizations/${organization.id}`}
+                  className="mt-4 inline-flex text-sm font-semibold text-primary"
+                >
+                  View organization profile
+                </Link>
+              ) : null}
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <div className="rounded-xl border border-border bg-surface-muted p-4">
@@ -134,6 +191,27 @@ export default async function CampaignDetailPage({
                   </span>
                 </p>
                 <p className="flex items-start justify-between gap-4">
+                  <span className="text-text-muted">Campaign phase</span>
+                  <span className="text-right font-medium text-text">
+                    {getCampaignPhaseLabel(phase)}
+                  </span>
+                </p>
+                <p className="flex items-start justify-between gap-4">
+                  <span className="text-text-muted">Organization</span>
+                  <span className="text-right font-medium text-text">
+                    {organization ? (
+                      <Link
+                        href={`/organizations/${organization.id}`}
+                        className="text-primary hover:underline"
+                      >
+                        {organization.name}
+                      </Link>
+                    ) : (
+                      campaign.organizationId
+                    )}
+                  </span>
+                </p>
+                <p className="flex items-start justify-between gap-4">
                   <span className="text-text-muted">Published at</span>
                   <span className="text-right font-medium text-text">
                     {formatDateTime(campaign.publishedAt || campaign.createdAt)}
@@ -153,6 +231,13 @@ export default async function CampaignDetailPage({
               ) : null}
             </aside>
           </section>
+
+          {supportsVolunteer ? (
+            <CampaignVolunteerCheckinPanel
+              campaignId={campaign.id}
+              campaignOrganizationId={campaign.organizationId}
+            />
+          ) : null}
 
           <CampaignLocationMap campaigns={[campaign]} className="mt-8" />
         </Container>

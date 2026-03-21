@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -15,11 +16,16 @@ from app.api.permissions import ensure_authenticated_user_matches
 from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.credit_event import CreditTargetType
 from app.models.user import User
-from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
+from app.models.volunteer_registration import (
+    VolunteerAttendanceStatus,
+    VolunteerRegistration,
+    VolunteerStatus,
+)
 from app.schemas.volunteer_registration import (
     VolunteerQuickJoinCreate,
     VolunteerRegistrationCreate,
     VolunteerRegistrationRead,
+    VolunteerRegistrationUpdateAttendance,
     VolunteerRegistrationUpdateStatus,
 )
 from app.services.credit_service import (
@@ -176,6 +182,9 @@ def create_volunteer_registration(
             existing.email = email
             existing.phone_number = payload.phone_number
             existing.message = payload.message
+            existing.role = payload.role
+            existing.shift_start_at = payload.shift_start_at
+            existing.shift_end_at = payload.shift_end_at
             if existing.status in {VolunteerStatus.rejected, VolunteerStatus.cancelled}:
                 existing.status = VolunteerStatus.pending
             db.commit()
@@ -196,6 +205,9 @@ def create_volunteer_registration(
             existing_unlinked.email = email
             existing_unlinked.phone_number = payload.phone_number
             existing_unlinked.message = payload.message
+            existing_unlinked.role = payload.role
+            existing_unlinked.shift_start_at = payload.shift_start_at
+            existing_unlinked.shift_end_at = payload.shift_end_at
             if existing_unlinked.status in {VolunteerStatus.rejected, VolunteerStatus.cancelled}:
                 existing_unlinked.status = VolunteerStatus.pending
             db.commit()
@@ -209,6 +221,9 @@ def create_volunteer_registration(
         email=email,
         phone_number=payload.phone_number,
         message=payload.message,
+        role=payload.role,
+        shift_start_at=payload.shift_start_at,
+        shift_end_at=payload.shift_end_at,
         status=VolunteerStatus.pending,
     )
     db.add(registration)
@@ -274,6 +289,9 @@ def quick_join_volunteer_registration(
         email=current_user.email,
         phone_number=payload.phone_number,
         message=payload.message,
+        role=payload.role,
+        shift_start_at=payload.shift_start_at,
+        shift_end_at=payload.shift_end_at,
     )
     return create_volunteer_registration(
         payload=create_payload,
@@ -337,6 +355,49 @@ def update_volunteer_registration_status(
                 "registration_id": str(registration.id),
             },
         )
+
+    db.commit()
+    db.refresh(registration)
+    return registration
+
+
+@router.patch("/{registration_id}/attendance", response_model=VolunteerRegistrationRead)
+def update_volunteer_registration_attendance(
+    registration_id: UUID,
+    payload: VolunteerRegistrationUpdateAttendance,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> VolunteerRegistration:
+    registration = db.get(VolunteerRegistration, registration_id)
+    if registration is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Volunteer registration not found",
+        )
+
+    campaign = db.get(Campaign, registration.campaign_id)
+    if campaign is None or campaign.organization_id != current_user.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot update attendance for another organization",
+        )
+
+    if registration.status in {VolunteerStatus.rejected, VolunteerStatus.cancelled}:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Attendance status cannot be marked for rejected or cancelled registration",
+        )
+
+    note = payload.attendance_note.strip() if payload.attendance_note else None
+    registration.attendance_status = payload.attendance_status
+    if (
+        registration.status == VolunteerStatus.pending
+        and payload.attendance_status != VolunteerAttendanceStatus.not_marked
+    ):
+        registration.status = VolunteerStatus.approved
+    registration.attendance_note = note or None
+    registration.attendance_marked_at = datetime.now(timezone.utc)
+    registration.attendance_marked_by_user_id = current_user.id
 
     db.commit()
     db.refresh(registration)

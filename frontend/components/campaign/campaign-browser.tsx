@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import CampaignLocationMap from "@/components/campaign/campaign-location-map";
 import { useAuth } from "@/lib/auth";
+import {
+  getCampaignPhase,
+  getCampaignPhaseBadgeClass,
+  getCampaignPhaseLabel,
+} from "@/lib/campaign-phase";
 import type { Campaign, CampaignSupportType } from "@/types/campaign";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 
@@ -130,6 +135,29 @@ function buildSupportSummary(campaign: Campaign): string {
   }
 
   return campaign.supportTypes.map((type) => SUPPORT_BADGE_LABEL[type]).join(" / ");
+}
+
+function buildPhaseHint(campaign: Campaign): string {
+  const phase = campaign.phase ?? getCampaignPhase(campaign);
+
+  if (phase === "upcoming") {
+    return campaign.startsAt
+      ? `Starts ${formatDateTime(campaign.startsAt)}`
+      : "Upcoming campaign";
+  }
+
+  if (phase === "live") {
+    return campaign.endsAt ? `Ends ${formatDateTime(campaign.endsAt)}` : "Live now";
+  }
+
+  if (campaign.closedAt) {
+    return `Closed ${formatDateTime(campaign.closedAt)}`;
+  }
+  if (campaign.endsAt) {
+    return `Ended ${formatDateTime(campaign.endsAt)}`;
+  }
+
+  return "Campaign ended";
 }
 
 export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
@@ -338,6 +366,8 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
           {filteredCampaigns.map((campaign) => {
             const goalAmount = campaign.goalAmount ?? campaign.targetAmount ?? 0;
             const raisedAmount = campaign.raisedAmount ?? 0;
+            const phase = campaign.phase ?? getCampaignPhase(campaign);
+            const phaseHint = buildPhaseHint(campaign);
             const progress =
               goalAmount > 0 ? Math.min(100, (raisedAmount / goalAmount) * 100) : 0;
 
@@ -354,6 +384,9 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
 
                 <div className="flex flex-1 flex-col p-5">
                   <div className="mb-3 flex flex-wrap gap-2">
+                    <span className={getCampaignPhaseBadgeClass(phase)}>
+                      {getCampaignPhaseLabel(phase)}
+                    </span>
                     {(campaign.tags.length ? campaign.tags : ["campaign"]).slice(0, 3).map((tag) => (
                       <span
                         key={`${campaign.id}-${tag}`}
@@ -370,6 +403,9 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
 
                   <p className="mt-2 line-clamp-3 min-h-[4.5rem] text-sm text-text-muted">
                     {campaign.shortDescription || campaign.description}
+                  </p>
+                  <p className="mt-2 text-xs font-medium uppercase tracking-[0.14em] text-text-muted">
+                    {phaseHint}
                   </p>
 
                   <div className="mt-4 flex min-h-[2rem] flex-wrap gap-2">

@@ -48,5 +48,9 @@ class User(Base):
         back_populates="uploaded_by_user"
     )
     volunteer_registrations: Mapped[list["VolunteerRegistration"]] = relationship(
-        back_populates="user"
+        back_populates="user",
+        foreign_keys="VolunteerRegistration.user_id",
+    )
+    attendance_marked_registrations: Mapped[list["VolunteerRegistration"]] = relationship(
+        foreign_keys="VolunteerRegistration.attendance_marked_by_user_id"
     )

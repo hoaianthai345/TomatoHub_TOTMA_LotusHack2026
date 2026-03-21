@@ -9,7 +9,6 @@ import VietnamLocationFields from "@/components/location/VietnamLocationFields";
 import { useAuth } from "@/lib/auth";
 import {
   createCampaign,
-  DEFAULT_CAMPAIGN_COVER_IMAGE,
   uploadCampaignImage,
 } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
@@ -162,7 +161,6 @@ export default function CreateCampaignPage() {
           province: locationValue.provinceName,
           district: locationValue.districtName,
           addressLine: locationValue.addressLine?.trim() || undefined,
-          coverImageUrl: DEFAULT_CAMPAIGN_COVER_IMAGE,
           tags: formData.tags
             .split(",")
             .map((value) => value.trim())
