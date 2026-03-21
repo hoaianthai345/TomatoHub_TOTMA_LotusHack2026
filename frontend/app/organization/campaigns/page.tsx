@@ -603,17 +603,17 @@ export default function CampaignsPage() {
                   )}
                 </div>
 
-                <div className="mt-4 flex gap-3">
+                <div className="mt-4 flex flex-wrap gap-3">
                   <Link
                     href={`/organization/campaigns/${campaign.id}/edit`}
-                    className="btn-base btn-secondary text-sm"
+                    className="btn-base btn-secondary text-sm whitespace-nowrap"
                   >
                     Edit details
                   </Link>
                   <button
                     type="button"
                     onClick={() => startEdit(campaign)}
-                    className="btn-base btn-secondary text-sm"
+                    className="btn-base btn-secondary text-sm whitespace-nowrap"
                     disabled={loadingCampaignId === campaign.id}
                   >
                     Quick edit
@@ -622,7 +622,7 @@ export default function CampaignsPage() {
                     <button
                       type="button"
                       onClick={() => handlePublish(campaign)}
-                      className="btn-base btn-primary text-sm"
+                      className="btn-base btn-primary text-sm whitespace-nowrap"
                       disabled={loadingCampaignId === campaign.id}
                     >
                       {loadingCampaignId === campaign.id ? "Publishing..." : "Publish"}
@@ -632,7 +632,7 @@ export default function CampaignsPage() {
                     <button
                       type="button"
                       onClick={() => handleClose(campaign)}
-                      className="btn-base text-sm text-white bg-danger rounded-lg"
+                      className="btn-base text-sm text-white bg-danger rounded-lg whitespace-nowrap"
                       disabled={loadingCampaignId === campaign.id}
                     >
                       {loadingCampaignId === campaign.id ? "Closing..." : "Close"}
@@ -642,7 +642,7 @@ export default function CampaignsPage() {
                     <button
                       type="button"
                       onClick={() => handleReopen(campaign)}
-                      className="btn-base btn-secondary text-sm"
+                      className="btn-base btn-secondary text-sm whitespace-nowrap"
                       disabled={loadingCampaignId === campaign.id}
                     >
                       {loadingCampaignId === campaign.id ? "Reopening..." : "Reopen"}
@@ -651,7 +651,7 @@ export default function CampaignsPage() {
                   {campaign.status === "published" ? (
                     <Link
                       href={`/campaigns/${campaign.slug}`}
-                      className="btn-base btn-secondary text-sm"
+                      className="btn-base btn-secondary text-sm whitespace-nowrap"
                     >
                       View public page
                     </Link>
@@ -659,7 +659,7 @@ export default function CampaignsPage() {
                   <button
                     type="button"
                     onClick={() => handleDelete(campaign)}
-                    className="btn-base text-sm text-white bg-danger rounded-lg"
+                    className="btn-base text-sm text-white bg-danger rounded-lg whitespace-nowrap"
                     disabled={loadingCampaignId === campaign.id}
                   >
                     {loadingCampaignId === campaign.id ? "Working..." : "Delete"}
