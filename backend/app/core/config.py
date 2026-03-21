@@ -41,12 +41,17 @@ class Settings(BaseSettings):
     CAMPAIGN_GEOCODING_TIMEOUT_SECONDS: int = 8
     CAMPAIGN_GEOCODING_USER_AGENT: str = "LotusHackBackend/1.0 (+https://lotushack.local)"
     RECOMMENDATION_USE_LLM: bool = True
+    RECOMMENDATION_DRAFT_PREFERRED_PROVIDER: str = "openai"
     GROQ_API_KEY: str | None = None
     GROQ_API_BASE_URL: str = "https://api.groq.com/openai/v1"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_MODEL_HEAVY: str = ""
     GROQ_MODEL_LIGHT: str = "llama-3.1-8b-instant"
     GROQ_TIMEOUT_SECONDS: int = 20
+    OPENAI_API_KEY: str | None = None
+    OPENAI_API_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_TIMEOUT_SECONDS: int = 20
     SUPPORTER_RECOMMENDATION_MAX_LIMIT: int = 20
     RECOMMENDATION_MODEL_ROUTING_ENABLED: bool = True
     RECOMMENDATION_DRAFT_COMPLEXITY_THRESHOLD: int = 900

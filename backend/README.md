@@ -411,12 +411,17 @@ curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/images/<image
   -H "Authorization: Bearer <organization_or_superuser_token>"
 ```
 
-## 5G. AI recommendations (Groq LLM + heuristic fallback)
+## 5G. AI recommendations (OpenAI/Groq + heuristic fallback)
 
-Enable Groq in `.env`:
+Enable LLM providers in `.env`:
 
 ```env
 RECOMMENDATION_USE_LLM=true
+RECOMMENDATION_DRAFT_PREFERRED_PROVIDER=openai
+OPENAI_API_KEY=<your-openai-api-key>
+OPENAI_API_BASE_URL=https://api.openai.com/v1
+OPENAI_MODEL=gpt-4o-mini
+OPENAI_TIMEOUT_SECONDS=20
 GROQ_API_KEY=<your-groq-api-key>
 GROQ_MODEL=llama-3.3-70b-versatile
 GROQ_MODEL_HEAVY=
@@ -427,8 +432,10 @@ RECOMMENDATION_DRAFT_COMPLEXITY_THRESHOLD=900
 RECOMMENDATION_SUPPORTER_LIGHT_MAX_ITEMS=8
 ```
 
-If `GROQ_API_KEY` is empty or Groq call fails, backend automatically falls back to heuristic logic.
-If model routing is enabled, simple tasks use light model and complex tasks use heavy model.
+For campaign-draft generation, backend uses `RECOMMENDATION_DRAFT_PREFERRED_PROVIDER` first.
+If that provider fails, backend falls back to the other provider, then heuristic logic.
+Generated text is sanitized to stay concise and remove special/emoji/markdown characters.
+For Groq model routing, simple tasks use light model and complex tasks use heavy model.
 
 Generate campaign draft recommendation:
 
