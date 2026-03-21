@@ -193,12 +193,58 @@ curl -X GET "http://127.0.0.1:8000/api/v1/auth/me" \
 - `POST /api/v1/volunteer-registrations/`
 - `PATCH /api/v1/volunteer-registrations/{registration_id}/status` (organization token required)
 - `GET /api/v1/transparency/logs?campaign_id=<uuid>` or `?organization_id=<uuid>`
+- `POST /api/v1/campaign-checkpoints/` (organization token required)
+- `PATCH /api/v1/campaign-checkpoints/{checkpoint_id}` (organization token required)
+- `POST /api/v1/campaign-checkpoints/{checkpoint_id}/qr` (organization token required)
+- `POST /api/v1/campaign-checkpoints/scan` (supporter token required)
+- `GET /api/v1/campaign-checkpoints/my-attendance` (supporter token required)
+- `GET /api/v1/campaign-checkpoints/{checkpoint_id}/logs` (organization token required)
 
 Notes:
 
 - `organization_id` filters in supporters / beneficiaries / donations / volunteer registrations require authenticated access to that organization (or superuser).
 - `donor_user_id` / `user_id` filters require authenticated access to the same user (or superuser).
 - `POST /donations` and `POST /volunteer-registrations` automatically bind to the authenticated user when a bearer token is provided.
+- Checkpoint QR in current phase supports volunteer check-in/check-out flow with approved registrations.
+
+## 5E. Volunteer QR check-in / check-out flow
+
+1. Organization creates checkpoint:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/campaign-checkpoints/" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <organization_token>" \
+  -d '{
+    "campaign_id": "<campaign_id>",
+    "name": "Main Warehouse Gate",
+    "checkpoint_type": "volunteer",
+    "address_line": "123 Relief Street"
+  }'
+```
+
+2. Organization generates QR token for check-in:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/campaign-checkpoints/<checkpoint_id>/qr" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <organization_token>" \
+  -d '{
+    "scan_type": "check_in",
+    "expires_in_minutes": 20
+  }'
+```
+
+3. Supporter scans token (check-in/check-out):
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/campaign-checkpoints/scan" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <supporter_token>" \
+  -d '{
+    "token": "<qr_token>"
+  }'
+```
 
 ## 6. Deploy on Linux VM (basic)
 

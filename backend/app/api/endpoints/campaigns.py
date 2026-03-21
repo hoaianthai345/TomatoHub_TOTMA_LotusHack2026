@@ -16,6 +16,7 @@ from app.schemas.campaign import (
 )
 from app.services.campaign_service import (
     create_manual_campaign,
+    delete_campaign,
     get_campaign_or_404,
     publish_campaign,
     update_manual_campaign,
@@ -125,3 +126,19 @@ def publish_campaign_endpoint(
         message="Campaign published successfully",
         campaign=CampaignRead.model_validate(campaign),
     )
+
+
+@router.delete("/{campaign_id}")
+def delete_campaign_endpoint(
+    campaign_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> dict[str, str]:
+    campaign = get_campaign_or_404(db, campaign_id)
+    ensure_matching_organization(
+        current_user,
+        campaign.organization_id,
+        detail="Cannot delete campaign from another organization",
+    )
+    delete_campaign(db, campaign_id)
+    return {"message": "Campaign deleted successfully"}
