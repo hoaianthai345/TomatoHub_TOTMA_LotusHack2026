@@ -9,7 +9,7 @@ import type {
 } from "@/types/dashboard";
 import type { Campaign } from "@/types/campaign";
 import { formatDateTime } from "@/utils/format";
-import { requestJson } from "./http";
+import { requestJson, resolveApiAssetUrl } from "./http";
 import { listPublishedCampaigns } from "./campaigns";
 import { listVolunteerRegistrations } from "./volunteer-registrations";
 
@@ -104,7 +104,7 @@ function mapSupporterParticipationCard(
     campaignId: item.campaign_id,
     campaignTitle: item.campaign_title,
     campaignLocation: item.campaign_location,
-    coverImage: item.cover_image_url ?? DEFAULT_COVER_IMAGE,
+    coverImage: resolveApiAssetUrl(item.cover_image_url) ?? DEFAULT_COVER_IMAGE,
     roleLabel: item.role_label,
     statusLabel: item.status_label,
     nextStep: item.next_step,

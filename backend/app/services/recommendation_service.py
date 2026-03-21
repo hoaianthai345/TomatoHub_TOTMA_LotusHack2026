@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import unicodedata
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
@@ -20,6 +22,11 @@ from app.schemas.recommendation import (
     SupporterCampaignRecommendationResponse,
 )
 from app.services.groq_client import GroqClient
+
+_MAX_SHORT_DESCRIPTION_CHARS = 500
+_MAX_DESCRIPTION_CHARS = 4000
+_MAX_LIST_ITEM_CHARS = 220
+_MAX_TAG_CHARS = 60
 
 
 def _get_recommendation_model_pool() -> tuple[str, str]:
@@ -78,6 +85,70 @@ def _normalize_text(value: str | None) -> str:
     if value is None:
         return ""
     return " ".join(value.strip().lower().split())
+
+
+def _sanitize_generated_text(
+    value: str | None,
+    *,
+    allow_newlines: bool = False,
+    max_chars: int | None = None,
+) -> str:
+    if value is None:
+        return ""
+
+    normalized = unicodedata.normalize("NFKC", str(value))
+    sanitized_chars: list[str] = []
+    for char in normalized:
+        if char == "\n" and allow_newlines:
+            sanitized_chars.append(char)
+            continue
+        if char in {"\r", "\t"}:
+            sanitized_chars.append(" ")
+            continue
+
+        category = unicodedata.category(char)
+        if category.startswith("C") or category.startswith("S") or category.startswith("M"):
+            # Block control/format/surrogate/private-use, symbol/emoji, and combining marks.
+            continue
+        sanitized_chars.append(char)
+
+    cleaned = "".join(sanitized_chars)
+    if allow_newlines:
+        lines = [" ".join(line.split()) for line in cleaned.split("\n")]
+        cleaned = "\n".join([line for line in lines if line])
+    else:
+        cleaned = " ".join(cleaned.split())
+
+    if max_chars is not None and max_chars > 0:
+        cleaned = cleaned[:max_chars]
+    return cleaned.strip()
+
+
+def _sanitize_generated_list(
+    values: list[str],
+    *,
+    max_items: int,
+    max_item_chars: int = _MAX_LIST_ITEM_CHARS,
+) -> list[str]:
+    sanitized_values = [
+        _sanitize_generated_text(value, max_chars=max_item_chars)
+        for value in values
+    ]
+    return _dedupe_keep_order(sanitized_values, max_items=max_items)
+
+
+def _sanitize_generated_tags(values: list[str], *, max_items: int) -> list[str]:
+    sanitized: list[str] = []
+    for value in values:
+        clean = _sanitize_generated_text(value, max_chars=_MAX_TAG_CHARS).lower()
+        if not clean:
+            continue
+        normalized = re.sub(r"[^\w\s-]+", "", clean, flags=re.UNICODE)
+        normalized = re.sub(r"[\s_]+", "-", normalized, flags=re.UNICODE)
+        normalized = normalized.strip("-")
+        if normalized:
+            sanitized.append(normalized)
+    return _dedupe_keep_order(sanitized, max_items=max_items)
 
 
 def _dedupe_keep_order(values: list[str], *, max_items: int) -> list[str]:
@@ -143,9 +214,9 @@ def _infer_support_types(
         ]
     )
     keywords = {
-        SupportType.money: ("fund", "tiền", "kinh phí", "chi phí", "donate", "cash"),
-        SupportType.goods: ("vật phẩm", "supplies", "kit", "thực phẩm", "hàng hóa"),
-        SupportType.volunteer: ("tình nguyện", "volunteer", "điểm", "check-in", "hỗ trợ hiện trường"),
+        SupportType.money: ("fund", "fundraising", "donate", "cash", "tiền", "kinh phí", "chi phí"),
+        SupportType.goods: ("supplies", "goods", "kit", "food", "in-kind", "vật phẩm", "thực phẩm", "hàng hóa"),
+        SupportType.volunteer: ("volunteer", "on-site", "check-in", "coordination", "tình nguyện", "hỗ trợ hiện trường"),
     }
     for support_type, tokens in keywords.items():
         if support_type in seen:
@@ -171,27 +242,27 @@ def _heuristic_campaign_draft_recommendation(
     support_type_labels = ", ".join(support_type.value for support_type in support_types)
 
     short_description = (
-        f"{payload.title.strip()}: huy động nguồn lực ({support_type_labels}) "
-        "để giải quyết nhu cầu ưu tiên của cộng đồng mục tiêu."
+        f"{payload.title.strip()}: mobilize {support_type_labels} support "
+        "to address urgent community needs with a transparent execution plan."
     )
 
-    context_line = payload.beneficiary_context or "Nhóm thụ hưởng cần hỗ trợ khẩn cấp và minh bạch."
-    location_line = payload.location_hint or "Khu vực triển khai sẽ được xác nhận khi campaign publish."
+    context_line = payload.beneficiary_context or "Target beneficiaries need immediate and transparent support."
+    location_line = payload.location_hint or "Target area will be confirmed before campaign publish."
     constraint_line = (
         "; ".join(payload.constraints)
         if payload.constraints
-        else "Không có ràng buộc đặc biệt."
+        else "No special constraints."
     )
 
     description = (
-        f"Mục tiêu campaign:\\n{payload.campaign_goal.strip()}\\n\\n"
-        f"Nhóm thụ hưởng:\\n{context_line.strip()}\\n\\n"
-        f"Khu vực triển khai:\\n{location_line.strip()}\\n\\n"
-        "Kế hoạch thực thi đề xuất:\\n"
-        "- Thiết lập mốc hoạt động theo tuần và công khai tiến độ định kỳ.\\n"
-        "- Phân vai rõ ràng cho tổ chức, điều phối viên, và supporter.\\n"
-        "- Chuẩn hóa checklist bàn giao để tránh thất thoát/thiếu chứng từ.\\n\\n"
-        f"Ràng buộc cần tuân thủ:\\n{constraint_line.strip()}"
+        f"Campaign objective:\\n{payload.campaign_goal.strip()}\\n\\n"
+        f"Beneficiary context:\\n{context_line.strip()}\\n\\n"
+        f"Delivery location:\\n{location_line.strip()}\\n\\n"
+        "Suggested execution plan:\\n"
+        "- Define weekly milestones and publish measurable progress updates.\\n"
+        "- Assign clear responsibilities for organization staff, coordinators, and supporters.\\n"
+        "- Standardize handover checklists to reduce losses and missing records.\\n\\n"
+        f"Constraints to respect:\\n{constraint_line.strip()}"
     )
 
     base_tags = [
@@ -207,35 +278,42 @@ def _heuristic_campaign_draft_recommendation(
             base_tags.append(context_words[0].strip(".,").lower())
 
     volunteer_tasks = [
-        "Tiếp nhận supporter tại điểm hoạt động và xác nhận check-in/check-out.",
-        "Tổng hợp vật phẩm/tài trợ theo biểu mẫu minh bạch mỗi ca.",
-        "Cập nhật bằng chứng hoạt động (ảnh, biên bản bàn giao, log tiến độ).",
+        "Welcome supporters at field checkpoints and verify check-in/check-out.",
+        "Record donations and goods handover with a transparent per-shift template.",
+        "Upload execution evidence (photos, handover records, and progress logs).",
     ]
     donation_suggestions = [
-        "Thiết kế gói đóng góp theo mốc ủng hộ rõ ràng (ví dụ: 100k/250k/500k).",
-        "Ưu tiên khoản tài trợ định kỳ để duy trì vận hành campaign.",
-        "Khuyến khích in-kind donation phù hợp nhu cầu thực tế tại địa phương.",
+        "Define clear giving tiers (for example: basic, standard, and impactful levels).",
+        "Encourage recurring donations to maintain campaign operations.",
+        "Promote in-kind donations that match verified local needs.",
     ]
     risk_notes = [
-        "Rủi ro thiếu đồng bộ dữ liệu giữa đội hiện trường và dashboard.",
-        "Rủi ro quá tải tình nguyện viên vào cùng một khung giờ.",
-        "Rủi ro chậm sao kê nếu chứng từ bàn giao không chuẩn hóa ngay từ đầu.",
+        "Data sync gaps may appear between field teams and dashboard records.",
+        "Volunteer allocation can become imbalanced across time slots.",
+        "Disbursement reporting may be delayed without standardized handover documents.",
     ]
     transparency_notes = [
-        "Công khai cập nhật theo mốc thời gian (tuần/tháng) với số liệu định lượng.",
-        "Lưu vết mọi khoản quyên góp và bàn giao bằng log có timestamp.",
-        "Đính kèm bằng chứng hiện trường cho các mốc giải ngân/hoàn thành.",
+        "Publish weekly or monthly updates with quantitative metrics.",
+        "Track every donation and handover in timestamped logs.",
+        "Attach field evidence for each disbursement and completion milestone.",
     ]
 
     return CampaignDraftRecommendationResponse(
-        short_description=short_description[:500],
-        description=description,
-        suggested_tags=_dedupe_keep_order(base_tags, max_items=8),
+        short_description=_sanitize_generated_text(
+            short_description,
+            max_chars=_MAX_SHORT_DESCRIPTION_CHARS,
+        ),
+        description=_sanitize_generated_text(
+            description,
+            allow_newlines=True,
+            max_chars=_MAX_DESCRIPTION_CHARS,
+        ),
+        suggested_tags=_sanitize_generated_tags(base_tags, max_items=8),
         suggested_support_types=support_types,
-        volunteer_tasks=_dedupe_keep_order(volunteer_tasks, max_items=6),
-        donation_suggestions=_dedupe_keep_order(donation_suggestions, max_items=6),
-        risk_notes=_dedupe_keep_order(risk_notes, max_items=6),
-        transparency_notes=_dedupe_keep_order(transparency_notes, max_items=6),
+        volunteer_tasks=_sanitize_generated_list(volunteer_tasks, max_items=6),
+        donation_suggestions=_sanitize_generated_list(donation_suggestions, max_items=6),
+        risk_notes=_sanitize_generated_list(risk_notes, max_items=6),
+        transparency_notes=_sanitize_generated_list(transparency_notes, max_items=6),
         generated_by="heuristic",
         model=None,
     )
@@ -256,8 +334,15 @@ def _merge_campaign_draft_llm_output(
     if not suggested_support_types:
         suggested_support_types = heuristic.suggested_support_types
 
-    short_description = str(llm_data.get("short_description") or "").strip()
-    description = str(llm_data.get("description") or "").strip()
+    short_description = _sanitize_generated_text(
+        str(llm_data.get("short_description") or ""),
+        max_chars=_MAX_SHORT_DESCRIPTION_CHARS,
+    )
+    description = _sanitize_generated_text(
+        str(llm_data.get("description") or ""),
+        allow_newlines=True,
+        max_chars=_MAX_DESCRIPTION_CHARS,
+    )
     suggested_tags = (
         [str(item) for item in llm_data.get("suggested_tags", [])]
         if isinstance(llm_data.get("suggested_tags"), list)
@@ -287,24 +372,24 @@ def _merge_campaign_draft_llm_output(
     return CampaignDraftRecommendationResponse(
         short_description=short_description or heuristic.short_description,
         description=description or heuristic.description,
-        suggested_tags=_dedupe_keep_order(
+        suggested_tags=_sanitize_generated_tags(
             suggested_tags or heuristic.suggested_tags,
             max_items=8,
         ),
         suggested_support_types=suggested_support_types,
-        volunteer_tasks=_dedupe_keep_order(
+        volunteer_tasks=_sanitize_generated_list(
             volunteer_tasks or heuristic.volunteer_tasks,
             max_items=6,
         ),
-        donation_suggestions=_dedupe_keep_order(
+        donation_suggestions=_sanitize_generated_list(
             donation_suggestions or heuristic.donation_suggestions,
             max_items=6,
         ),
-        risk_notes=_dedupe_keep_order(
+        risk_notes=_sanitize_generated_list(
             risk_notes or heuristic.risk_notes,
             max_items=6,
         ),
-        transparency_notes=_dedupe_keep_order(
+        transparency_notes=_sanitize_generated_list(
             transparency_notes or heuristic.transparency_notes,
             max_items=6,
         ),
@@ -323,14 +408,15 @@ def recommend_campaign_draft(
     selected_model, model_tier = _select_model_for_campaign_draft(payload)
 
     system_prompt = (
-        "Bạn là AI copilot cho tổ chức phi lợi nhuận. "
-        "Trả về DUY NHẤT một JSON object hợp lệ với các key: "
+        "You are an AI copilot for nonprofit campaign planning. "
+        "Return ONLY one valid JSON object with keys: "
         "short_description, description, suggested_tags, suggested_support_types, "
         "volunteer_tasks, donation_suggestions, risk_notes, transparency_notes. "
-        "suggested_support_types chỉ được dùng: money, goods, volunteer."
+        "For suggested_support_types, use only: money, goods, volunteer. "
+        "Use plain text without emojis, markdown, or unusual symbols."
     )
     user_prompt = (
-        "Đề bài tạo campaign:\\n"
+        "Campaign draft brief:\\n"
         f"- title: {payload.title}\\n"
         f"- campaign_goal: {payload.campaign_goal}\\n"
         f"- beneficiary_context: {payload.beneficiary_context or 'N/A'}\\n"
@@ -338,7 +424,7 @@ def recommend_campaign_draft(
         f"- support_types_hint: {[item.value for item in payload.support_types_hint]}\\n"
         f"- constraints: {payload.constraints}\\n"
         f"- tone: {payload.tone}\\n\\n"
-        "Yêu cầu: nội dung thực tế, hành động rõ ràng, ưu tiên minh bạch và khả thi."
+        "Requirements: practical content, clear actions, transparency-first, and feasible execution."
     )
 
     try:
@@ -381,20 +467,20 @@ def _supporter_campaign_score(
     campaign_support_types = _to_support_types(campaign.support_types)
     if SupportType.money in campaign_support_types and "donor_money" in user_support_types:
         score += 3.0
-        reasons.append("Campaign này cần hỗ trợ tài chính đúng với ưu tiên của bạn.")
-        actions.append("Đóng góp tiền theo mức phù hợp để tăng tốc tiến độ gây quỹ.")
+        reasons.append("This campaign needs financial support aligned with your preferences.")
+        actions.append("Donate an amount that matches your budget to accelerate fundraising progress.")
     if SupportType.goods in campaign_support_types and (
         "donor_goods" in user_support_types or "shipper" in user_support_types
     ):
         score += 3.0
-        reasons.append("Campaign có nhu cầu vật phẩm/phân phối phù hợp kỹ năng của bạn.")
-        actions.append("Chuẩn bị vật phẩm đúng danh mục hoặc tham gia vận chuyển tại checkpoint.")
+        reasons.append("This campaign needs goods and distribution support that fits your skills.")
+        actions.append("Prepare required items or join delivery support at campaign checkpoints.")
     if SupportType.volunteer in campaign_support_types and (
         "volunteer" in user_support_types or "coordinator" in user_support_types
     ):
         score += 3.0
-        reasons.append("Campaign cần tình nguyện viên, phù hợp vai trò bạn đã chọn.")
-        actions.append("Đăng ký tình nguyện và theo dõi trạng thái duyệt trên dashboard.")
+        reasons.append("This campaign needs volunteers and matches your selected role.")
+        actions.append("Register as a volunteer and track approval status on your dashboard.")
 
     campaign_location_blob = _normalize_text(
         " ".join(
@@ -408,12 +494,12 @@ def _supporter_campaign_score(
     if user_location and campaign_location_blob:
         if user_location in campaign_location_blob or campaign_location_blob in user_location:
             score += 1.8
-            reasons.append("Khu vực campaign gần với vị trí bạn đã khai báo.")
+            reasons.append("The campaign location is close to your declared area.")
         else:
             user_tokens = [token for token in user_location.split() if len(token) >= 3]
             if any(token in campaign_location_blob for token in user_tokens):
                 score += 1.0
-                reasons.append("Campaign nằm trong khu vực bạn có thể hỗ trợ thuận tiện.")
+                reasons.append("The campaign appears to be in an area where you can support conveniently.")
 
     goal_amount = Decimal(campaign.goal_amount or 0)
     raised_amount = Decimal(campaign.raised_amount or 0)
@@ -421,10 +507,10 @@ def _supporter_campaign_score(
         gap_ratio = max(Decimal("0"), (goal_amount - raised_amount) / goal_amount)
         if gap_ratio >= Decimal("0.70"):
             score += 2.0
-            reasons.append("Campaign còn thiếu nhiều ngân sách so với mục tiêu.")
+            reasons.append("The campaign still has a significant funding gap versus its goal.")
         elif gap_ratio >= Decimal("0.40"):
             score += 1.0
-            reasons.append("Campaign vẫn còn khoảng trống đáng kể để bạn tạo tác động.")
+            reasons.append("There is still meaningful room for your contribution to create impact.")
 
     if campaign.ends_at is not None:
         ends_at = campaign.ends_at
@@ -433,22 +519,26 @@ def _supporter_campaign_score(
         days_left = (ends_at - now).days
         if days_left <= 7:
             score += 1.4
-            reasons.append("Campaign sắp đến hạn, cần thêm supporter ngay.")
+            reasons.append("The campaign deadline is near and needs immediate supporter activity.")
         elif days_left <= 30:
             score += 0.7
-            reasons.append("Campaign đang ở giai đoạn cần đẩy nhanh tiến độ.")
+            reasons.append("The campaign is in a phase where momentum should be increased.")
 
     if campaign.id in donated_campaign_ids or campaign.id in registered_campaign_ids:
         score += 1.2
-        reasons.append("Bạn đã có đóng góp trước đó, nên tiếp tục theo dõi campaign này.")
-        actions.append("Kiểm tra trang transparency để cập nhật tiến độ mới nhất.")
+        reasons.append("You have already contributed before, so continued follow-up is valuable.")
+        actions.append("Check the transparency page for the latest progress and proof updates.")
 
     if not reasons:
-        reasons.append("Campaign có nhu cầu cộng đồng rõ ràng và đang hoạt động.")
+        reasons.append("The campaign has clear community needs and is currently active.")
     if not actions:
-        actions.append("Mở chi tiết campaign để chọn hình thức hỗ trợ phù hợp.")
+        actions.append("Open campaign details and choose the support method that fits you.")
 
-    return score, _dedupe_keep_order(reasons, max_items=3), _dedupe_keep_order(actions, max_items=3)
+    return (
+        score,
+        _sanitize_generated_list(reasons, max_items=3, max_item_chars=180),
+        _sanitize_generated_list(actions, max_items=3, max_item_chars=180),
+    )
 
 
 def _enhance_supporter_recommendations_with_llm(
@@ -464,10 +554,11 @@ def _enhance_supporter_recommendations_with_llm(
     )
 
     system_prompt = (
-        "Bạn là AI recommendation cho nền tảng thiện nguyện. "
-        "Trả về DUY NHẤT JSON object có key 'items'. "
-        "Mỗi item gồm: campaign_id, match_reasons (list), suggested_actions (list). "
-        "Nội dung ngắn gọn, thực tế, không bịa dữ liệu."
+        "You are an AI recommendation assistant for a social impact platform. "
+        "Return ONLY one JSON object with key 'items'. "
+        "Each item must contain: campaign_id, match_reasons (list), suggested_actions (list). "
+        "Keep wording concise and practical, and do not invent facts. "
+        "Use plain text without emojis, markdown, or unusual symbols."
     )
     serialized_candidates = [
         {
@@ -481,12 +572,12 @@ def _enhance_supporter_recommendations_with_llm(
         for item in candidate_items
     ]
     user_prompt = (
-        "Hồ sơ supporter:\\n"
+        "Supporter profile:\\n"
         f"- full_name: {supporter.full_name}\\n"
         f"- location: {supporter.location or 'N/A'}\\n"
         f"- support_types: {supporter.support_types}\\n\\n"
-        f"Danh sách campaign đề xuất: {serialized_candidates}\\n\\n"
-        "Hãy tối ưu lý do gợi ý và action theo từng campaign_id."
+        f"Candidate campaign list: {serialized_candidates}\\n\\n"
+        "Improve match reasons and suggested actions for each campaign_id."
     )
 
     try:
@@ -535,10 +626,15 @@ def _enhance_supporter_recommendations_with_llm(
         enriched.append(
             item.model_copy(
                 update={
-                    "match_reasons": _dedupe_keep_order(reasons or item.match_reasons, max_items=3),
-                    "suggested_actions": _dedupe_keep_order(
+                    "match_reasons": _sanitize_generated_list(
+                        reasons or item.match_reasons,
+                        max_items=3,
+                        max_item_chars=180,
+                    ),
+                    "suggested_actions": _sanitize_generated_list(
                         actions or item.suggested_actions,
                         max_items=3,
+                        max_item_chars=180,
                     ),
                 }
             )

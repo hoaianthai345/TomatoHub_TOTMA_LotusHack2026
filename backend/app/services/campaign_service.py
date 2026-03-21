@@ -12,6 +12,10 @@ from sqlalchemy.orm import Session
 from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.organization import Organization
 from app.schemas.campaign import CampaignCloseRequest, CampaignCreate, CampaignUpdate
+from app.services.campaign_geocoding_service import (
+    geocode_campaign_location,
+    has_campaign_location_data,
+)
 
 
 def _slugify(value: str) -> str:
@@ -73,6 +77,19 @@ def create_manual_campaign(db: Session, payload: CampaignCreate) -> Campaign:
             detail="Organization not found",
         )
 
+    latitude = payload.latitude
+    longitude = payload.longitude
+    if latitude is None or longitude is None:
+        geocoded_latitude, geocoded_longitude = geocode_campaign_location(
+            address_line=payload.address_line,
+            district=payload.district,
+            province=payload.province,
+        )
+        if latitude is None:
+            latitude = geocoded_latitude
+        if longitude is None:
+            longitude = geocoded_longitude
+
     campaign = Campaign(
         organization_id=payload.organization_id,
         title=payload.title,
@@ -87,8 +104,8 @@ def create_manual_campaign(db: Session, payload: CampaignCreate) -> Campaign:
         province=payload.province,
         district=payload.district,
         address_line=payload.address_line,
-        latitude=payload.latitude,
-        longitude=payload.longitude,
+        latitude=latitude,
+        longitude=longitude,
         media_urls=payload.media_urls,
         starts_at=payload.starts_at,
         ends_at=payload.ends_at,
@@ -142,6 +159,31 @@ def update_manual_campaign(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="ends_at must be greater than starts_at",
         )
+
+    location_fields = {"province", "district", "address_line"}
+    location_changed = any(field in update_data for field in location_fields)
+    latitude_explicit = "latitude" in update_data
+    longitude_explicit = "longitude" in update_data
+    coordinates_explicitly_updated = latitude_explicit or longitude_explicit
+    if location_changed and not coordinates_explicitly_updated:
+        next_address_line = update_data.get("address_line", campaign.address_line)
+        next_district = update_data.get("district", campaign.district)
+        next_province = update_data.get("province", campaign.province)
+        geocoded_latitude, geocoded_longitude = geocode_campaign_location(
+            address_line=next_address_line,
+            district=next_district,
+            province=next_province,
+        )
+        if geocoded_latitude is not None and geocoded_longitude is not None:
+            update_data["latitude"] = geocoded_latitude
+            update_data["longitude"] = geocoded_longitude
+        elif not has_campaign_location_data(
+            address_line=next_address_line,
+            district=next_district,
+            province=next_province,
+        ):
+            update_data["latitude"] = None
+            update_data["longitude"] = None
 
     if "slug" in update_data or "title" in update_data:
         update_data["slug"] = _resolve_slug(

@@ -26,6 +26,8 @@ CORS note:
 - Campaign image storage can run in:
   - `local` mode: saved under `UPLOAD_DIR`, served from `UPLOAD_URL_PREFIX`
   - `s3` mode: uploaded to S3-compatible storage (Supabase Storage S3 API)
+- Campaign coordinates can be auto-geocoded from `address_line + district + province`
+  to place new campaigns on the map immediately after create/update.
 
 ## 2. Create PostgreSQL database
 
@@ -70,8 +72,19 @@ S3_FORCE_PATH_STYLE=true
 
 Notes:
 - Bucket must be public if you want direct image URL rendering without signed URLs.
-- `S3_PUBLIC_BASE_URL` must point to `.../storage/v1/object/public/<bucket>`.
+- `S3_PUBLIC_BASE_URL` should point to `.../storage/v1/object/public/<bucket>`.
+- For Supabase, backend can auto-normalize wrong values (for example `...storage.supabase.co/.../s3`)
+  and can derive the public base from `S3_ENDPOINT_URL` when `S3_PUBLIC_BASE_URL` is empty.
 - If frontend and backend are on different domains, backend now returns absolute image URL in `s3` mode.
+
+Optional geocoding settings (enabled by default):
+
+```env
+CAMPAIGN_GEOCODING_ENABLED=true
+CAMPAIGN_GEOCODING_API_URL=https://nominatim.openstreetmap.org/search
+CAMPAIGN_GEOCODING_TIMEOUT_SECONDS=8
+CAMPAIGN_GEOCODING_USER_AGENT=LotusHackBackend/1.0 (+https://lotushack.local)
+```
 
 ## 3. Run migration
 

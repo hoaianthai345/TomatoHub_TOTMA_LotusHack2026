@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     S3_KEY_PREFIX: str = ""
     S3_PUBLIC_BASE_URL: str | None = None
     S3_FORCE_PATH_STYLE: bool = True
+    CAMPAIGN_GEOCODING_ENABLED: bool = True
+    CAMPAIGN_GEOCODING_API_URL: str = "https://nominatim.openstreetmap.org/search"
+    CAMPAIGN_GEOCODING_TIMEOUT_SECONDS: int = 8
+    CAMPAIGN_GEOCODING_USER_AGENT: str = "LotusHackBackend/1.0 (+https://lotushack.local)"
     RECOMMENDATION_USE_LLM: bool = True
     GROQ_API_KEY: str | None = None
     GROQ_API_BASE_URL: str = "https://api.groq.com/openai/v1"
