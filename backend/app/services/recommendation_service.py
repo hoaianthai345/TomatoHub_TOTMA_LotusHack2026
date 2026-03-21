@@ -22,6 +22,58 @@ from app.schemas.recommendation import (
 from app.services.groq_client import GroqClient
 
 
+def _get_recommendation_model_pool() -> tuple[str, str]:
+    heavy_model = settings.GROQ_MODEL_HEAVY.strip() or settings.GROQ_MODEL.strip()
+    light_model = settings.GROQ_MODEL_LIGHT.strip() or heavy_model
+    return light_model, heavy_model
+
+
+def _campaign_draft_complexity(payload: CampaignDraftRecommendationRequest) -> int:
+    constraint_chars = sum(len(constraint) for constraint in payload.constraints)
+    return (
+        len(payload.title)
+        + len(payload.campaign_goal)
+        + len(payload.beneficiary_context or "")
+        + len(payload.location_hint or "")
+        + len(payload.tone or "")
+        + constraint_chars
+        + (len(payload.constraints) * 80)
+        + (len(payload.support_types_hint) * 120)
+    )
+
+
+def _select_model_for_campaign_draft(
+    payload: CampaignDraftRecommendationRequest,
+) -> tuple[str, str]:
+    light_model, heavy_model = _get_recommendation_model_pool()
+    if (
+        not settings.RECOMMENDATION_MODEL_ROUTING_ENABLED
+        or light_model == heavy_model
+    ):
+        return heavy_model, "single"
+
+    complexity = _campaign_draft_complexity(payload)
+    if complexity <= settings.RECOMMENDATION_DRAFT_COMPLEXITY_THRESHOLD:
+        return light_model, "light"
+    return heavy_model, "heavy"
+
+
+def _select_model_for_supporter_rewrite(
+    *,
+    candidate_items: list[SupporterCampaignRecommendationItem],
+) -> tuple[str, str]:
+    light_model, heavy_model = _get_recommendation_model_pool()
+    if (
+        not settings.RECOMMENDATION_MODEL_ROUTING_ENABLED
+        or light_model == heavy_model
+    ):
+        return heavy_model, "single"
+
+    if len(candidate_items) <= settings.RECOMMENDATION_SUPPORTER_LIGHT_MAX_ITEMS:
+        return light_model, "light"
+    return heavy_model, "heavy"
+
+
 def _normalize_text(value: str | None) -> str:
     if value is None:
         return ""
@@ -194,6 +246,7 @@ def _merge_campaign_draft_llm_output(
     heuristic: CampaignDraftRecommendationResponse,
     llm_data: dict[str, Any],
     model: str,
+    generated_by: str,
 ) -> CampaignDraftRecommendationResponse:
     suggested_support_types = _to_support_types(
         llm_data.get("suggested_support_types")
@@ -255,7 +308,7 @@ def _merge_campaign_draft_llm_output(
             transparency_notes or heuristic.transparency_notes,
             max_items=6,
         ),
-        generated_by="groq",
+        generated_by=generated_by,
         model=model,
     )
 
@@ -267,6 +320,7 @@ def recommend_campaign_draft(
     client = GroqClient()
     if not client.enabled:
         return heuristic
+    selected_model, model_tier = _select_model_for_campaign_draft(payload)
 
     system_prompt = (
         "Bạn là AI copilot cho tổ chức phi lợi nhuận. "
@@ -291,6 +345,7 @@ def recommend_campaign_draft(
         llm_result = client.generate_json_object(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
+            model=selected_model,
             temperature=0.4,
             max_tokens=1500,
         )
@@ -302,6 +357,9 @@ def recommend_campaign_draft(
             heuristic=heuristic,
             llm_data=llm_result.data,
             model=llm_result.model,
+            generated_by=(
+                f"groq-{model_tier}" if model_tier in {"light", "heavy"} else "groq"
+            ),
         )
     except Exception:
         return heuristic
@@ -401,6 +459,9 @@ def _enhance_supporter_recommendations_with_llm(
     client = GroqClient()
     if not client.enabled or not candidate_items:
         return candidate_items, "heuristic", None
+    selected_model, model_tier = _select_model_for_supporter_rewrite(
+        candidate_items=candidate_items,
+    )
 
     system_prompt = (
         "Bạn là AI recommendation cho nền tảng thiện nguyện. "
@@ -432,6 +493,7 @@ def _enhance_supporter_recommendations_with_llm(
         llm_result = client.generate_json_object(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
+            model=selected_model,
             temperature=0.3,
             max_tokens=1200,
         )
@@ -482,7 +544,8 @@ def _enhance_supporter_recommendations_with_llm(
             )
         )
 
-    return enriched, "groq", llm_result.model
+    generated_by = f"groq-{model_tier}" if model_tier in {"light", "heavy"} else "groq"
+    return enriched, generated_by, llm_result.model
 
 
 def recommend_campaigns_for_supporter(

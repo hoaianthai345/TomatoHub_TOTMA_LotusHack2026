@@ -12,6 +12,7 @@ Feature gồm 2 luồng:
 - `app/services/recommendation_service.py`
   - Heuristic engine (always available).
   - Optional Groq enhancement (if `GROQ_API_KEY` configured).
+  - Multi-model routing: task đơn giản dùng model nhẹ, task phức tạp dùng model mạnh.
   - Fallback về heuristic khi Groq timeout/error/JSON invalid.
 - `app/services/groq_client.py`
   - Gọi Groq OpenAI-compatible endpoint `/chat/completions`.
@@ -71,9 +72,19 @@ RECOMMENDATION_USE_LLM=true
 GROQ_API_KEY=<your-groq-api-key>
 GROQ_API_BASE_URL=https://api.groq.com/openai/v1
 GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL_HEAVY=
+GROQ_MODEL_LIGHT=llama-3.1-8b-instant
 GROQ_TIMEOUT_SECONDS=20
 SUPPORTER_RECOMMENDATION_MAX_LIMIT=20
+RECOMMENDATION_MODEL_ROUTING_ENABLED=true
+RECOMMENDATION_DRAFT_COMPLEXITY_THRESHOLD=900
+RECOMMENDATION_SUPPORTER_LIGHT_MAX_ITEMS=8
 ```
+
+Routing behavior:
+
+- `campaign-draft`: tự tính độ phức tạp input. Dưới ngưỡng -> model nhẹ, trên ngưỡng -> model nặng.
+- `supporter campaign rewrite`: số campaign ít -> model nhẹ, nhiều -> model nặng.
 
 ## 6. Production notes
 

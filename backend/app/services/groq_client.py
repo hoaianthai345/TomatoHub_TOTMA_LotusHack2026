@@ -89,14 +89,19 @@ class GroqClient:
         *,
         system_prompt: str,
         user_prompt: str,
+        model: str | None = None,
         temperature: float = 0.3,
         max_tokens: int = 1200,
     ) -> GroqGenerationResult:
         if not self.enabled:
             raise RuntimeError("Groq API key not configured")
 
+        selected_model = (model or self._model).strip()
+        if not selected_model:
+            raise RuntimeError("Groq model is not configured")
+
         base_payload: dict[str, Any] = {
-            "model": self._model,
+            "model": selected_model,
             "temperature": temperature,
             "max_tokens": max_tokens,
             "messages": [
@@ -126,5 +131,5 @@ class GroqClient:
             raise RuntimeError("Groq message content must be a string")
 
         parsed = _extract_first_json_object(message_content)
-        model_name = str(response.get("model") or self._model)
+        model_name = str(response.get("model") or selected_model)
         return GroqGenerationResult(data=parsed, model=model_name)

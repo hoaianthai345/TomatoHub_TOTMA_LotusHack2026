@@ -13,6 +13,7 @@ import {
   uploadCampaignImage,
 } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
+import { generateCampaignDraftRecommendation } from "@/lib/api/recommendations";
 import type { CampaignSupportType } from "@/types/campaign";
 import type { VietnamLocationValue } from "@/types/location";
 
@@ -45,6 +46,8 @@ export default function CreateCampaignPage() {
   const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [locationValue, setLocationValue] = useState<VietnamLocationValue>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [aiHintMessage, setAiHintMessage] = useState<string | null>(null);
+  const [isAiAutofilling, setIsAiAutofilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = useMemo(
@@ -62,6 +65,79 @@ export default function CreateCampaignPage() {
         ? prev.supportTypes.filter((item) => item !== type)
         : [...prev.supportTypes, type],
     }));
+  };
+
+  const handleAiAutofill = async () => {
+    setErrorMessage(null);
+    setAiHintMessage(null);
+
+    if (!currentUser?.organizationId || !accessToken) {
+      setErrorMessage("Organization authentication is required to use AI autofill.");
+      return;
+    }
+
+    const title = formData.title.trim();
+    if (title.length < 3) {
+      setErrorMessage("Please enter campaign title before AI autofill.");
+      return;
+    }
+
+    const campaignGoal = (formData.description || formData.shortDescription).trim();
+    if (campaignGoal.length < 20) {
+      setErrorMessage(
+        "Please provide at least 20 characters in campaign description for AI autofill."
+      );
+      return;
+    }
+
+    const locationHint = [
+      locationValue.addressLine?.trim(),
+      locationValue.districtName?.trim(),
+      locationValue.provinceName?.trim(),
+    ]
+      .filter((value): value is string => Boolean(value))
+      .join(", ");
+
+    setIsAiAutofilling(true);
+    try {
+      const recommendation = await generateCampaignDraftRecommendation(
+        {
+          title,
+          campaign_goal: campaignGoal,
+          beneficiary_context: campaignGoal,
+          location_hint: locationHint || undefined,
+          support_types_hint: formData.supportTypes,
+          constraints: [],
+          tone: "clear, transparent, community-driven",
+        },
+        accessToken
+      );
+
+      setFormData((prev) => ({
+        ...prev,
+        shortDescription: recommendation.shortDescription || prev.shortDescription,
+        description: recommendation.description || prev.description,
+        tags:
+          recommendation.suggestedTags.length > 0
+            ? recommendation.suggestedTags.join(", ")
+            : prev.tags,
+        supportTypes:
+          recommendation.suggestedSupportTypes.length > 0
+            ? recommendation.suggestedSupportTypes
+            : prev.supportTypes,
+      }));
+
+      const modelLabel = recommendation.model ? ` (${recommendation.model})` : "";
+      setAiHintMessage(`AI suggestion applied from ${recommendation.generatedBy}${modelLabel}.`);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Failed to generate AI suggestion for campaign fields."
+      );
+    } finally {
+      setIsAiAutofilling(false);
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -169,6 +245,25 @@ export default function CreateCampaignPage() {
                   }
                 />
               </label>
+
+              <div className="grid gap-2 rounded-lg border border-border bg-surface-muted p-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    className="btn-base btn-secondary disabled:opacity-50"
+                    onClick={handleAiAutofill}
+                    disabled={isAiAutofilling || isSubmitting || !accessToken}
+                  >
+                    {isAiAutofilling ? "Generating AI..." : "AI Autofill Fields"}
+                  </button>
+                  <p className="text-xs text-text-muted">
+                    AI will suggest short description, full description, tags, and support types from current input.
+                  </p>
+                </div>
+                {aiHintMessage ? (
+                  <p className="text-xs text-body">{aiHintMessage}</p>
+                ) : null}
+              </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="grid gap-2 text-sm text-text">
