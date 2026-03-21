@@ -14,7 +14,9 @@ from app.models.user import User
 from app.schemas.auth import (
     CurrentUserRead,
     LoginRequest,
+    OrganizationProfileUpdateRequest,
     OrganizationSignupRequest,
+    SupporterProfileUpdateRequest,
     SupporterSignupRequest,
     TokenResponse,
 )
@@ -166,6 +168,98 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 
 @router.get("/me", response_model=CurrentUserRead)
 def get_me(current_user: User = Depends(get_current_active_user)) -> CurrentUserRead:
+    return _to_current_user_read(current_user)
+
+
+@router.patch("/me/supporter-profile", response_model=CurrentUserRead)
+def update_supporter_profile(
+    payload: SupporterProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CurrentUserRead:
+    if current_user.organization_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Supporter account required",
+        )
+
+    normalized_name = payload.full_name.strip()
+    normalized_location = payload.location.strip() if payload.location else None
+
+    if not normalized_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="full_name cannot be empty",
+        )
+
+    current_user.full_name = normalized_name
+    current_user.location = normalized_location or None
+    current_user.support_types = [support_type.value for support_type in payload.support_types]
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return _to_current_user_read(current_user)
+
+
+@router.patch("/me/organization-profile", response_model=CurrentUserRead)
+def update_organization_profile(
+    payload: OrganizationProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CurrentUserRead:
+    if current_user.organization_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Organization account required",
+        )
+
+    organization = db.get(Organization, current_user.organization_id)
+    if organization is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    normalized_org_name = payload.organization_name.strip()
+    normalized_rep_name = payload.representative_name.strip()
+    normalized_location = payload.location.strip() if payload.location else None
+    normalized_description = payload.description.strip() if payload.description else None
+    normalized_website = payload.website.strip() if payload.website else None
+    normalized_logo_url = payload.logo_url.strip() if payload.logo_url else None
+
+    if not normalized_org_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="organization_name cannot be empty",
+        )
+    if not normalized_rep_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="representative_name cannot be empty",
+        )
+
+    organization.name = normalized_org_name
+    organization.location = normalized_location or None
+    organization.description = normalized_description or None
+    organization.website = normalized_website or None
+    organization.logo_url = normalized_logo_url or None
+
+    current_user.full_name = normalized_rep_name
+    current_user.location = normalized_location or None
+
+    db.add(organization)
+    db.add(current_user)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Organization name already exists",
+        ) from None
+
+    db.refresh(current_user)
     return _to_current_user_read(current_user)
 
 

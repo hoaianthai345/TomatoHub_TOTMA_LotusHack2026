@@ -23,11 +23,11 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur">
       <Container className="flex h-16 items-center justify-between">
         <Link href="/" className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/images/TOMATOHUB.svg"
+            src="/images/logo.svg"
             alt="TomatoHub"
-            className="h-9 w-auto md:h-10"
+            style={{ height: "36px", width: "auto" }}
+            className="md:h-10"
           />
           <span className="hidden text-xs font-semibold uppercase tracking-[0.3em] text-primary/80 lg:inline-block">
             Relief Network

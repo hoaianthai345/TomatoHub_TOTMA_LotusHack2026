@@ -9,10 +9,15 @@ Completed in this sprint
 - Organization campaign management is now closer to end-to-end:
   - `frontend/app/organization/campaigns/create/page.tsx` now redirects back to campaign management after creating a draft.
   - `frontend/app/organization/campaigns/page.tsx` can publish draft campaigns through the real backend publish endpoint.
+  - `frontend/app/organization/campaigns/[id]/edit/page.tsx` now supports editing campaign details from workspace.
   - `frontend/lib/api/campaigns.ts` now exposes `publishCampaign(...)` for organization workspace actions.
 - Frontend now has a shared API layer in `frontend/lib/api/*` and normalized domain types for campaigns and dashboards.
 - Auth context now exposes `accessToken` so protected client pages can call backend without reading localStorage in many places.
 - Frontend auth/user types are now centralized in `frontend/types/user.ts`; `frontend/lib/auth/types.ts` re-exports those shared types instead of drifting separately.
+- Profile editing flow is now live:
+  - Supporter profile edit/save at `frontend/app/supporter/profile/page.tsx`
+  - Organization profile edit/save at `frontend/app/organization/profile/page.tsx`
+  - Backend profile update endpoints at `PATCH /auth/me/supporter-profile` and `PATCH /auth/me/organization-profile`
 - Supporter signup is now a 2-step flow:
   - Step 1 at `frontend/app/(public)/signup/supporter/page.tsx` collects account info.
   - Step 2 at `frontend/app/(public)/signup/supporter/support-types/page.tsx` collects optional support preferences and finishes signup.
@@ -22,6 +27,7 @@ Completed in this sprint
   - Supporters can only view their own dashboard.
   - Organizations can only view their own dashboard.
 - Frontend dashboard workspaces for `/supporter` and `/organization` were refreshed visually with improved sidebars, hero sections, and activity panels.
+- Organization campaigns workspace now includes volunteer participation analytics (total, pending, approved, rejected) and per-campaign volunteer breakdown.
 - Backend dashboard responses now include richer detail data for:
   - supporter joined campaigns
   - supporter contribution history
@@ -64,10 +70,8 @@ Known gaps for next sprint
 - `frontend/app/(public)/donate/page.tsx` is still a prototype form and has not been wired to the real create donation flow.
 - `frontend/app/(public)/campaigns/[id]/page.tsx` still sends users to separate support pages instead of offering a campaign-aware integrated support flow.
 - `frontend/app/organization/transparency/page.tsx` is read-only; there is no manual transparency authoring or management flow yet.
-- There is not yet an edit-profile flow for supporter or organization accounts.
 - Login is unified by email/password and redirects by returned backend role; there is still no dedicated role chooser for sign-in because backend already resolves the role from the account.
 - There is still no end-to-end test coverage; backend tests now cover permission helpers and campaign create/publish ownership, but broader endpoint coverage is still thin.
-- There is still no edit-campaign flow in the organization workspace, even though create/list/publish are now wired.
 - Read-side access for organization-specific draft listings may need a dedicated authenticated endpoint later if the team wants a real organization campaign management screen.
 
 Recommended next sprint order

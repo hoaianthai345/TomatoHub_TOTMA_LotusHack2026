@@ -73,7 +73,7 @@ export default function LoginPage() {
               }
             />
             <p className="mt-1 text-xs text-text-muted">
-              Max 72 bytes.
+              Account demo:
             </p>
           </div>
 
