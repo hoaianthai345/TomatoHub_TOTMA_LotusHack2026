@@ -37,7 +37,10 @@ export default function DonationsPage() {
             token: accessToken,
             limit: 500,
           }),
-          listCampaignsByOrganization(organizationId, { limit: 300 }),
+          listCampaignsByOrganization(organizationId, {
+            limit: 300,
+            token: accessToken,
+          }),
         ]);
 
         if (!cancelled) {

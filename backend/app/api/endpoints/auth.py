@@ -26,6 +26,7 @@ from app.schemas.auth import (
     OrganizationSignupRequest,
     RefreshTokenRequest,
     ResetPasswordRequest,
+    SupporterProfileUpdateRequest,
     SupporterSignupRequest,
     TokenResponse,
     UserProfileUpdateRequest,
@@ -184,6 +185,90 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse
 
 @router.get("/me", response_model=CurrentUserRead)
 def get_me(current_user: User = Depends(get_current_active_user)) -> CurrentUserRead:
+    return _to_current_user_read(current_user)
+
+
+@router.patch("/me/supporter-profile", response_model=CurrentUserRead)
+def update_my_supporter_profile(
+    payload: SupporterProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CurrentUserRead:
+    if current_user.organization_id is not None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Supporter account required",
+        )
+
+    full_name = payload.full_name.strip()
+    if not full_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="full_name cannot be empty",
+        )
+
+    current_user.full_name = full_name
+    current_user.location = payload.location.strip() if payload.location else None
+    current_user.support_types = [support_type.value for support_type in payload.support_types]
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return _to_current_user_read(current_user)
+
+
+@router.patch("/me/organization-profile", response_model=CurrentUserRead)
+def update_my_organization_profile(
+    payload: OrganizationProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CurrentUserRead:
+    if current_user.organization_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Organization account required",
+        )
+
+    organization = db.get(Organization, current_user.organization_id)
+    if organization is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+
+    organization_name = payload.organization_name.strip()
+    representative_name = payload.representative_name.strip()
+    if not organization_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="organization_name cannot be empty",
+        )
+    if not representative_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="representative_name cannot be empty",
+        )
+
+    current_user.full_name = representative_name
+    current_user.location = payload.location.strip() if payload.location else None
+
+    organization.name = organization_name
+    organization.location = payload.location.strip() if payload.location else None
+    organization.description = payload.description
+    organization.website = payload.website
+    organization.logo_url = payload.logo_url
+
+    db.add(current_user)
+    db.add(organization)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Organization name already exists",
+        ) from None
+    db.refresh(current_user)
     return _to_current_user_read(current_user)
 
 

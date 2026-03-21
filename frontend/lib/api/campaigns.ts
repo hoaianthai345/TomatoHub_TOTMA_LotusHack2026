@@ -68,6 +68,16 @@ interface BackendPublishCampaignResponse {
   campaign: BackendCampaign;
 }
 
+interface BackendCloseCampaignResponse {
+  message: string;
+  campaign: BackendCampaign;
+}
+
+interface BackendReopenCampaignResponse {
+  message: string;
+  campaign: BackendCampaign;
+}
+
 interface BackendCampaignImage {
   id: string;
   campaign_id: string;
@@ -215,9 +225,11 @@ export async function listCampaignsByOrganization(
   {
     limit = 50,
     status,
+    token,
   }: {
     limit?: number;
     status?: Campaign["status"];
+    token?: string;
   } = {}
 ): Promise<Campaign[]> {
   const query = new URLSearchParams({
@@ -230,7 +242,8 @@ export async function listCampaignsByOrganization(
   const campaigns = await requestJson<BackendCampaign[]>(
     `/campaigns/by-organization/${encodeURIComponent(
       organizationId
-    )}?${query.toString()}`
+    )}?${query.toString()}`,
+    { token }
   );
 
   return campaigns.map(mapCampaign);
@@ -313,6 +326,43 @@ export async function publishCampaign(
 ): Promise<Campaign> {
   const response = await requestJson<BackendPublishCampaignResponse>(
     `/campaigns/${encodeURIComponent(campaignId)}/publish`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+
+  return mapCampaign(response.campaign);
+}
+
+export async function closeCampaign(
+  campaignId: string,
+  token: string,
+  options: {
+    closedAt?: string;
+  } = {}
+): Promise<Campaign> {
+  const response = await requestJson<BackendCloseCampaignResponse>(
+    `/campaigns/${encodeURIComponent(campaignId)}/close`,
+    {
+      method: "POST",
+      token,
+      body:
+        options.closedAt === undefined
+          ? undefined
+          : JSON.stringify({ closed_at: options.closedAt }),
+    }
+  );
+
+  return mapCampaign(response.campaign);
+}
+
+export async function reopenCampaign(
+  campaignId: string,
+  token: string
+): Promise<Campaign> {
+  const response = await requestJson<BackendReopenCampaignResponse>(
+    `/campaigns/${encodeURIComponent(campaignId)}/reopen`,
     {
       method: "POST",
       token,

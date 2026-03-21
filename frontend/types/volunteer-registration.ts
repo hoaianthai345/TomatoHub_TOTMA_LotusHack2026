@@ -1,4 +1,8 @@
-export type VolunteerRegistrationStatus = "pending" | "approved" | "rejected";
+export type VolunteerRegistrationStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "cancelled";
 
 export interface VolunteerRegistration {
   id: string;

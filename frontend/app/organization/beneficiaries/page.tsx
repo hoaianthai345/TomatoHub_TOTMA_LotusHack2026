@@ -46,7 +46,10 @@ export default function BeneficiariesPage() {
             token: accessToken,
             limit: 300,
           }),
-          listCampaignsByOrganization(organizationId, { limit: 300 }),
+          listCampaignsByOrganization(organizationId, {
+            limit: 300,
+            token: accessToken,
+          }),
         ]);
 
         if (!cancelled) {

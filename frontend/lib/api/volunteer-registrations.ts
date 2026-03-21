@@ -34,6 +34,11 @@ interface CreateVolunteerRegistrationInput {
   userId?: string;
 }
 
+interface UpdateVolunteerRegistrationStatusInput {
+  registrationId: string;
+  status: VolunteerRegistrationStatus;
+}
+
 function mapVolunteerRegistration(
   item: BackendVolunteerRegistration
 ): VolunteerRegistration {
@@ -99,6 +104,24 @@ export async function createVolunteerRegistration(
         email: payload.email,
         phone_number: payload.phoneNumber,
         message: payload.message,
+      }),
+    }
+  );
+
+  return mapVolunteerRegistration(registration);
+}
+
+export async function updateVolunteerRegistrationStatus(
+  payload: UpdateVolunteerRegistrationStatusInput,
+  token: string
+): Promise<VolunteerRegistration> {
+  const registration = await requestJson<BackendVolunteerRegistration>(
+    `/volunteer-registrations/${encodeURIComponent(payload.registrationId)}/status`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({
+        status: payload.status,
       }),
     }
   );
