@@ -56,6 +56,13 @@ export interface CampaignActivitySummary {
   supporterCount: number;
 }
 
+interface ListPublishedCampaignsOptions {
+  limit?: number;
+  province?: string;
+  district?: string;
+  supportType?: CampaignSupportType;
+}
+
 interface BackendPublishCampaignResponse {
   message: string;
   campaign: BackendCampaign;
@@ -161,9 +168,31 @@ export function mapCampaign(campaign: BackendCampaign): Campaign {
   };
 }
 
-export async function listPublishedCampaigns(limit = 20): Promise<Campaign[]> {
+export async function listPublishedCampaigns(
+  limitOrOptions: number | ListPublishedCampaignsOptions = 20,
+  options: ListPublishedCampaignsOptions = {}
+): Promise<Campaign[]> {
+  const resolvedOptions =
+    typeof limitOrOptions === "number"
+      ? { ...options, limit: limitOrOptions }
+      : limitOrOptions;
+  const query = new URLSearchParams({
+    status: "published",
+    limit: String(resolvedOptions.limit ?? 20),
+  });
+
+  if (resolvedOptions.province?.trim()) {
+    query.set("province", resolvedOptions.province.trim());
+  }
+  if (resolvedOptions.district?.trim()) {
+    query.set("district", resolvedOptions.district.trim());
+  }
+  if (resolvedOptions.supportType) {
+    query.set("support_type", resolvedOptions.supportType);
+  }
+
   const campaigns = await requestJson<BackendCampaign[]>(
-    `/campaigns/?status=published&limit=${limit}`
+    `/campaigns/?${query.toString()}`
   );
   return campaigns.map(mapCampaign);
 }

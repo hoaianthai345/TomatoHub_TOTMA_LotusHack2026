@@ -12,7 +12,7 @@ from app.api.deps import (
 )
 from app.api.permissions import ensure_matching_organization
 from app.models.campaign_image import CampaignImage
-from app.models.campaign import Campaign, CampaignStatus
+from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
@@ -112,12 +112,21 @@ def list_campaigns(
     limit: int = Query(default=20, ge=1, le=100),
     campaign_status: CampaignStatus = Query(default=CampaignStatus.published, alias="status"),
     organization_id: UUID | None = Query(default=None),
+    province: str | None = Query(default=None, min_length=1, max_length=120),
+    district: str | None = Query(default=None, min_length=1, max_length=120),
+    support_type: SupportType | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[Campaign]:
     stmt = select(Campaign).order_by(Campaign.created_at.desc()).limit(limit)
     stmt = stmt.where(Campaign.status == campaign_status)
     if organization_id is not None:
         stmt = stmt.where(Campaign.organization_id == organization_id)
+    if province is not None:
+        stmt = stmt.where(Campaign.province.ilike(f"%{province.strip()}%"))
+    if district is not None:
+        stmt = stmt.where(Campaign.district.ilike(f"%{district.strip()}%"))
+    if support_type is not None:
+        stmt = stmt.where(Campaign.support_types.contains([support_type.value]))
     return list(db.scalars(stmt).all())
 
 

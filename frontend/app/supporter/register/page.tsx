@@ -65,20 +65,18 @@ export default function RegisterSupportPage() {
         if (!cancelled) {
           setCampaigns(campaignList);
           setRegistrations(registrationList);
-          if (campaignList.length > 0) {
-            setSelectedCampaignId((previous) => {
-              if (previous) {
-                return previous;
-              }
-              if (
-                preferredCampaignId &&
-                campaignList.some((campaign) => campaign.id === preferredCampaignId)
-              ) {
-                return preferredCampaignId;
-              }
-              return campaignList[0].id;
-            });
-          }
+          setSelectedCampaignId((previous) => {
+            if (previous && campaignList.some((campaign) => campaign.id === previous)) {
+              return previous;
+            }
+            if (
+              preferredCampaignId &&
+              campaignList.some((campaign) => campaign.id === preferredCampaignId)
+            ) {
+              return preferredCampaignId;
+            }
+            return campaignList[0]?.id ?? "";
+          });
           setErrorMessage(null);
         }
       } catch (error) {
