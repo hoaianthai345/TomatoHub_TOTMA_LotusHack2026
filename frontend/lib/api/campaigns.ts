@@ -56,6 +56,11 @@ export interface CampaignActivitySummary {
   supporterCount: number;
 }
 
+interface BackendPublishCampaignResponse {
+  message: string;
+  campaign: BackendCampaign;
+}
+
 export interface CreateCampaignInput {
   organizationId: string;
   title: string;
@@ -71,6 +76,23 @@ export interface CreateCampaignInput {
   mediaUrls?: string[];
   startsAt: string;
   endsAt?: string;
+}
+
+export interface UpdateCampaignInput {
+  organizationId?: string;
+  title?: string;
+  shortDescription?: string;
+  description?: string;
+  tags?: string[];
+  coverImageUrl?: string;
+  supportTypes?: CampaignSupportType[];
+  goalAmount?: number;
+  province?: string;
+  district?: string;
+  addressLine?: string;
+  mediaUrls?: string[];
+  startsAt?: string;
+  endsAt?: string | null;
 }
 
 const DEFAULT_COVER_IMAGE =
@@ -179,6 +201,13 @@ export async function getCampaignBySlug(slug: string): Promise<Campaign> {
   return mapCampaign(campaign);
 }
 
+export async function getCampaignById(campaignId: string): Promise<Campaign> {
+  const campaign = await requestJson<BackendCampaign>(
+    `/campaigns/${encodeURIComponent(campaignId)}`
+  );
+  return mapCampaign(campaign);
+}
+
 export async function getCampaignActivitySummary(
   campaignId: string
 ): Promise<CampaignActivitySummary> {
@@ -232,6 +261,53 @@ export async function createCampaign(
       ends_at: payload.endsAt || undefined,
     }),
   });
+
+  return mapCampaign(campaign);
+}
+
+export async function publishCampaign(
+  campaignId: string,
+  token: string
+): Promise<Campaign> {
+  const response = await requestJson<BackendPublishCampaignResponse>(
+    `/campaigns/${encodeURIComponent(campaignId)}/publish`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+
+  return mapCampaign(response.campaign);
+}
+
+export async function updateCampaign(
+  campaignId: string,
+  payload: UpdateCampaignInput,
+  token: string
+): Promise<Campaign> {
+  const campaign = await requestJson<BackendCampaign>(
+    `/campaigns/${encodeURIComponent(campaignId)}`,
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({
+        organization_id: payload.organizationId,
+        title: payload.title,
+        short_description: payload.shortDescription,
+        description: payload.description,
+        tags: payload.tags,
+        cover_image_url: payload.coverImageUrl,
+        support_types: payload.supportTypes,
+        goal_amount: payload.goalAmount,
+        province: payload.province,
+        district: payload.district,
+        address_line: payload.addressLine,
+        media_urls: payload.mediaUrls,
+        starts_at: payload.startsAt,
+        ends_at: payload.endsAt === null ? null : payload.endsAt,
+      }),
+    }
+  );
 
   return mapCampaign(campaign);
 }

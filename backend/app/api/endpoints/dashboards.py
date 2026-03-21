@@ -76,62 +76,88 @@ def organization_dashboard(
     if organization is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Organization not found")
 
-    campaign_ids = list(
-        db.scalars(select(Campaign.id).where(Campaign.organization_id == organization_id)).all()
+    campaigns = list(
+        db.scalars(
+            select(Campaign)
+            .where(Campaign.organization_id == organization_id)
+            .order_by(Campaign.created_at.desc())
+        ).all()
     )
+    campaign_ids = [campaign.id for campaign in campaigns]
+    campaigns_by_id = {campaign.id: campaign for campaign in campaigns}
 
-    campaign_count = len(campaign_ids)
-    beneficiary_count = (
-        db.scalar(select(func.count(Beneficiary.id)).where(Beneficiary.organization_id == organization_id))
-        or 0
+    beneficiaries = list(
+        db.scalars(
+            select(Beneficiary)
+            .where(Beneficiary.organization_id == organization_id)
+            .order_by(Beneficiary.created_at.desc())
+        ).all()
     )
 
     if campaign_ids:
-        donation_count = (
-            db.scalar(
-                select(func.count(MonetaryDonation.id)).where(
-                    MonetaryDonation.campaign_id.in_(campaign_ids)
-                )
-            )
-            or 0
-        )
-        total_raised = (
-            db.scalar(
-                select(func.coalesce(func.sum(MonetaryDonation.amount), 0)).where(
-                    MonetaryDonation.campaign_id.in_(campaign_ids)
-                )
-            )
-            or Decimal("0")
-        )
-        supporter_ids = set(
+        donations = list(
             db.scalars(
-                select(MonetaryDonation.donor_user_id).where(
-                    MonetaryDonation.campaign_id.in_(campaign_ids),
-                    MonetaryDonation.donor_user_id.is_not(None),
-                )
+                select(MonetaryDonation)
+                .where(MonetaryDonation.campaign_id.in_(campaign_ids))
+                .order_by(MonetaryDonation.donated_at.desc())
             ).all()
         )
-        supporter_ids.update(
+        registrations = list(
             db.scalars(
-                select(VolunteerRegistration.user_id).where(
-                    VolunteerRegistration.campaign_id.in_(campaign_ids),
-                    VolunteerRegistration.user_id.is_not(None),
-                )
+                select(VolunteerRegistration)
+                .where(VolunteerRegistration.campaign_id.in_(campaign_ids))
+                .order_by(VolunteerRegistration.registered_at.desc())
             ).all()
         )
-        supporter_count = len(supporter_ids)
     else:
-        donation_count = 0
-        total_raised = Decimal("0")
-        supporter_count = 0
+        donations = []
+        registrations = []
+
+    donations_by_campaign: dict[UUID, list[MonetaryDonation]] = defaultdict(list)
+    registrations_by_campaign: dict[UUID, list[VolunteerRegistration]] = defaultdict(list)
+    beneficiaries_by_campaign: dict[UUID, list[Beneficiary]] = defaultdict(list)
+
+    for donation in donations:
+        donations_by_campaign[donation.campaign_id].append(donation)
+    for registration in registrations:
+        registrations_by_campaign[registration.campaign_id].append(registration)
+    for beneficiary in beneficiaries:
+        if beneficiary.campaign_id is not None:
+            beneficiaries_by_campaign[beneficiary.campaign_id].append(beneficiary)
+
+    supporter_ids = {
+        donation.donor_user_id
+        for donation in donations
+        if donation.donor_user_id is not None
+    }
+    supporter_ids.update(
+        registration.user_id
+        for registration in registrations
+        if registration.user_id is not None
+    )
+
+    total_raised = sum((Decimal(donation.amount) for donation in donations), Decimal("0"))
 
     return OrganizationDashboardRead(
         organization_id=organization_id,
-        campaigns=campaign_count,
-        beneficiaries=beneficiary_count,
-        supporters=supporter_count,
-        donations=donation_count,
-        total_raised=Decimal(total_raised),
+        campaigns=len(campaigns),
+        beneficiaries=len(beneficiaries),
+        supporters=len(supporter_ids),
+        donations=len(donations),
+        total_raised=total_raised,
+        campaign_snapshots=_build_organization_campaign_snapshots(
+            campaigns,
+            donations_by_campaign,
+            registrations_by_campaign,
+            beneficiaries_by_campaign,
+        ),
+        recent_activities=_build_organization_recent_activities(
+            campaigns,
+            campaigns_by_id,
+            donations,
+            registrations,
+            beneficiaries,
+        ),
     )
 
 
@@ -151,33 +177,39 @@ def supporter_dashboard(
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
-    total_contributions = (
-        db.scalar(select(func.count(MonetaryDonation.id)).where(MonetaryDonation.donor_user_id == user_id))
-        or 0
+    donations = list(
+        db.scalars(
+            select(MonetaryDonation)
+            .where(MonetaryDonation.donor_user_id == user_id)
+            .order_by(MonetaryDonation.donated_at.desc())
+        ).all()
     )
-    total_donated_amount = (
-        db.scalar(
-            select(func.coalesce(func.sum(MonetaryDonation.amount), 0)).where(
-                MonetaryDonation.donor_user_id == user_id
-            )
+    registrations = list(
+        db.scalars(
+            select(VolunteerRegistration)
+            .where(VolunteerRegistration.user_id == user_id)
+            .order_by(VolunteerRegistration.registered_at.desc())
+        ).all()
+    )
+
+    supported_campaign_ids = sorted(
+        {
+            donation.campaign_id
+            for donation in donations
+        }
+        | {
+            registration.campaign_id
+            for registration in registrations
+        },
+        key=str,
+    )
+
+    campaigns_by_id: dict[UUID, Campaign] = {}
+    if supported_campaign_ids:
+        campaigns = list(
+            db.scalars(select(Campaign).where(Campaign.id.in_(supported_campaign_ids))).all()
         )
-        or Decimal("0")
-    )
-    my_registrations = (
-        db.scalar(
-            select(func.count(VolunteerRegistration.id)).where(VolunteerRegistration.user_id == user_id)
-        )
-        or 0
-    )
-    tasks_completed = (
-        db.scalar(
-            select(func.count(VolunteerRegistration.id)).where(
-                VolunteerRegistration.user_id == user_id,
-                VolunteerRegistration.status == VolunteerStatus.approved,
-            )
-        )
-        or 0
-    )
+        campaigns_by_id = {campaign.id: campaign for campaign in campaigns}
 
     active_campaigns = (
         db.scalar(
@@ -203,13 +235,35 @@ def supporter_dashboard(
         or 0
     )
 
+    now = datetime.now(timezone.utc)
+    total_donated_amount = sum((Decimal(donation.amount) for donation in donations), Decimal("0"))
+    tasks_completed = sum(
+        1 for registration in registrations if registration.status == VolunteerStatus.approved
+    )
+
     return SupporterDashboardRead(
         user_id=user_id,
         active_campaigns=active_campaigns,
-        total_contributions=total_contributions,
-        total_donated_amount=Decimal(total_donated_amount),
-        my_registrations=my_registrations,
+        total_contributions=len(donations),
+        total_donated_amount=total_donated_amount,
+        my_registrations=len(registrations),
         tasks_completed=tasks_completed,
+        participation_cards=_build_supporter_participation_cards(
+            campaigns_by_id,
+            donations,
+            registrations,
+            now,
+        ),
+        contribution_items=_build_supporter_contribution_items(
+            campaigns_by_id,
+            donations,
+            registrations,
+        ),
+        task_items=_build_supporter_task_items(
+            campaigns_by_id,
+            registrations,
+            now,
+        ),
     )
 
 

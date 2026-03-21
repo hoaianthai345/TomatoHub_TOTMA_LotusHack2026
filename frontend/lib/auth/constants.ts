@@ -35,6 +35,8 @@ export const PUBLIC_ROUTES = [
   "/signup/supporter",
   "/signup/supporter/support-types",
   "/signup/organization",
+  "/images",
+  "/favicon.ico",
 ] as const;
 
 /**

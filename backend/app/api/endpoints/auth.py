@@ -22,6 +22,7 @@ from app.schemas.auth import (
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     LoginRequest,
+    OrganizationProfileUpdateRequest,
     OrganizationSignupRequest,
     RefreshTokenRequest,
     ResetPasswordRequest,

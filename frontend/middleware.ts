@@ -40,6 +40,11 @@ export function middleware(request: NextRequest) {
 }
 
 function isPublicRoute(pathname: string): boolean {
+  // Allow static files
+  if (pathname.startsWith("/images/") || pathname.startsWith("/_next/") || pathname === "/favicon.ico") {
+    return true;
+  }
+
   return PUBLIC_ROUTES.some((route) => {
     if (route === pathname) return true;
     if (route.includes("[")) {

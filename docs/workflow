@@ -4,10 +4,20 @@ Completed in this sprint
 - Frontend public campaign list and campaign detail now load from backend API instead of `frontend/mocks`.
 - Frontend home page featured campaigns now load from backend API.
 - Organization dashboard and supporter dashboard now load live metrics from backend endpoints.
+- Organization and supporter dashboard detail panels are now backed by enriched dashboard API responses instead of `frontend/mocks/dashboard-experience.ts`.
 - Organization create campaign page now submits a real draft campaign to backend with authenticated organization token.
+- Organization campaign management is now closer to end-to-end:
+  - `frontend/app/organization/campaigns/create/page.tsx` now redirects back to campaign management after creating a draft.
+  - `frontend/app/organization/campaigns/page.tsx` can publish draft campaigns through the real backend publish endpoint.
+  - `frontend/app/organization/campaigns/[id]/edit/page.tsx` now supports editing campaign details from workspace.
+  - `frontend/lib/api/campaigns.ts` now exposes `publishCampaign(...)` for organization workspace actions.
 - Frontend now has a shared API layer in `frontend/lib/api/*` and normalized domain types for campaigns and dashboards.
 - Auth context now exposes `accessToken` so protected client pages can call backend without reading localStorage in many places.
 - Frontend auth/user types are now centralized in `frontend/types/user.ts`; `frontend/lib/auth/types.ts` re-exports those shared types instead of drifting separately.
+- Profile editing flow is now live:
+  - Supporter profile edit/save at `frontend/app/supporter/profile/page.tsx`
+  - Organization profile edit/save at `frontend/app/organization/profile/page.tsx`
+  - Backend profile update endpoints at `PATCH /auth/me/supporter-profile` and `PATCH /auth/me/organization-profile`
 - Supporter signup is now a 2-step flow:
   - Step 1 at `frontend/app/(public)/signup/supporter/page.tsx` collects account info.
   - Step 2 at `frontend/app/(public)/signup/supporter/support-types/page.tsx` collects optional support preferences and finishes signup.
@@ -17,18 +27,25 @@ Completed in this sprint
   - Supporters can only view their own dashboard.
   - Organizations can only view their own dashboard.
 - Frontend dashboard workspaces for `/supporter` and `/organization` were refreshed visually with improved sidebars, hero sections, and activity panels.
-- Sample frontend-only engagement data now exists in `frontend/mocks/dashboard-experience.ts` to support UI work for:
+- Organization campaigns workspace now includes volunteer participation analytics (total, pending, approved, rejected) and per-campaign volunteer breakdown.
+- Backend dashboard responses now include richer detail data for:
   - supporter joined campaigns
   - supporter contribution history
   - supporter task states
   - organization campaign pipeline cards
   - organization recent activity feed
+- Demo seed data now includes:
+  - more linked supporter accounts
+  - additional donation and volunteer activity
+  - one more published campaign
+  - one draft campaign for organization pipeline testing
 - Backend write authorization is tighter:
   - `POST/PATCH /campaigns` and `POST /campaigns/{id}/publish` require organization ownership.
   - `POST /donations` cannot spoof `donor_user_id`; linked donations require authenticated matching user.
   - `POST /volunteer-registrations` cannot spoof `user_id`; linked registrations require authenticated matching user and always start as `pending`.
   - `POST /organizations` now requires superuser.
 - Repo hygiene improved with `.gitignore` updates and minimal permission tests added in `backend/tests/test_permissions.py`.
+- Backend endpoint regression coverage now includes organization campaign ownership rules in `backend/tests/test_campaign_endpoints.py`.
 
 Important files added or reshaped
 - `frontend/lib/api/http.ts`
@@ -44,25 +61,25 @@ Important files added or reshaped
 - `frontend/components/auth/RoleGate.tsx`
 - `frontend/components/location/VietnamLocationFields.tsx`
 - `backend/app/api/permissions.py`
+- `backend/app/api/endpoints/dashboards.py`
+- `backend/scripts/seed_demo_data.py`
 - `docs/vietnam-location-checklist.md`
+- `docs/next-feature-checklist.md`
 
 Known gaps for next sprint
-- `frontend/app/organization/supporters/page.tsx` still uses mock data.
-- `frontend/app/organization/beneficiaries/page.tsx` still uses mock data.
-- `frontend/app/organization/transparency/page.tsx` still uses mock data.
-- `frontend/app/organization/campaigns/page.tsx` is still placeholder.
-- Public donation flow and supporter registration flow are not yet wired to live create endpoints.
-- There is not yet an edit-profile flow for supporter or organization accounts.
+- `frontend/app/(public)/donate/page.tsx` is still a prototype form and has not been wired to the real create donation flow.
+- `frontend/app/(public)/campaigns/[id]/page.tsx` still sends users to separate support pages instead of offering a campaign-aware integrated support flow.
+- `frontend/app/organization/transparency/page.tsx` is read-only; there is no manual transparency authoring or management flow yet.
 - Login is unified by email/password and redirects by returned backend role; there is still no dedicated role chooser for sign-in because backend already resolves the role from the account.
-- There is still no end-to-end test coverage; current tests only cover permission helpers.
+- There is still no end-to-end test coverage; backend tests now cover permission helpers and campaign create/publish ownership, but broader endpoint coverage is still thin.
 - Read-side access for organization-specific draft listings may need a dedicated authenticated endpoint later if the team wants a real organization campaign management screen.
 
 Recommended next sprint order
-1. Connect organization campaigns page to live API with draft/published status handling.
-2. Connect organization beneficiaries/supporters pages to backend API.
-3. Build live donation and supporter registration submit flows from campaign detail.
-4. Add backend endpoint tests around campaign create/publish and linked donation/registration authorization.
-5. Add a small frontend loading/error abstraction for API-backed pages.
+1. Build the real public donation flow and reconnect campaign detail CTA to it.
+2. Integrate campaign-aware support actions directly into campaign detail.
+3. Add supporter and organization profile edit flows.
+4. Decide and implement the next transparency step beyond read-only logs.
+5. Add direct regression tests for the enriched dashboard endpoints and seed flow.
 
 Run notes
 - Backend env example: `backend/.env.example`

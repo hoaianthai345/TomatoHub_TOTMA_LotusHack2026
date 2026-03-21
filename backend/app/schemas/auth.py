@@ -30,6 +30,21 @@ class OrganizationSignupRequest(BaseModel):
     logo_url: str | None = Field(default=None, max_length=500)
 
 
+class SupporterProfileUpdateRequest(BaseModel):
+    full_name: str = Field(min_length=2, max_length=255)
+    location: str | None = Field(default=None, max_length=120)
+    support_types: list[UserSupportType] = Field(default_factory=list)
+
+
+class OrganizationProfileUpdateRequest(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=255)
+    representative_name: str = Field(min_length=2, max_length=255)
+    location: str | None = Field(default=None, max_length=120)
+    description: str | None = None
+    website: str | None = Field(default=None, max_length=255)
+    logo_url: str | None = Field(default=None, max_length=500)
+
+
 class CurrentUserRead(BaseModel):
     id: UUID
     email: EmailStr

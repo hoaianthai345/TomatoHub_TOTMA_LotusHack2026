@@ -6,11 +6,6 @@ import { useAuth } from "@/lib/auth";
 import { getSupporterDashboard } from "@/lib/api/dashboards";
 import { ApiError } from "@/lib/api/http";
 import { getSupportTypeLabel } from "@/lib/auth/supportTypes";
-import {
-  getSupporterContributionItems,
-  getSupporterParticipationCards,
-  getSupporterTasks,
-} from "@/mocks/dashboard-experience";
 import { formatCurrency } from "@/utils/format";
 import type { SupporterDashboard } from "@/types/dashboard";
 import RoleGate from "@/components/auth/RoleGate";
@@ -82,9 +77,9 @@ export default function SupporterDashboardPage() {
       color: "--color-org",
     },
   ];
-  const participationCards = getSupporterParticipationCards(currentUser?.id);
-  const contributionItems = getSupporterContributionItems(currentUser?.id);
-  const taskItems = getSupporterTasks(currentUser?.id);
+  const participationCards = dashboard?.participationCards ?? [];
+  const contributionItems = dashboard?.contributionItems ?? [];
+  const taskItems = dashboard?.taskItems ?? [];
 
   return (
     <RoleGate role="supporter" loadingMessage="Loading supporter dashboard...">
@@ -179,65 +174,77 @@ export default function SupporterDashboardPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_360px]">
-          <div className="card-base p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-heading">Campaigns You Joined</h2>
-                <p className="mt-1 text-sm text-text-muted">
-                  Sample frontend state for supporter participation while richer backend endpoints are still pending.
-                </p>
+            <div className="card-base p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-heading">Campaigns You Joined</h2>
+                  <p className="mt-1 text-sm text-text-muted">
+                    Live participation pulled from your linked donations and volunteer registrations.
+                  </p>
+                </div>
+                <Link href="/supporter/registrations" className="text-sm font-semibold text-supporter">
+                  See all
+                </Link>
               </div>
-              <Link href="/supporter/registrations" className="text-sm font-semibold text-supporter">
-                See all
-              </Link>
-            </div>
 
-            <div className="mt-5 grid gap-4">
-              {participationCards.map((item) => (
-                <article
-                  key={item.id}
-                  className="grid gap-4 rounded-3xl border border-border bg-white p-4 md:grid-cols-[120px_minmax(0,1fr)]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={item.coverImage}
-                    alt={item.campaignTitle}
-                    className="h-28 w-full rounded-2xl object-cover"
-                  />
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="badge-base badge-supporter">{item.roleLabel}</span>
-                      <span className="badge-base border border-border bg-surface-light text-text">
-                        {item.statusLabel}
-                      </span>
+            {participationCards.length > 0 ? (
+              <div className="mt-5 grid gap-4">
+                {participationCards.map((item) => (
+                  <article
+                    key={item.id}
+                    className="grid gap-4 rounded-3xl border border-border bg-white p-4 md:grid-cols-[120px_minmax(0,1fr)]"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={item.coverImage}
+                      alt={item.campaignTitle}
+                      className="h-28 w-full rounded-2xl object-cover"
+                    />
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="badge-base badge-supporter">{item.roleLabel}</span>
+                        <span className="badge-base border border-border bg-surface-light text-text">
+                          {item.statusLabel}
+                        </span>
+                      </div>
+                      <h3 className="mt-3 text-lg font-bold text-heading">{item.campaignTitle}</h3>
+                      <p className="mt-1 text-sm text-text-muted">{item.campaignLocation}</p>
+                      <p className="mt-3 text-sm text-text">{item.nextStep}</p>
+                      <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+                        {item.dateLabel}
+                      </p>
                     </div>
-                    <h3 className="mt-3 text-lg font-bold text-heading">{item.campaignTitle}</h3>
-                    <p className="mt-1 text-sm text-text-muted">{item.campaignLocation}</p>
-                    <p className="mt-3 text-sm text-text">{item.nextStep}</p>
-                    <p className="mt-3 text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-                      {item.dateLabel}
-                    </p>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-3xl border border-border bg-surface-light p-5 text-sm text-text-muted">
+                Your joined campaigns will appear here after your first donation or volunteer registration.
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
             <div className="card-base p-6">
               <h2 className="text-xl font-bold text-heading">Upcoming Tasks</h2>
-              <div className="mt-4 space-y-3">
-                {taskItems.map((task) => (
-                  <div key={task.id} className="rounded-2xl border border-border bg-surface-light p-4">
-                    <p className="text-sm font-semibold text-heading">{task.title}</p>
-                    <p className="mt-1 text-sm text-text-muted">{task.campaignTitle}</p>
-                    <div className="mt-3 flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-[0.16em]">
-                      <span className="text-supporter">{task.statusLabel}</span>
-                      <span className="text-text-muted">{task.dueLabel}</span>
+              {taskItems.length > 0 ? (
+                <div className="mt-4 space-y-3">
+                  {taskItems.map((task) => (
+                    <div key={task.id} className="rounded-2xl border border-border bg-surface-light p-4">
+                      <p className="text-sm font-semibold text-heading">{task.title}</p>
+                      <p className="mt-1 text-sm text-text-muted">{task.campaignTitle}</p>
+                      <div className="mt-3 flex items-center justify-between gap-3 text-xs font-medium uppercase tracking-[0.16em]">
+                        <span className="text-supporter">{task.statusLabel}</span>
+                        <span className="text-text-muted">{task.dueLabel}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-text-muted">
+                  Once a volunteer registration is approved or pending, your next tasks will appear here.
+                </p>
+              )}
             </div>
 
             <div className="card-base p-6">
@@ -256,7 +263,7 @@ export default function SupporterDashboardPage() {
             <div>
               <h2 className="text-xl font-bold text-heading">Contribution Timeline</h2>
               <p className="mt-1 text-sm text-text-muted">
-                Frontend sample history for donation, goods, and volunteer participation.
+                Recent activity based on the real donation and volunteer records linked to your account.
               </p>
             </div>
             <Link href="/supporter/contributions" className="text-sm font-semibold text-supporter">
@@ -264,21 +271,27 @@ export default function SupporterDashboardPage() {
             </Link>
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {contributionItems.map((item) => (
-              <article key={item.id} className="rounded-3xl border border-border bg-white p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
-                  {item.contributionType}
-                </p>
-                <h3 className="mt-3 text-lg font-bold text-heading">{item.campaignTitle}</h3>
-                <p className="mt-3 text-sm text-text">{item.summary}</p>
-                <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-                  <span className="font-semibold text-supporter">{item.statusLabel}</span>
-                  <span className="text-text-muted">{item.dateLabel}</span>
-                </div>
-              </article>
-            ))}
-          </div>
+          {contributionItems.length > 0 ? (
+            <div className="mt-5 grid gap-4 md:grid-cols-3">
+              {contributionItems.map((item) => (
+                <article key={item.id} className="rounded-3xl border border-border bg-white p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-text-muted">
+                    {item.contributionType}
+                  </p>
+                  <h3 className="mt-3 text-lg font-bold text-heading">{item.campaignTitle}</h3>
+                  <p className="mt-3 text-sm text-text">{item.summary}</p>
+                  <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+                    <span className="font-semibold text-supporter">{item.statusLabel}</span>
+                    <span className="text-text-muted">{item.dateLabel}</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-3xl border border-border bg-surface-light p-5 text-sm text-text-muted">
+              Your recent donation and volunteer activity will appear here once you start supporting campaigns.
+            </div>
+          )}
         </div>
       </section>
     </RoleGate>
