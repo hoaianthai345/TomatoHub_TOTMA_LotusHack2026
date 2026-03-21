@@ -61,6 +61,18 @@ interface BackendPublishCampaignResponse {
   campaign: BackendCampaign;
 }
 
+interface BackendCampaignImage {
+  id: string;
+  campaign_id: string;
+  uploaded_by_user_id: string | null;
+  original_filename: string;
+  mime_type: string;
+  size_bytes: number;
+  relative_path: string;
+  file_url: string;
+  created_at: string;
+}
+
 export interface CreateCampaignInput {
   organizationId: string;
   title: string;
@@ -95,8 +107,7 @@ export interface UpdateCampaignInput {
   endsAt?: string | null;
 }
 
-const DEFAULT_COVER_IMAGE =
-  "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=1200&q=80";
+export const DEFAULT_CAMPAIGN_COVER_IMAGE = "/images/campaigns/default-cover.svg";
 
 function toNumber(value: ApiDecimal | null | undefined): number {
   if (value === null || value === undefined) {
@@ -144,7 +155,9 @@ export function mapCampaign(campaign: BackendCampaign): Campaign {
     supportTypes: campaign.support_types ?? [],
     needs: [],
     coverImage:
-      campaign.cover_image_url ?? campaign.media_urls?.[0] ?? DEFAULT_COVER_IMAGE,
+      campaign.cover_image_url ??
+      campaign.media_urls?.[0] ??
+      DEFAULT_CAMPAIGN_COVER_IMAGE,
     coverImageUrl: campaign.cover_image_url ?? undefined,
     province: campaign.province ?? undefined,
     district: campaign.district ?? undefined,
@@ -319,4 +332,26 @@ export async function deleteCampaign(
     method: "DELETE",
     token,
   });
+}
+
+export async function uploadCampaignImage(
+  campaignId: string,
+  file: File,
+  token: string,
+  options: { setAsCover?: boolean } = {}
+): Promise<void> {
+  const formData = new FormData();
+  formData.append("file", file);
+  if (options.setAsCover !== undefined) {
+    formData.append("set_as_cover", options.setAsCover ? "true" : "false");
+  }
+
+  await requestJson<BackendCampaignImage>(
+    `/campaigns/${encodeURIComponent(campaignId)}/images`,
+    {
+      method: "POST",
+      token,
+      body: formData,
+    }
+  );
 }
