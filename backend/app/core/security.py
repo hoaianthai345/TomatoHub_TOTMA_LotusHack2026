@@ -16,12 +16,37 @@ def _normalize_password(password: str) -> str:
     return password
 
 
+def _is_bcrypt_password_length_error(exc: Exception) -> bool:
+    return "password cannot be longer than 72 bytes" in str(exc)
+
+
+def _safe_hash_password(password: str) -> str:
+    try:
+        return pwd_context.hash(password)
+    except ValueError as exc:
+        if not _is_bcrypt_password_length_error(exc):
+            raise
+        # Fallback for environments where bcrypt still rejects long input unexpectedly.
+        fallback = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return pwd_context.hash(fallback)
+
+
+def _safe_verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except ValueError as exc:
+        if not _is_bcrypt_password_length_error(exc):
+            raise
+        fallback = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
+        return pwd_context.verify(fallback, hashed_password)
+
+
 def get_password_hash(password: str) -> str:
-    return pwd_context.hash(_normalize_password(password))
+    return _safe_hash_password(_normalize_password(password))
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(_normalize_password(plain_password), hashed_password)
+    return _safe_verify_password(_normalize_password(plain_password), hashed_password)
 
 
 def _token_serializer() -> URLSafeTimedSerializer:
