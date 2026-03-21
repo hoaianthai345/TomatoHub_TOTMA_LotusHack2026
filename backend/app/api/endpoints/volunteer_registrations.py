@@ -39,6 +39,23 @@ from app.services.credit_service import (
 router = APIRouter(prefix="/volunteer-registrations", tags=["volunteer_registrations"])
 
 
+def _normalize_attendance_status_for_response(
+    registration: VolunteerRegistration,
+) -> VolunteerRegistration:
+    """Guard legacy rows where attendance_status can still be NULL."""
+    if hasattr(registration, "attendance_status") and getattr(registration, "attendance_status") is None:
+        setattr(registration, "attendance_status", "not_marked")
+    return registration
+
+
+def _normalize_attendance_status_for_list(
+    registrations: list[VolunteerRegistration],
+) -> list[VolunteerRegistration]:
+    for registration in registrations:
+        _normalize_attendance_status_for_response(registration)
+    return registrations
+
+
 @router.get("/", response_model=list[VolunteerRegistrationRead])
 def list_volunteer_registrations(
     campaign_id: UUID | None = Query(default=None),
@@ -90,7 +107,8 @@ def list_volunteer_registrations(
         stmt = stmt.join(Campaign, Campaign.id == VolunteerRegistration.campaign_id).where(
             Campaign.organization_id == organization_id
         )
-    return list(db.scalars(stmt).all())
+    registrations = list(db.scalars(stmt).all())
+    return _normalize_attendance_status_for_list(registrations)
 
 
 @router.post("/", response_model=VolunteerRegistrationRead, status_code=status.HTTP_201_CREATED)
@@ -189,7 +207,7 @@ def create_volunteer_registration(
                 existing.status = VolunteerStatus.pending
             db.commit()
             db.refresh(existing)
-            return existing
+            return _normalize_attendance_status_for_response(existing)
     else:
         existing_unlinked = db.scalar(
             select(VolunteerRegistration)
@@ -212,7 +230,7 @@ def create_volunteer_registration(
                 existing_unlinked.status = VolunteerStatus.pending
             db.commit()
             db.refresh(existing_unlinked)
-            return existing_unlinked
+            return _normalize_attendance_status_for_response(existing_unlinked)
 
     registration = VolunteerRegistration(
         campaign_id=payload.campaign_id,
@@ -267,7 +285,7 @@ def create_volunteer_registration(
             detail="Volunteer registration already exists for this campaign and user",
         ) from None
     db.refresh(registration)
-    return registration
+    return _normalize_attendance_status_for_response(registration)
 
 
 @router.post("/quick-join", response_model=VolunteerRegistrationRead)
@@ -358,7 +376,7 @@ def update_volunteer_registration_status(
 
     db.commit()
     db.refresh(registration)
-    return registration
+    return _normalize_attendance_status_for_response(registration)
 
 
 @router.patch("/{registration_id}/attendance", response_model=VolunteerRegistrationRead)
@@ -436,7 +454,7 @@ def withdraw_volunteer_registration(
     db.add(registration)
     db.commit()
     db.refresh(registration)
-    return registration
+    return _normalize_attendance_status_for_response(registration)
 
 
 @router.post("/{registration_id}/cancel", response_model=VolunteerRegistrationRead)
@@ -463,7 +481,7 @@ def cancel_volunteer_registration(
     db.add(registration)
     db.commit()
     db.refresh(registration)
-    return registration
+    return _normalize_attendance_status_for_response(registration)
 
 
 @router.delete("/{registration_id}")

@@ -307,6 +307,74 @@ def _seed_users(
         },
     ]
 
+    generated_supporters = [
+        {
+            "email": "trieu.nhatminh@example.com",
+            "full_name": "Trieu Nhat Minh",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "District 3, Ho Chi Minh City",
+            "support_types": ["donor_money", "volunteer"],
+            "organization_id": None,
+        },
+        {
+            "email": "bao.ngocmai@example.com",
+            "full_name": "Bao Ngoc Mai",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "Binh Thanh, Ho Chi Minh City",
+            "support_types": ["donor_goods", "coordinator"],
+            "organization_id": None,
+        },
+        {
+            "email": "vuong.khanhduy@example.com",
+            "full_name": "Vuong Khanh Duy",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "Tan Binh, Ho Chi Minh City",
+            "support_types": ["volunteer"],
+            "organization_id": None,
+        },
+        {
+            "email": "ngo.gialinh@example.com",
+            "full_name": "Ngo Gia Linh",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "Ninh Kieu, Can Tho",
+            "support_types": ["donor_money", "donor_goods"],
+            "organization_id": None,
+        },
+        {
+            "email": "pham.tuanviet@example.com",
+            "full_name": "Pham Tuan Viet",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "Long Xuyen, An Giang",
+            "support_types": ["volunteer", "shipper"],
+            "organization_id": None,
+        },
+        {
+            "email": "doan.thanhtruc@example.com",
+            "full_name": "Doan Thanh Truc",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "Tam Nong, Dong Thap",
+            "support_types": ["donor_money"],
+            "organization_id": None,
+        },
+        {
+            "email": "nguyen.hoangson@example.com",
+            "full_name": "Nguyen Hoang Son",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "Thu Duc, Ho Chi Minh City",
+            "support_types": ["volunteer", "coordinator"],
+            "organization_id": None,
+        },
+        {
+            "email": "le.quynhchi@example.com",
+            "full_name": "Le Quynh Chi",
+            "password": SUPPORTER_DEFAULT_PASSWORD,
+            "location": "Binh Thuy, Can Tho",
+            "support_types": ["donor_goods"],
+            "organization_id": None,
+        },
+    ]
+    users_data.extend(generated_supporters)
+
     users_by_email: dict[str, User] = {}
     for payload in users_data:
         existing = db.scalar(select(User).where(User.email == payload["email"]))
@@ -726,6 +794,148 @@ def _seed_campaigns(
             "closed_at": None,
             "is_active": False,
         },
+        {
+            "key": "community_kitchen",
+            "slug": "community-kitchen-weekend-meals",
+            "organization_key": "green_sprout",
+            "title": "Community Kitchen Weekend Meals",
+            "short_description": "Weekend meals and nutrition packs for vulnerable urban families.",
+            "description": _build_campaign_description(
+                mission=(
+                    "Maintain weekend hot meal support for vulnerable households and informal workers."
+                ),
+                beneficiary_scope=(
+                    "Families with unstable income in District 8 and neighboring wards."
+                ),
+                field_plan=[
+                    "Run two kitchen shifts per weekend day with transparent ingredient tracking.",
+                    "Deliver meal boxes and nutrition packs to verified household lists.",
+                    "Publish batch-level meal output and delivery completion logs.",
+                ],
+                volunteer_tasks=[
+                    "Prepare ingredient packs and hygiene station checks before cooking shifts.",
+                    "Support meal packing and beneficiary delivery routing.",
+                    "Capture handover evidence and close shift reconciliation reports.",
+                ],
+                handover_rules=[
+                    "Every delivery batch must include route manifest and signed handover records.",
+                    "Food safety incidents must be logged and escalated within the same shift.",
+                ],
+            ),
+            "tags": ["community", "nutrition", "urban-support"],
+            "cover_image_url": "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=80",
+            "goal_amount": Decimal("36000.00"),
+            "support_types": [SupportType.money.value, SupportType.goods.value, SupportType.volunteer.value],
+            "province": "Ho Chi Minh City",
+            "district": "District 8",
+            "address_line": "Ward 5 Community Kitchen Hub",
+            "latitude": Decimal("10.737815"),
+            "longitude": Decimal("106.631728"),
+            "media_urls": [
+                "https://images.unsplash.com/photo-1466637574441-749b8f19452f?w=1200&q=80",
+                "https://images.unsplash.com/photo-1547592166-23ac45744acd?w=1200&q=80",
+            ],
+            "starts_at": SEED_REFERENCE_TIME - timedelta(days=12),
+            "ends_at": SEED_REFERENCE_TIME + timedelta(days=60),
+            "status": CampaignStatus.published,
+            "published_at": SEED_REFERENCE_TIME - timedelta(days=11),
+            "closed_at": None,
+            "is_active": True,
+        },
+        {
+            "key": "digital_literacy",
+            "slug": "digital-literacy-for-senior-workers",
+            "organization_key": "lotus_relief",
+            "title": "Digital Literacy for Senior Workers",
+            "short_description": "Training campaign helping senior workers use digital public services safely.",
+            "description": _build_campaign_description(
+                mission=(
+                    "Provide practical digital literacy and scam-prevention training for senior workers."
+                ),
+                beneficiary_scope=(
+                    "Ages 45+ in Thu Duc and Binh Thanh needing help with online services and banking safety."
+                ),
+                field_plan=[
+                    "Open weekly classes with device practice stations and support volunteers.",
+                    "Distribute printed step-by-step guides for key public service workflows.",
+                    "Measure confidence and adoption through pre/post training checklists.",
+                ],
+                volunteer_tasks=[
+                    "Run one-on-one device setup support at class stations.",
+                    "Guide participants through secure account setup and recovery flow.",
+                    "Document progress and unresolved issues for follow-up sessions.",
+                ],
+                handover_rules=[
+                    "Each participant profile must include attendance and completed module checklist.",
+                    "Security-sensitive steps require dual verification from mentor and participant.",
+                ],
+            ),
+            "tags": ["education", "digital-skills", "senior-support"],
+            "cover_image_url": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=1200&q=80",
+            "goal_amount": Decimal("18000.00"),
+            "support_types": [SupportType.money.value, SupportType.volunteer.value],
+            "province": "Ho Chi Minh City",
+            "district": "Thu Duc",
+            "address_line": "Neighborhood Learning Center",
+            "latitude": Decimal("10.849205"),
+            "longitude": Decimal("106.771148"),
+            "media_urls": [
+                "https://images.unsplash.com/photo-1521737711867-e3b97375f902?w=1200&q=80",
+            ],
+            "starts_at": SEED_REFERENCE_TIME + timedelta(days=10),
+            "ends_at": SEED_REFERENCE_TIME + timedelta(days=120),
+            "status": CampaignStatus.draft,
+            "published_at": None,
+            "closed_at": None,
+            "is_active": False,
+        },
+        {
+            "key": "roof_repair",
+            "slug": "storm-ready-roof-repair-kits",
+            "organization_key": "mekong_care",
+            "title": "Storm-Ready Roof Repair Kits",
+            "short_description": "Closed campaign for household roof repair and storm preparedness kits.",
+            "description": _build_campaign_description(
+                mission=(
+                    "Improve household resilience through roof repair kits before storm peak season."
+                ),
+                beneficiary_scope=(
+                    "Low-income riverside households with damaged roofing in Vinh Long and neighboring areas."
+                ),
+                field_plan=[
+                    "Verify housing damage level with field engineer checklist.",
+                    "Distribute repair kits and conduct safety installation orientation.",
+                    "Run follow-up visits to confirm completion and readiness level.",
+                ],
+                volunteer_tasks=[
+                    "Coordinate material handover and safety briefing sessions.",
+                    "Support household-level checklist verification during follow-up.",
+                    "Upload before/after evidence for transparency records.",
+                ],
+                handover_rules=[
+                    "Kit handover requires household signature and damage verification form.",
+                    "Campaign closure requires completion evidence for each supported household.",
+                ],
+            ),
+            "tags": ["housing", "storm-preparedness", "closed"],
+            "cover_image_url": "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?w=1200&q=80",
+            "goal_amount": Decimal("34000.00"),
+            "support_types": [SupportType.money.value, SupportType.goods.value, SupportType.volunteer.value],
+            "province": "Vinh Long",
+            "district": "Binh Minh",
+            "address_line": "Storm Preparedness Depot",
+            "latitude": Decimal("10.047330"),
+            "longitude": Decimal("105.761425"),
+            "media_urls": [
+                "https://images.unsplash.com/photo-1472220625704-91e1462799b2?w=1200&q=80",
+            ],
+            "starts_at": SEED_REFERENCE_TIME - timedelta(days=132),
+            "ends_at": SEED_REFERENCE_TIME - timedelta(days=22),
+            "status": CampaignStatus.closed,
+            "published_at": SEED_REFERENCE_TIME - timedelta(days=130),
+            "closed_at": SEED_REFERENCE_TIME - timedelta(days=20),
+            "is_active": False,
+        },
     ]
 
     campaigns: dict[str, Campaign] = {}
@@ -971,6 +1181,96 @@ def _seed_beneficiaries(
             },
         )
         stats.record(created=created, updated=updated)
+
+    _seed_additional_beneficiaries(
+        db,
+        organizations=organizations,
+        campaigns=campaigns,
+        stats=stats,
+    )
+
+
+def _seed_additional_beneficiaries(
+    db: Session,
+    *,
+    organizations: dict[str, Organization],
+    campaigns: dict[str, Campaign],
+    stats: SeedStats,
+) -> None:
+    name_pool = [
+        "Nguyen Phuong Anh",
+        "Tran Minh Khoa",
+        "Le Thu Ha",
+        "Pham Gia Bao",
+        "Doan Thanh Nhan",
+        "Vo Quynh Trang",
+        "Hoang Minh Duc",
+        "Bui Nhat Linh",
+        "Dang Gia Han",
+        "Nguyen Quoc An",
+        "Phan Tuong Vy",
+        "Lam Trung Kien",
+    ]
+    status_cycle = [
+        BeneficiaryStatus.added,
+        BeneficiaryStatus.verified,
+        BeneficiaryStatus.assigned,
+        BeneficiaryStatus.received,
+    ]
+    organization_by_id = {organization.id: organization for organization in organizations.values()}
+    sorted_campaign_items = sorted(campaigns.items(), key=lambda item: item[0])
+
+    for campaign_index, (campaign_key, campaign) in enumerate(sorted_campaign_items):
+        if campaign.status == CampaignStatus.draft:
+            continue
+        organization = organization_by_id.get(campaign.organization_id)
+        if organization is None:
+            continue
+
+        category = campaign.tags[0] if campaign.tags else "community_support"
+        location = ", ".join(
+            value
+            for value in [campaign.district or "", campaign.province or ""]
+            if value
+        ) or "Unknown location"
+
+        for slot in range(2):
+            full_name = (
+                f"{name_pool[(campaign_index * 2 + slot) % len(name_pool)]} "
+                f"[{campaign.slug[:8]}-{slot + 1}]"
+            )
+            status_value = status_cycle[(campaign_index + slot) % len(status_cycle)]
+            is_verified = status_value in {
+                BeneficiaryStatus.verified,
+                BeneficiaryStatus.assigned,
+                BeneficiaryStatus.received,
+            }
+            target_support_amount = Decimal(
+                f"{1300 + (campaign_index + 1) * (slot + 1) * 185}.00"
+            )
+            story = (
+                f"Additional seeded case for {campaign.title}. "
+                f"Priority support includes follow-up tracking and transparency updates for {location}."
+            )
+
+            _, created, updated = _upsert(
+                db,
+                Beneficiary,
+                lookup={
+                    "organization_id": organization.id,
+                    "full_name": full_name,
+                },
+                values={
+                    "campaign_id": campaign.id,
+                    "location": location,
+                    "category": category,
+                    "story": story,
+                    "target_support_amount": target_support_amount,
+                    "is_verified": is_verified,
+                    "status": status_value,
+                },
+            )
+            stats.record(created=created, updated=updated)
 
 
 def _seed_donations(
@@ -1275,6 +1575,13 @@ def _seed_donations(
         )
         stats.record(created=created, updated=updated)
 
+    _seed_additional_donations(
+        db,
+        campaigns=campaigns,
+        users_by_email=users_by_email,
+        stats=stats,
+    )
+
     # Keep campaign totals consistent with the seeded donation ledger.
     for campaign in campaigns.values():
         running_total = sum(
@@ -1289,6 +1596,68 @@ def _seed_donations(
         if campaign.raised_amount != running_total:
             campaign.raised_amount = running_total
             db.add(campaign)
+
+
+def _seed_additional_donations(
+    db: Session,
+    *,
+    campaigns: dict[str, Campaign],
+    users_by_email: dict[str, User],
+    stats: SeedStats,
+) -> None:
+    supporter_users = sorted(
+        (
+            user
+            for user in users_by_email.values()
+            if user.organization_id is None and not user.is_superuser
+        ),
+        key=lambda user: user.email,
+    )
+    if not supporter_users:
+        return
+
+    payment_methods = ["bank_transfer", "credit_card", "e_wallet"]
+    active_campaign_items = [
+        item
+        for item in sorted(campaigns.items(), key=lambda campaign_item: campaign_item[0])
+        if item[1].status in {CampaignStatus.published, CampaignStatus.closed}
+    ]
+
+    for campaign_index, (campaign_key, campaign) in enumerate(active_campaign_items):
+        base_time = campaign.published_at or campaign.starts_at or SEED_REFERENCE_TIME
+        for slot in range(3):
+            donor_user: User | None
+            if slot == 2:
+                donor_user = None
+            else:
+                donor_user = supporter_users[
+                    (campaign_index * 3 + slot) % len(supporter_users)
+                ]
+            donor_name = (
+                donor_user.full_name
+                if donor_user is not None
+                else f"Community Donor Circle {campaign_index + 1}"
+            )
+            note = f"Seed expansion donation {slot + 1} for {campaign.slug}"
+            amount = Decimal(f"{950 + (campaign_index + 1) * (slot + 2) * 120}.00")
+
+            _, created, updated = _upsert(
+                db,
+                MonetaryDonation,
+                lookup={
+                    "campaign_id": campaign.id,
+                    "donor_name": donor_name,
+                    "note": note,
+                },
+                values={
+                    "donor_user_id": donor_user.id if donor_user is not None else None,
+                    "amount": amount,
+                    "currency": "VND",
+                    "payment_method": payment_methods[(campaign_index + slot) % len(payment_methods)],
+                    "donated_at": base_time + timedelta(days=slot + 2, hours=(campaign_index % 5) + slot),
+                },
+            )
+            stats.record(created=created, updated=updated)
 
 
 def _seed_volunteer_registrations(
@@ -1512,6 +1881,105 @@ def _seed_volunteer_registrations(
                 "message": payload["message"],
                 "status": payload["status"],
                 "registered_at": payload["registered_at"],
+            },
+        )
+        stats.record(created=created, updated=updated)
+
+    _seed_additional_volunteer_registrations(
+        db,
+        campaigns=campaigns,
+        users_by_email=users_by_email,
+        stats=stats,
+    )
+
+
+def _seed_additional_volunteer_registrations(
+    db: Session,
+    *,
+    campaigns: dict[str, Campaign],
+    users_by_email: dict[str, User],
+    stats: SeedStats,
+) -> None:
+    supporter_users = sorted(
+        (
+            user
+            for user in users_by_email.values()
+            if user.organization_id is None and not user.is_superuser
+        ),
+        key=lambda user: user.email,
+    )
+    if not supporter_users:
+        return
+
+    status_cycle = [
+        VolunteerStatus.approved,
+        VolunteerStatus.pending,
+        VolunteerStatus.approved,
+        VolunteerStatus.rejected,
+        VolunteerStatus.cancelled,
+    ]
+
+    volunteer_campaign_items = [
+        item
+        for item in sorted(campaigns.items(), key=lambda campaign_item: campaign_item[0])
+        if SupportType.volunteer.value in (item[1].support_types or [])
+        and item[1].status in {CampaignStatus.published, CampaignStatus.closed}
+    ]
+
+    for campaign_index, (campaign_key, campaign) in enumerate(volunteer_campaign_items):
+        base_time = campaign.published_at or campaign.starts_at or SEED_REFERENCE_TIME
+
+        for slot in range(3):
+            user = supporter_users[
+                (campaign_index * 4 + slot) % len(supporter_users)
+            ]
+            registration_status = status_cycle[(campaign_index + slot) % len(status_cycle)]
+            if campaign.status == CampaignStatus.closed and registration_status == VolunteerStatus.pending:
+                registration_status = VolunteerStatus.approved
+
+            _, created, updated = _upsert(
+                db,
+                VolunteerRegistration,
+                lookup={
+                    "campaign_id": campaign.id,
+                    "user_id": user.id,
+                },
+                values={
+                    "full_name": user.full_name,
+                    "email": user.email,
+                    "phone_number": f"+84-910-{campaign_index:02d}{slot:02d}",
+                    "message": (
+                        f"Seed expansion volunteer #{slot + 1} for {campaign.title}: "
+                        "support checkpoint operations, handover logs, and beneficiary guidance."
+                    ),
+                    "status": registration_status,
+                    "registered_at": base_time + timedelta(days=slot + 3),
+                },
+            )
+            stats.record(created=created, updated=updated)
+
+        guest_email = f"guest.{campaign_key}.{campaign_index}@example.org"
+        guest_status = (
+            VolunteerStatus.pending
+            if campaign.status == CampaignStatus.published
+            else VolunteerStatus.approved
+        )
+        _, created, updated = _upsert(
+            db,
+            VolunteerRegistration,
+            lookup={
+                "campaign_id": campaign.id,
+                "email": guest_email,
+            },
+            values={
+                "user_id": None,
+                "full_name": f"Guest Volunteer {campaign_index + 1}",
+                "phone_number": f"+84-919-{campaign_index:03d}",
+                "message": (
+                    "Guest volunteer application seeded for richer registration workflow coverage."
+                ),
+                "status": guest_status,
+                "registered_at": base_time + timedelta(days=5, hours=campaign_index % 6),
             },
         )
         stats.record(created=created, updated=updated)
@@ -1807,6 +2275,92 @@ def _seed_goods_checkins(
             },
         )
         stats.record(created=created, updated=updated)
+
+    _seed_additional_goods_checkins(
+        db,
+        campaigns=campaigns,
+        goods_checkpoints=goods_checkpoints,
+        users_by_email=users_by_email,
+        stats=stats,
+    )
+
+
+def _seed_additional_goods_checkins(
+    db: Session,
+    *,
+    campaigns: dict[str, Campaign],
+    goods_checkpoints: dict[str, CampaignCheckpoint],
+    users_by_email: dict[str, User],
+    stats: SeedStats,
+) -> None:
+    supporter_users = sorted(
+        (
+            user
+            for user in users_by_email.values()
+            if user.organization_id is None and not user.is_superuser
+        ),
+        key=lambda user: user.email,
+    )
+
+    item_templates = [
+        ("Emergency food kits", "kit"),
+        ("Blankets", "item"),
+        ("Hygiene packs", "pack"),
+        ("Notebook bundles", "bundle"),
+        ("Medical consumables", "box"),
+        ("Portable lights", "item"),
+    ]
+
+    goods_campaign_items = [
+        item
+        for item in sorted(campaigns.items(), key=lambda campaign_item: campaign_item[0])
+        if SupportType.goods.value in (item[1].support_types or [])
+        and item[1].status in {CampaignStatus.published, CampaignStatus.closed}
+    ]
+
+    for campaign_index, (campaign_key, campaign) in enumerate(goods_campaign_items):
+        checkpoint = goods_checkpoints.get(campaign_key)
+        if checkpoint is None:
+            continue
+        base_time = campaign.published_at or campaign.starts_at or SEED_REFERENCE_TIME
+
+        for slot in range(2):
+            item_name, unit = item_templates[
+                (campaign_index + slot) % len(item_templates)
+            ]
+            donor_user = (
+                supporter_users[(campaign_index + slot) % len(supporter_users)]
+                if supporter_users and slot == 0
+                else None
+            )
+            donor_name = (
+                donor_user.full_name
+                if donor_user is not None
+                else f"Neighborhood Goods Team {campaign_index + 1}"
+            )
+
+            _, created, updated = _upsert(
+                db,
+                GoodsCheckin,
+                lookup={
+                    "campaign_id": campaign.id,
+                    "checkpoint_id": checkpoint.id,
+                    "donor_name": donor_name,
+                    "item_name": item_name,
+                },
+                values={
+                    "user_id": donor_user.id if donor_user is not None else None,
+                    "quantity": Decimal(
+                        f"{28 + (campaign_index + 1) * (slot + 1) * 6}.00"
+                    ),
+                    "unit": unit,
+                    "note": (
+                        f"Seed expansion goods lot {slot + 1} for {campaign.title}."
+                    ),
+                    "checked_in_at": base_time + timedelta(days=4 + slot, hours=slot + 1),
+                },
+            )
+            stats.record(created=created, updated=updated)
 
 
 def _seed_scan_logs(
