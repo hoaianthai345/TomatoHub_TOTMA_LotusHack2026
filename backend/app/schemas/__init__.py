@@ -12,6 +12,7 @@ from app.schemas.dashboard import OrganizationDashboardRead, SupporterDashboardR
 from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
 from app.schemas.organization import OrganizationCreate, OrganizationRead
 from app.schemas.supporter import SupporterRead
+from app.schemas.transparency import TransparencyLogRead, TransparencyLogType
 from app.schemas.user import UserCreate, UserRead
 from app.schemas.volunteer_registration import (
     VolunteerRegistrationCreate,
@@ -42,6 +43,8 @@ __all__ = [
     "MonetaryDonationCreate",
     "MonetaryDonationRead",
     "SupporterRead",
+    "TransparencyLogType",
+    "TransparencyLogRead",
     "VolunteerRegistrationCreate",
     "VolunteerRegistrationRead",
     "VolunteerRegistrationUpdateStatus",

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_organization_user, get_db
+from app.api.deps import get_current_organization_user, get_db, get_optional_current_user
 from app.models.beneficiary import Beneficiary, BeneficiaryStatus
 from app.models.user import User
 from app.schemas.beneficiary import BeneficiaryCreate, BeneficiaryRead, BeneficiaryUpdate
@@ -34,7 +34,20 @@ def list_beneficiaries(
     campaign_id: UUID | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> list[Beneficiary]:
+    if organization_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to query organization beneficiaries",
+            )
+        if not current_user.is_superuser and current_user.organization_id != organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot query beneficiaries for another organization",
+            )
+
     stmt = select(Beneficiary).order_by(Beneficiary.created_at.desc()).limit(limit)
     if organization_id is not None:
         stmt = stmt.where(Beneficiary.organization_id == organization_id)

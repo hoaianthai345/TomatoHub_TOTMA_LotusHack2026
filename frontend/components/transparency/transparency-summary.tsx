@@ -1,4 +1,5 @@
 import type { TransparencyLog } from "@/types/transparency";
+import { formatDateTime } from "@/utils/format";
 
 interface TransparencySummaryProps {
   logs: TransparencyLog[];
@@ -7,6 +8,14 @@ interface TransparencySummaryProps {
 export default function TransparencySummary({
   logs,
 }: TransparencySummaryProps) {
+  if (logs.length === 0) {
+    return (
+      <div className="card-base p-5 text-sm text-text-muted">
+        No transparency logs found for this organization yet.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {logs.map((log) => (
@@ -21,7 +30,7 @@ export default function TransparencySummary({
             </span>
           </div>
           <p className="mt-2 text-sm text-text-muted">{log.description}</p>
-          <p className="mt-3 text-xs text-text-muted/60">{log.createdAt}</p>
+          <p className="mt-3 text-xs text-text-muted/60">{formatDateTime(log.createdAt)}</p>
         </div>
       ))}
     </div>

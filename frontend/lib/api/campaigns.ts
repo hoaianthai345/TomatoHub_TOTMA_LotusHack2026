@@ -146,6 +146,32 @@ export async function listPublishedCampaigns(limit = 20): Promise<Campaign[]> {
   return campaigns.map(mapCampaign);
 }
 
+export async function listCampaignsByOrganization(
+  organizationId: string,
+  {
+    limit = 50,
+    status,
+  }: {
+    limit?: number;
+    status?: Campaign["status"];
+  } = {}
+): Promise<Campaign[]> {
+  const query = new URLSearchParams({
+    limit: String(limit),
+  });
+  if (status) {
+    query.set("status", status);
+  }
+
+  const campaigns = await requestJson<BackendCampaign[]>(
+    `/campaigns/by-organization/${encodeURIComponent(
+      organizationId
+    )}?${query.toString()}`
+  );
+
+  return campaigns.map(mapCampaign);
+}
+
 export async function getCampaignBySlug(slug: string): Promise<Campaign> {
   const campaign = await requestJson<BackendCampaign>(
     `/campaigns/slug/${encodeURIComponent(slug)}`

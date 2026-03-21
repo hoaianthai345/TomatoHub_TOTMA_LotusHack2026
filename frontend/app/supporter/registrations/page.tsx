@@ -1,47 +1,130 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { useAuth } from "@/lib/auth";
-import { getSupporterParticipationCards } from "@/mocks/dashboard-experience";
+import { listPublishedCampaigns } from "@/lib/api/campaigns";
+import { ApiError } from "@/lib/api/http";
+import { listVolunteerRegistrations } from "@/lib/api/volunteer-registrations";
+import { formatDateTime } from "@/utils/format";
+import type { Campaign } from "@/types/campaign";
+import type { VolunteerRegistration } from "@/types/volunteer-registration";
+
+const STATUS_STYLE: Record<string, string> = {
+  pending: "bg-surface-muted text-text-muted border-border",
+  approved: "bg-success/10 text-success border-success/30",
+  rejected: "bg-danger/10 text-danger border-danger/30",
+};
 
 export default function RegistrationsPage() {
-  const { currentUser } = useAuth();
-  const items = getSupporterParticipationCards(currentUser?.id);
+  const { currentUser, accessToken, isLoading } = useAuth();
+  const [registrations, setRegistrations] = useState<VolunteerRegistration[]>([]);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (
+      isLoading ||
+      currentUser?.role !== "supporter" ||
+      !currentUser.id ||
+      !accessToken
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadData = async () => {
+      try {
+        const [registrationList, campaignList] = await Promise.all([
+          listVolunteerRegistrations({
+            userId: currentUser.id,
+            token: accessToken,
+            limit: 300,
+          }),
+          listPublishedCampaigns(200),
+        ]);
+
+        if (!cancelled) {
+          setRegistrations(registrationList);
+          setCampaigns(campaignList);
+          setErrorMessage(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setErrorMessage(
+            error instanceof ApiError
+              ? error.message
+              : "Failed to load your registrations."
+          );
+        }
+      }
+    };
+
+    loadData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, currentUser?.id, currentUser?.role, isLoading]);
+
+  const campaignTitleById = useMemo(
+    () => new Map(campaigns.map((campaign) => [campaign.id, campaign.title])),
+    [campaigns]
+  );
 
   return (
-    <RoleGate role="supporter" loadingMessage="Loading registrations...">
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-heading">My Registrations</h1>
-          <p className="mt-2 text-body">
-            Campaigns you have already registered for, using shared sample state for the frontend.
-          </p>
-        </div>
+    <RoleGate role="supporter" loadingMessage="Loading your registrations...">
+      <div className="p-6">
+        <h1 className="mb-2 text-3xl font-bold">My Registrations</h1>
+        <p className="mb-6 text-body">Campaigns you have registered to support</p>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          {items.map((item) => (
-            <article key={item.id} className="card-base rounded-3xl overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={item.coverImage}
-                alt={item.campaignTitle}
-                className="h-44 w-full object-cover"
-              />
-              <div className="p-5">
-                <div className="flex flex-wrap gap-2">
-                  <span className="badge-base badge-supporter">{item.roleLabel}</span>
-                  <span className="badge-base border border-border bg-surface-light text-text">
-                    {item.statusLabel}
-                  </span>
-                </div>
-                <h2 className="mt-3 text-xl font-bold text-heading">{item.campaignTitle}</h2>
-                <p className="mt-1 text-sm text-text-muted">{item.campaignLocation}</p>
-                <p className="mt-3 text-sm text-text">{item.nextStep}</p>
-                <p className="mt-4 text-sm font-medium text-supporter">{item.dateLabel}</p>
-              </div>
-            </article>
-          ))}
-        </div>
+        {errorMessage ? (
+          <p className="mb-6 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
+            {errorMessage}
+          </p>
+        ) : null}
+
+        {registrations.length > 0 ? (
+          <div className="overflow-hidden rounded-xl border border-border bg-surface">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-surface-muted text-text-muted">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Campaign</th>
+                  <th className="px-4 py-3 font-semibold">Status</th>
+                  <th className="px-4 py-3 font-semibold">Registered At</th>
+                  <th className="px-4 py-3 font-semibold">Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                {registrations.map((item) => (
+                  <tr key={item.id} className="border-t border-border">
+                    <td className="px-4 py-3 text-text">
+                      {campaignTitleById.get(item.campaignId) ?? item.campaignId}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded-full border px-2 py-1 text-xs font-semibold ${
+                          STATUS_STYLE[item.status] ?? "bg-surface-muted text-text-muted border-border"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-text-muted">
+                      {formatDateTime(item.registeredAt)}
+                    </td>
+                    <td className="px-4 py-3 text-text-muted">{item.message ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="card-container p-6 text-center text-muted">
+            <p>You have no volunteer registrations yet.</p>
+          </div>
+        )}
       </div>
     </RoleGate>
   );
