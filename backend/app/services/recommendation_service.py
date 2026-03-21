@@ -97,6 +97,9 @@ def _sanitize_generated_text(
         return ""
 
     normalized = unicodedata.normalize("NFKC", str(value))
+    if allow_newlines:
+        normalized = re.sub(r"\\r\\n|\\n|\\r", "\n", normalized)
+
     sanitized_chars: list[str] = []
     for char in normalized:
         if char == "\n" and allow_newlines:
@@ -255,14 +258,14 @@ def _heuristic_campaign_draft_recommendation(
     )
 
     description = (
-        f"Campaign objective:\\n{payload.campaign_goal.strip()}\\n\\n"
-        f"Beneficiary context:\\n{context_line.strip()}\\n\\n"
-        f"Delivery location:\\n{location_line.strip()}\\n\\n"
-        "Suggested execution plan:\\n"
-        "- Define weekly milestones and publish measurable progress updates.\\n"
-        "- Assign clear responsibilities for organization staff, coordinators, and supporters.\\n"
-        "- Standardize handover checklists to reduce losses and missing records.\\n\\n"
-        f"Constraints to respect:\\n{constraint_line.strip()}"
+        f"Campaign objective:\n{payload.campaign_goal.strip()}\n\n"
+        f"Beneficiary context:\n{context_line.strip()}\n\n"
+        f"Delivery location:\n{location_line.strip()}\n\n"
+        "Suggested execution plan:\n"
+        "- Define weekly milestones and publish measurable progress updates.\n"
+        "- Assign clear responsibilities for organization staff, coordinators, and supporters.\n"
+        "- Standardize handover checklists to reduce losses and missing records.\n\n"
+        f"Constraints to respect:\n{constraint_line.strip()}"
     )
 
     base_tags = [

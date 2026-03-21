@@ -55,6 +55,26 @@ class RecommendationSanitizationTestCase(unittest.TestCase):
         self.assertEqual(merged.risk_notes, ["Data mismatch risk"])
         self.assertEqual(merged.transparency_notes, ["Post weekly logs"])
 
+    def test_sanitize_generated_text_converts_escaped_newlines(self) -> None:
+        raw = "Line 1\\nLine 2\\r\\nLine 3"
+        cleaned = recommendation_service._sanitize_generated_text(raw, allow_newlines=True)
+        self.assertEqual(cleaned, "Line 1\nLine 2\nLine 3")
+
+    def test_heuristic_description_uses_real_newlines(self) -> None:
+        payload = CampaignDraftRecommendationRequest(
+            title="Book Drive",
+            campaign_goal="Donate books for children",
+            beneficiary_context="Students in rural schools",
+            location_hint="District 9",
+            support_types_hint=[SupportType.goods],
+            constraints=[],
+            tone="clear and practical",
+        )
+
+        recommendation = recommendation_service._heuristic_campaign_draft_recommendation(payload)
+        self.assertIn("\n", recommendation.description)
+        self.assertNotIn("\\n", recommendation.description)
+
 
 if __name__ == "__main__":
     unittest.main()
