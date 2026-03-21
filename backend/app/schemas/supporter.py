@@ -9,6 +9,7 @@ class SupporterRead(BaseModel):
     id: UUID
     full_name: str
     email: EmailStr
+    credit_score: int
     location: str | None
     support_types: list[UserSupportType] = Field(default_factory=list)
     joined_campaign_ids: list[UUID] = Field(default_factory=list)

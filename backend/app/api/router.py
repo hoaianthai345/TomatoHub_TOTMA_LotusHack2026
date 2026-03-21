@@ -5,6 +5,7 @@ from app.api.endpoints import (
     beneficiaries,
     campaign_checkpoints,
     campaigns,
+    credits,
     dashboards,
     donations,
     health,
@@ -20,6 +21,7 @@ api_router.include_router(auth.router)
 api_router.include_router(dashboards.router)
 api_router.include_router(organizations.router)
 api_router.include_router(campaigns.router)
+api_router.include_router(credits.router)
 api_router.include_router(campaign_checkpoints.router)
 api_router.include_router(beneficiaries.router)
 api_router.include_router(donations.router)

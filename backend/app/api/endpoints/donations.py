@@ -8,9 +8,15 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, get_optional_current_user
 from app.api.permissions import ensure_authenticated_user_matches
 from app.models.campaign import Campaign, CampaignStatus
+from app.models.credit_event import CreditTargetType
 from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
 from app.schemas.monetary_donation import MonetaryDonationCreate, MonetaryDonationRead
+from app.services.credit_service import (
+    DONATION_CREATED_SUPPORTER_POINTS,
+    DONATION_RECEIVED_ORGANIZATION_POINTS,
+    apply_credit_event,
+)
 
 router = APIRouter(prefix="/donations", tags=["donations"])
 
@@ -131,6 +137,40 @@ def create_donation(
     db.add(donation)
 
     campaign.raised_amount = Decimal(campaign.raised_amount) + Decimal(payload.amount)
+    db.flush()
+
+    if donor_user_id is not None:
+        apply_credit_event(
+            db,
+            target_type=CreditTargetType.supporter,
+            target_user_id=donor_user_id,
+            actor_user_id=donor_user_id,
+            event_type="donation_created",
+            points=DONATION_CREATED_SUPPORTER_POINTS,
+            note=f"Donation for campaign {campaign.title}",
+            context={
+                "campaign_id": str(campaign.id),
+                "donation_id": str(donation.id),
+                "amount": str(payload.amount),
+                "currency": payload.currency.upper(),
+            },
+        )
+
+    apply_credit_event(
+        db,
+        target_type=CreditTargetType.organization,
+        target_organization_id=campaign.organization_id,
+        actor_user_id=donor_user_id,
+        event_type="donation_received",
+        points=DONATION_RECEIVED_ORGANIZATION_POINTS,
+        note=f"Received donation for campaign {campaign.title}",
+        context={
+            "campaign_id": str(campaign.id),
+            "donation_id": str(donation.id),
+            "amount": str(payload.amount),
+            "currency": payload.currency.upper(),
+        },
+    )
 
     db.commit()
     db.refresh(donation)

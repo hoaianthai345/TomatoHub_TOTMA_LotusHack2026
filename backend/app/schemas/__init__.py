@@ -35,6 +35,12 @@ from app.schemas.campaign_checkpoint import (
     VolunteerAttendanceRead,
 )
 from app.schemas.common import HealthResponse
+from app.schemas.credit import (
+    CreditAdjustRequest,
+    CreditEventRead,
+    CreditProfileRead,
+    MyCreditRead,
+)
 from app.schemas.dashboard import (
     OrganizationActivityItemRead,
     OrganizationCampaignPipelineItemRead,
@@ -68,6 +74,10 @@ __all__ = [
     "UserProfileUpdateRequest",
     "CurrentUserRead",
     "HealthResponse",
+    "CreditEventRead",
+    "CreditProfileRead",
+    "MyCreditRead",
+    "CreditAdjustRequest",
     "OrganizationDashboardRead",
     "OrganizationCampaignPipelineItemRead",
     "OrganizationActivityItemRead",

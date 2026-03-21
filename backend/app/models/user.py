@@ -21,6 +21,7 @@ class User(Base):
     support_types: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_superuser: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    credit_score: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     refresh_token_version: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     organization_id: Mapped[uuid.UUID | None] = mapped_column(

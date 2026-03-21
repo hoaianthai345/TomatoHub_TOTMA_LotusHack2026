@@ -2,7 +2,7 @@
 
 Tài liệu mô tả schema database hiện tại của backend theo Alembic head:
 
-- **Current head revision**: `202603210008`
+- **Current head revision**: `202603210009`
 - **Engine**: PostgreSQL
 - **ORM**: SQLAlchemy 2.x
 - **Migration**: Alembic
@@ -22,6 +22,7 @@ Các bảng nghiệp vụ hiện có:
 9. `checkpoint_scan_logs`
 10. `goods_checkins`
 11. `campaign_images`
+12. `credit_events`
 
 Bảng hệ thống migration:
 
@@ -37,12 +38,14 @@ Bảng hệ thống migration:
 6. `202603210006_campaign_images_and_volunteer_relation`
 7. `202603210007_auth_lifecycle_foundation`
 8. `202603210008_add_cancelled_volunteer_status`
+9. `202603210009_credit_system`
 
 ## 3. Enum types
 
 1. `campaign_status`: `draft`, `published`, `closed`
 2. `beneficiary_status`: `added`, `verified`, `assigned`, `received`
 3. `volunteer_status`: `pending`, `approved`, `rejected`, `cancelled`
+4. `credit_target_type`: `supporter`, `organization`
 
 ## 4. Chi tiết bảng
 
@@ -58,9 +61,10 @@ Cột chính:
 4. `website` VARCHAR(255), nullable
 5. `location` VARCHAR(120), nullable
 6. `verified` BOOLEAN, not null, default false
-7. `logo_url` VARCHAR(500), nullable
-8. `created_at` TIMESTAMPTZ, default `now()`
-9. `updated_at` TIMESTAMPTZ, default `now()`
+7. `credit_score` INTEGER, not null, default 0
+8. `logo_url` VARCHAR(500), nullable
+9. `created_at` TIMESTAMPTZ, default `now()`
+10. `updated_at` TIMESTAMPTZ, default `now()`
 
 Quan hệ:
 
@@ -83,10 +87,11 @@ Cột chính:
 6. `support_types` JSONB, not null, default `[]`
 7. `is_active` BOOLEAN, not null, default true
 8. `is_superuser` BOOLEAN, not null, default false
-9. `refresh_token_version` INTEGER, not null, default 0
-10. `organization_id` UUID FK -> `organizations.id` (on delete set null)
-11. `created_at` TIMESTAMPTZ
-12. `updated_at` TIMESTAMPTZ
+9. `credit_score` INTEGER, not null, default 0
+10. `refresh_token_version` INTEGER, not null, default 0
+11. `organization_id` UUID FK -> `organizations.id` (on delete set null)
+12. `created_at` TIMESTAMPTZ
+13. `updated_at` TIMESTAMPTZ
 
 Index/constraint:
 
@@ -319,6 +324,32 @@ Index/constraint:
 2. `ix_campaign_images_campaign_id`
 3. `ix_campaign_images_uploaded_by_user_id`
 
+## `credit_events`
+
+Mục đích: lưu lịch sử cộng/trừ điểm credit cho supporter hoặc organization.
+
+Cột chính:
+
+1. `id` UUID PK
+2. `target_type` `credit_target_type`, not null (`supporter` hoặc `organization`)
+3. `target_user_id` UUID FK -> `users.id` (on delete cascade), nullable
+4. `target_organization_id` UUID FK -> `organizations.id` (on delete cascade), nullable
+5. `actor_user_id` UUID FK -> `users.id` (on delete set null), nullable
+6. `event_type` VARCHAR(80), not null
+7. `points` INTEGER, not null
+8. `note` TEXT, nullable
+9. `context` JSONB, not null
+10. `created_at` TIMESTAMPTZ
+
+Index/constraint:
+
+1. `ix_credit_events_target_user_created_at` (`target_user_id`, `created_at`)
+2. `ix_credit_events_target_org_created_at` (`target_organization_id`, `created_at`)
+3. `ix_credit_events_actor_user_id` (`actor_user_id`)
+4. `ck_credit_events_target_consistency`:
+   - `target_type = supporter` thì chỉ có `target_user_id`
+   - `target_type = organization` thì chỉ có `target_organization_id`
+
 ## 5. Quan hệ chính (ER tóm tắt)
 
 ```text
@@ -342,6 +373,8 @@ users 1---N volunteer_attendances
 users 1---N checkpoint_scan_logs (nullable user_id)
 users 1---N goods_checkins (nullable user_id)
 users 1---N campaign_images (nullable uploaded_by_user_id)
+users 1---N credit_events (target_user_id / actor_user_id)
+organizations 1---N credit_events (target_organization_id)
 ```
 
 ## 6. Rule dữ liệu quan trọng đang được enforce ở DB
@@ -351,6 +384,7 @@ users 1---N campaign_images (nullable uploaded_by_user_id)
 3. `campaigns.slug` là duy nhất.
 4. `campaign_images.relative_path` là duy nhất.
 5. Với bản ghi volunteer có `user_id` khác null: duy nhất theo cặp (`campaign_id`, `user_id`).
+6. `credit_events` enforce target nhất quán theo `target_type`.
 
 ## 7. Lưu ý cho dev khi chỉnh schema
 

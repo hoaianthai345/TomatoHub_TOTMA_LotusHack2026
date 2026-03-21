@@ -188,3 +188,17 @@ Lưu ý về downgrade ENUM:
 
 - PostgreSQL không hỗ trợ xóa trực tiếp 1 enum value đơn giản.
 - `downgrade()` của migration `202603210008` để `pass` (no-op) nhằm tránh thao tác phá dữ liệu.
+
+## 11. Ghi chú migration 202603210009 (Credit system)
+
+Migration `202603210009_credit_system.py` thêm:
+
+- Cột `users.credit_score` (int, default 0).
+- Cột `organizations.credit_score` (int, default 0).
+- Bảng `credit_events` để lưu lịch sử cộng/trừ điểm credit.
+- ENUM mới `credit_target_type` (`supporter`, `organization`).
+
+Lưu ý:
+
+- `credit_events` có check constraint để đảm bảo target nhất quán theo `target_type`.
+- Khi rollback migration này, enum `credit_target_type` sẽ được drop nếu không còn dùng.

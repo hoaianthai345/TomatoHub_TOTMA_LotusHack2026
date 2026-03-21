@@ -9,6 +9,7 @@ from app.models.campaign import Campaign
 from app.models.campaign_checkpoint import CampaignCheckpoint
 from app.models.campaign_image import CampaignImage
 from app.models.checkpoint_scan_log import CheckpointScanLog
+from app.models.credit_event import CreditEvent
 from app.models.goods_checkin import GoodsCheckin
 from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
@@ -34,6 +35,7 @@ class UserAdmin(BaseAdminView, model=User):
         User.support_types,
         User.is_active,
         User.is_superuser,
+        User.credit_score,
         User.organization_id,
         User.created_at,
     ]
@@ -51,6 +53,7 @@ class OrganizationAdmin(BaseAdminView, model=Organization):
         Organization.name,
         Organization.location,
         Organization.verified,
+        Organization.credit_score,
         Organization.website,
         Organization.created_at,
     ]
@@ -247,6 +250,25 @@ class GoodsCheckinAdmin(BaseAdminView, model=GoodsCheckin):
     form_excluded_columns = [GoodsCheckin.campaign, GoodsCheckin.checkpoint, GoodsCheckin.user]
 
 
+class CreditEventAdmin(BaseAdminView, model=CreditEvent):
+    name = "Credit Event"
+    name_plural = "Credit Events"
+    icon = "fa-solid fa-star"
+    column_list = [
+        CreditEvent.id,
+        CreditEvent.target_type,
+        CreditEvent.target_user_id,
+        CreditEvent.target_organization_id,
+        CreditEvent.actor_user_id,
+        CreditEvent.event_type,
+        CreditEvent.points,
+        CreditEvent.note,
+        CreditEvent.created_at,
+    ]
+    column_searchable_list = [CreditEvent.event_type, CreditEvent.note]
+    column_default_sort = [(CreditEvent.created_at, True)]
+
+
 def setup_admin(app: FastAPI) -> None:
     admin = Admin(
         app,
@@ -266,3 +288,4 @@ def setup_admin(app: FastAPI) -> None:
     admin.add_view(BeneficiaryAdmin)
     admin.add_view(MonetaryDonationAdmin)
     admin.add_view(VolunteerRegistrationAdmin)
+    admin.add_view(CreditEventAdmin)

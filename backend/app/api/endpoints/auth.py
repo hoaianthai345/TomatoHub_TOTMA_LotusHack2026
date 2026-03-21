@@ -44,6 +44,9 @@ def _to_current_user_read(user: User) -> CurrentUserRead:
             continue
 
     organization_name = user.organization.name if user.organization is not None else None
+    organization_credit_score = (
+        user.organization.credit_score if user.organization is not None else None
+    )
     return CurrentUserRead(
         id=user.id,
         email=user.email,
@@ -51,6 +54,8 @@ def _to_current_user_read(user: User) -> CurrentUserRead:
         role=get_user_role(user),
         organization_id=user.organization_id,
         organization_name=organization_name,
+        organization_credit_score=organization_credit_score,
+        credit_score=user.credit_score,
         location=user.location,
         support_types=support_types,
         is_active=user.is_active,
