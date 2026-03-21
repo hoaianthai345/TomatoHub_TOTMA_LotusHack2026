@@ -1,10 +1,23 @@
 from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.campaign import CampaignStatus, SupportType
+
+
+def _coerce_raw_to_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple | set):
+        return list(value)
+    if isinstance(value, dict):
+        return []
+    return [value]
 
 
 class CampaignCreate(BaseModel):
@@ -146,6 +159,30 @@ class CampaignRead(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("tags", "media_urls", mode="before")
+    @classmethod
+    def normalize_read_string_lists(cls, value: Any) -> list[str]:
+        normalized: list[str] = []
+        for item in _coerce_raw_to_list(value):
+            text = str(item).strip()
+            if text and text not in normalized:
+                normalized.append(text)
+        return normalized
+
+    @field_validator("support_types", mode="before")
+    @classmethod
+    def normalize_read_support_types(cls, value: Any) -> list[str]:
+        allowed = {item.value for item in SupportType}
+        normalized: list[str] = []
+        for item in _coerce_raw_to_list(value):
+            if isinstance(item, SupportType):
+                normalized_value = item.value
+            else:
+                normalized_value = str(item).strip().lower()
+            if normalized_value in allowed and normalized_value not in normalized:
+                normalized.append(normalized_value)
+        return normalized
 
     model_config = ConfigDict(from_attributes=True)
 

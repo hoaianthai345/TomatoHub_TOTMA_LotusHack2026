@@ -24,9 +24,18 @@ class Settings(BaseSettings):
     BACKEND_CORS_ALLOW_ORIGIN_REGEX: str = (
         r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
     )
+    STORAGE_BACKEND: str = "local"
     UPLOAD_DIR: str = "uploads"
     UPLOAD_URL_PREFIX: str = "/uploads"
     CAMPAIGN_IMAGE_MAX_SIZE_MB: int = 10
+    S3_ENDPOINT_URL: str | None = None
+    S3_ACCESS_KEY_ID: str | None = None
+    S3_SECRET_ACCESS_KEY: str | None = None
+    S3_REGION: str = "us-east-1"
+    S3_BUCKET: str | None = None
+    S3_KEY_PREFIX: str = ""
+    S3_PUBLIC_BASE_URL: str | None = None
+    S3_FORCE_PATH_STYLE: bool = True
     RECOMMENDATION_USE_LLM: bool = True
     GROQ_API_KEY: str | None = None
     GROQ_API_BASE_URL: str = "https://api.groq.com/openai/v1"
@@ -120,6 +129,9 @@ class Settings(BaseSettings):
         if not upload_path.is_absolute():
             upload_path = BASE_DIR / upload_path
         return upload_path.resolve()
+
+    def is_s3_storage(self) -> bool:
+        return self.STORAGE_BACKEND.strip().lower() == "s3"
 
 
 @lru_cache
