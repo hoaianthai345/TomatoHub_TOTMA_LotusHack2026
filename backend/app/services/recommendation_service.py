@@ -22,10 +22,11 @@ from app.schemas.recommendation import (
     SupporterCampaignRecommendationResponse,
 )
 from app.services.groq_client import GroqClient
+from app.services.openai_client import OpenAIClient
 
-_MAX_SHORT_DESCRIPTION_CHARS = 500
-_MAX_DESCRIPTION_CHARS = 4000
-_MAX_LIST_ITEM_CHARS = 220
+_MAX_SHORT_DESCRIPTION_CHARS = 280
+_MAX_DESCRIPTION_CHARS = 1800
+_MAX_LIST_ITEM_CHARS = 160
 _MAX_TAG_CHARS = 60
 
 
@@ -81,6 +82,14 @@ def _select_model_for_supporter_rewrite(
     return heavy_model, "heavy"
 
 
+def _recommended_draft_provider_order() -> list[str]:
+    preferred = settings.RECOMMENDATION_DRAFT_PREFERRED_PROVIDER.strip().lower()
+    if preferred not in {"openai", "groq"}:
+        preferred = "openai"
+    secondary = "groq" if preferred == "openai" else "openai"
+    return [preferred, secondary]
+
+
 def _normalize_text(value: str | None) -> str:
     if value is None:
         return ""
@@ -113,6 +122,8 @@ def _sanitize_generated_text(
         sanitized_chars.append(char)
 
     cleaned = "".join(sanitized_chars)
+    cleaned = re.sub(r"[`*_~#|<>]+", " ", cleaned, flags=re.UNICODE)
+    cleaned = re.sub(r"[^\w\s\.,;:!\?\-\/\(\)]", " ", cleaned, flags=re.UNICODE)
     if allow_newlines:
         lines = [" ".join(line.split()) for line in cleaned.split("\n")]
         cleaned = "\n".join([line for line in lines if line])
@@ -402,18 +413,13 @@ def recommend_campaign_draft(
     payload: CampaignDraftRecommendationRequest,
 ) -> CampaignDraftRecommendationResponse:
     heuristic = _heuristic_campaign_draft_recommendation(payload)
-    client = GroqClient()
-    if not client.enabled:
-        return heuristic
-    selected_model, model_tier = _select_model_for_campaign_draft(payload)
-
     system_prompt = (
         "You are an AI copilot for nonprofit campaign planning. "
         "Return ONLY one valid JSON object with keys: "
         "short_description, description, suggested_tags, suggested_support_types, "
         "volunteer_tasks, donation_suggestions, risk_notes, transparency_notes. "
         "For suggested_support_types, use only: money, goods, volunteer. "
-        "Use plain text without emojis, markdown, or unusual symbols."
+        "Write concise outputs. Use plain text without emojis, markdown, or unusual symbols."
     )
     user_prompt = (
         "Campaign draft brief:\\n"
@@ -424,31 +430,53 @@ def recommend_campaign_draft(
         f"- support_types_hint: {[item.value for item in payload.support_types_hint]}\\n"
         f"- constraints: {payload.constraints}\\n"
         f"- tone: {payload.tone}\\n\\n"
-        "Requirements: practical content, clear actions, transparency-first, and feasible execution."
+        "Requirements: practical content, clear actions, transparency-first, feasible execution. "
+        "Keep each list item short and avoid special characters."
     )
 
-    try:
-        llm_result = client.generate_json_object(
-            system_prompt=system_prompt,
-            user_prompt=user_prompt,
-            model=selected_model,
-            temperature=0.4,
-            max_tokens=1500,
-        )
-    except RuntimeError:
-        return heuristic
+    for provider in _recommended_draft_provider_order():
+        try:
+            if provider == "openai":
+                client = OpenAIClient()
+                if not client.enabled:
+                    continue
+                llm_result = client.generate_json_object(
+                    system_prompt=system_prompt,
+                    user_prompt=user_prompt,
+                    model=settings.OPENAI_MODEL.strip() or None,
+                    temperature=0.3,
+                    max_tokens=1400,
+                )
+                return _merge_campaign_draft_llm_output(
+                    heuristic=heuristic,
+                    llm_data=llm_result.data,
+                    model=llm_result.model,
+                    generated_by="openai",
+                )
 
-    try:
-        return _merge_campaign_draft_llm_output(
-            heuristic=heuristic,
-            llm_data=llm_result.data,
-            model=llm_result.model,
-            generated_by=(
-                f"groq-{model_tier}" if model_tier in {"light", "heavy"} else "groq"
-            ),
-        )
-    except Exception:
-        return heuristic
+            client = GroqClient()
+            if not client.enabled:
+                continue
+            selected_model, model_tier = _select_model_for_campaign_draft(payload)
+            llm_result = client.generate_json_object(
+                system_prompt=system_prompt,
+                user_prompt=user_prompt,
+                model=selected_model,
+                temperature=0.4,
+                max_tokens=1500,
+            )
+            return _merge_campaign_draft_llm_output(
+                heuristic=heuristic,
+                llm_data=llm_result.data,
+                model=llm_result.model,
+                generated_by=(
+                    f"groq-{model_tier}" if model_tier in {"light", "heavy"} else "groq"
+                ),
+            )
+        except Exception:
+            continue
+
+    return heuristic
 
 
 def _supporter_campaign_score(
