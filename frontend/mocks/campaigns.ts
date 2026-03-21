@@ -118,4 +118,34 @@ export const campaigns: Campaign[] = [
     },
     createdAt: "2026-03-17T06:45:00Z",
   },
+  {
+    id: "camp-5",
+    slug: "heat-relief-binh-thanh-workers",
+    title: "Heat Relief Support for Binh Thanh Workers",
+    shortDescription:
+      "Fund cooling stations, hydration kits, and volunteer shifts for outdoor workers during peak heat days.",
+    description:
+      "This campaign helps delivery riders, sanitation teams, and street-side workers in Binh Thanh with hydration points, cooling breaks, and emergency support supplies coordinated by the local organization team.",
+    location: "Binh Thanh, HCMC",
+    organizationId: "org-1",
+    status: "published",
+    tags: ["heatwave", "workers", "health", "community"],
+    targetAmount: 85000000,
+    raisedAmount: 32000000,
+    beneficiaryCount: 140,
+    supporterCount: 63,
+    needs: [
+      { label: "Hydration kits", value: "500 kits" },
+      { label: "Cooling fans", value: "40 units" },
+      { label: "Volunteer shifts", value: "18 people" },
+      { label: "Medical check desks", value: "4 desks" },
+    ],
+    coverImage:
+      "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=1200&q=80",
+    coordinates: {
+      latitude: 10.8106,
+      longitude: 106.7091,
+    },
+    createdAt: "2026-03-16T10:20:00Z",
+  },
 ];

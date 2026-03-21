@@ -33,7 +33,7 @@ export default function OrganizationLayout({
   ];
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top_right,_rgba(124,58,237,0.10),_transparent_30%),linear-gradient(180deg,_rgba(255,250,245,0.86),_rgba(255,255,255,0.98))]">
+    <div className="min-h-[calc(100vh-4rem)] bg-page">
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 lg:grid-cols-[300px_minmax(0,1fr)]">
         <aside className="card-base h-fit overflow-hidden border border-org/15 bg-white/90 shadow-[0_20px_50px_rgba(124,58,237,0.08)] backdrop-blur lg:sticky lg:top-20">
           <div className="border-b border-border bg-[linear-gradient(135deg,_rgba(124,58,237,0.15),_rgba(255,255,255,0.96))] p-5">
