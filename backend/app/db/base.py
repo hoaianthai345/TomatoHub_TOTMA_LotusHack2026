@@ -5,6 +5,7 @@ from app.models.beneficiary import Beneficiary  # noqa: F401
 from app.models.campaign import Campaign  # noqa: F401
 from app.models.campaign_checkpoint import CampaignCheckpoint  # noqa: F401
 from app.models.checkpoint_scan_log import CheckpointScanLog  # noqa: F401
+from app.models.goods_checkin import GoodsCheckin  # noqa: F401
 from app.models.monetary_donation import MonetaryDonation  # noqa: F401
 from app.models.organization import Organization  # noqa: F401
 from app.models.user import User  # noqa: F401

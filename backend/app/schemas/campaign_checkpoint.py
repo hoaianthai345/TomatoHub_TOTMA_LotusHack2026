@@ -59,6 +59,26 @@ class CampaignCheckpointGenerateQrResponse(BaseModel):
 
 class CampaignCheckpointScanRequest(BaseModel):
     token: str = Field(min_length=20)
+    donor_name: str | None = Field(default=None, max_length=255)
+    item_name: str | None = Field(default=None, max_length=255)
+    quantity: Decimal | None = Field(default=None, gt=0)
+    unit: str | None = Field(default=None, max_length=50)
+    note: str | None = None
+
+
+class GoodsCheckinRead(BaseModel):
+    id: UUID
+    campaign_id: UUID
+    checkpoint_id: UUID
+    user_id: UUID | None
+    donor_name: str
+    item_name: str
+    quantity: Decimal
+    unit: str
+    note: str | None
+    checked_in_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VolunteerAttendanceRead(BaseModel):
@@ -79,7 +99,9 @@ class VolunteerAttendanceRead(BaseModel):
 class CampaignCheckpointScanResponse(BaseModel):
     message: str
     scan_type: CheckpointScanType
-    attendance: VolunteerAttendanceRead
+    flow_type: CheckpointType
+    attendance: VolunteerAttendanceRead | None = None
+    goods_checkin: GoodsCheckinRead | None = None
 
 
 class CheckpointScanLogRead(BaseModel):

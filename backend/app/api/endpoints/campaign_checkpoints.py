@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -20,6 +21,7 @@ from app.models.checkpoint_scan_log import (
     CheckpointScanResult,
     CheckpointScanType,
 )
+from app.models.goods_checkin import GoodsCheckin
 from app.models.user import User
 from app.models.volunteer_attendance import VolunteerAttendance
 from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
@@ -32,6 +34,7 @@ from app.schemas.campaign_checkpoint import (
     CampaignCheckpointScanResponse,
     CampaignCheckpointUpdate,
     CheckpointScanLogRead,
+    GoodsCheckinRead,
     VolunteerAttendanceRead,
 )
 from app.services.checkpoint_qr_service import (
@@ -194,10 +197,22 @@ def generate_checkpoint_qr(
     checkpoint = _get_checkpoint_or_404(db, checkpoint_id)
     _ensure_checkpoint_owner(checkpoint, current_user)
 
-    if checkpoint.checkpoint_type != CheckpointType.volunteer.value:
+    if checkpoint.checkpoint_type not in {
+        CheckpointType.volunteer.value,
+        CheckpointType.goods.value,
+    }:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only volunteer checkpoint QR is supported in this phase",
+            detail="Unsupported checkpoint type",
+        )
+
+    if (
+        checkpoint.checkpoint_type == CheckpointType.goods.value
+        and payload.scan_type != CheckpointScanType.check_in
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Goods checkpoint QR only supports check-in",
         )
 
     token, expires_at, _ = generate_checkpoint_qr_token(
@@ -241,9 +256,106 @@ def scan_campaign_checkpoint_qr(
     if not checkpoint.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Checkpoint is inactive")
     if checkpoint.checkpoint_type != CheckpointType.volunteer.value:
+        if checkpoint.checkpoint_type != CheckpointType.goods.value:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Unsupported checkpoint type",
+            )
+
+    duplicated_nonce = db.scalar(
+        select(CheckpointScanLog.id).where(
+            CheckpointScanLog.user_id == current_user.id,
+            CheckpointScanLog.scan_type == token_data.scan_type.value,
+            CheckpointScanLog.result == CheckpointScanResult.success.value,
+            CheckpointScanLog.token_nonce == token_data.nonce,
+        )
+    )
+    if duplicated_nonce is not None:
+        db.add(
+            _build_scan_log(
+                checkpoint=checkpoint,
+                user_id=current_user.id,
+                registration_id=None,
+                scan_type=token_data.scan_type,
+                result=CheckpointScanResult.rejected,
+                message="Duplicated QR scan nonce",
+                token_nonce=token_data.nonce,
+            )
+        )
+        db.commit()
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="This checkpoint is not configured for volunteer check-in/out",
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This QR has already been used for your account",
+        )
+
+    if checkpoint.checkpoint_type == CheckpointType.goods.value:
+        if token_data.scan_type != CheckpointScanType.check_in:
+            db.add(
+                _build_scan_log(
+                    checkpoint=checkpoint,
+                    user_id=current_user.id,
+                    registration_id=None,
+                    scan_type=token_data.scan_type,
+                    result=CheckpointScanResult.rejected,
+                    message="Goods checkpoint only supports check-in",
+                    token_nonce=token_data.nonce,
+                )
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Goods checkpoint only supports check-in",
+            )
+
+        item_name = (payload.item_name or "").strip()
+        quantity = payload.quantity
+        donor_name = (payload.donor_name or "").strip() or current_user.full_name
+        unit = (payload.unit or "").strip() or "item"
+
+        if not item_name:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="item_name is required for goods check-in",
+            )
+        if quantity is None or Decimal(quantity) <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="quantity must be greater than 0 for goods check-in",
+            )
+
+        goods_checkin = GoodsCheckin(
+            campaign_id=checkpoint.campaign_id,
+            checkpoint_id=checkpoint.id,
+            user_id=current_user.id,
+            donor_name=donor_name,
+            item_name=item_name,
+            quantity=quantity,
+            unit=unit,
+            note=payload.note,
+        )
+        db.add(goods_checkin)
+        db.flush()
+        db.add(
+            _build_scan_log(
+                checkpoint=checkpoint,
+                user_id=current_user.id,
+                registration_id=None,
+                scan_type=token_data.scan_type,
+                result=CheckpointScanResult.success,
+                message=(
+                    f"Goods check-in successful: {donor_name} checked in "
+                    f"{item_name} x{quantity} {unit}"
+                ),
+                token_nonce=token_data.nonce,
+            )
+        )
+        db.commit()
+        db.refresh(goods_checkin)
+        return CampaignCheckpointScanResponse(
+            message="Goods check-in successful",
+            scan_type=CheckpointScanType.check_in,
+            flow_type=CheckpointType.goods,
+            goods_checkin=GoodsCheckinRead.model_validate(goods_checkin),
         )
 
     registration = db.scalar(
@@ -286,31 +398,6 @@ def scan_campaign_checkpoint_qr(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Your registration is not approved yet",
-        )
-
-    duplicated_nonce = db.scalar(
-        select(CheckpointScanLog.id).where(
-            CheckpointScanLog.user_id == current_user.id,
-            CheckpointScanLog.scan_type == token_data.scan_type.value,
-            CheckpointScanLog.result == CheckpointScanResult.success.value,
-            CheckpointScanLog.token_nonce == token_data.nonce,
-        )
-    )
-    if duplicated_nonce is not None:
-        log = _build_scan_log(
-            checkpoint=checkpoint,
-            user_id=current_user.id,
-            registration_id=registration.id,
-            scan_type=token_data.scan_type,
-            result=CheckpointScanResult.rejected,
-            message="Duplicated QR scan nonce",
-            token_nonce=token_data.nonce,
-        )
-        db.add(log)
-        db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This QR has already been used for your account",
         )
 
     now = datetime.now(timezone.utc)
@@ -370,6 +457,7 @@ def scan_campaign_checkpoint_qr(
         return CampaignCheckpointScanResponse(
             message="Check-in successful",
             scan_type=CheckpointScanType.check_in,
+            flow_type=CheckpointType.volunteer,
             attendance=VolunteerAttendanceRead.model_validate(attendance),
         )
 
@@ -409,6 +497,7 @@ def scan_campaign_checkpoint_qr(
     return CampaignCheckpointScanResponse(
         message="Check-out successful",
         scan_type=CheckpointScanType.check_out,
+        flow_type=CheckpointType.volunteer,
         attendance=VolunteerAttendanceRead.model_validate(open_attendance),
     )
 
