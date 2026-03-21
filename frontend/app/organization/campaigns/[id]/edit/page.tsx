@@ -8,6 +8,7 @@ import SectionTitle from "@/components/common/section-title";
 import { useAuth } from "@/lib/auth";
 import {
   getCampaignById,
+  uploadCampaignImage,
   updateCampaign,
 } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
@@ -24,7 +25,6 @@ interface EditCampaignFormState {
   shortDescription: string;
   description: string;
   goalAmount: string;
-  coverImageUrl: string;
   tags: string;
   startsAt: string;
   endsAt: string;
@@ -40,7 +40,6 @@ function emptyForm(): EditCampaignFormState {
     shortDescription: "",
     description: "",
     goalAmount: "",
-    coverImageUrl: "",
     tags: "",
     startsAt: "",
     endsAt: "",
@@ -69,6 +68,8 @@ export default function EditCampaignPage() {
   const campaignId = params?.id;
   const { currentUser, accessToken, isLoading } = useAuth();
   const [formState, setFormState] = useState<EditCampaignFormState>(emptyForm());
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+  const [currentCoverImage, setCurrentCoverImage] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -103,7 +104,6 @@ export default function EditCampaignPage() {
             shortDescription: campaign.shortDescription || "",
             description: campaign.description || "",
             goalAmount: String(campaign.goalAmount ?? campaign.targetAmount ?? ""),
-            coverImageUrl: campaign.coverImageUrl || "",
             tags: (campaign.tags ?? []).join(", "),
             startsAt: toDatetimeLocal(campaign.startsAt),
             endsAt: toDatetimeLocal(campaign.endsAt),
@@ -112,6 +112,8 @@ export default function EditCampaignPage() {
             district: campaign.district || "",
             addressLine: campaign.addressLine || "",
           });
+          setCurrentCoverImage(campaign.coverImage || "");
+          setCoverImageFile(null);
           setErrorMessage(null);
         }
       } catch (error) {
@@ -175,7 +177,6 @@ export default function EditCampaignPage() {
           province: formState.province.trim() || undefined,
           district: formState.district.trim() || undefined,
           addressLine: formState.addressLine.trim() || undefined,
-          coverImageUrl: formState.coverImageUrl.trim() || undefined,
           tags: formState.tags
             .split(",")
             .map((value) => value.trim())
@@ -190,6 +191,12 @@ export default function EditCampaignPage() {
         },
         accessToken
       );
+
+      if (coverImageFile) {
+        await uploadCampaignImage(updated.id, coverImageFile, accessToken, {
+          setAsCover: true,
+        });
+      }
 
       router.replace(`/organization/campaigns?updated=${updated.id}`);
     } catch (error) {
@@ -325,18 +332,28 @@ export default function EditCampaignPage() {
                 </div>
 
                 <label className="grid gap-2 text-sm text-text">
-                  <span>Cover image URL</span>
+                  <span>Cover image (optional)</span>
                   <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
                     className="input-base"
-                    placeholder="Cover image URL"
-                    value={formState.coverImageUrl}
                     onChange={(event) =>
-                      setFormState((prev) => ({
-                        ...prev,
-                        coverImageUrl: event.target.value,
-                      }))
+                      setCoverImageFile(event.target.files?.[0] ?? null)
                     }
                   />
+                  <p className="text-xs text-text-muted">
+                    If empty, current image is kept. Campaigns without image use the default cover from public assets.
+                  </p>
+                  {coverImageFile ? (
+                    <p className="text-xs text-body">
+                      Selected file: {coverImageFile.name}
+                    </p>
+                  ) : null}
+                  {currentCoverImage ? (
+                    <p className="text-xs text-text-muted">
+                      Current cover: {currentCoverImage}
+                    </p>
+                  ) : null}
                 </label>
 
                 <div className="grid gap-4 md:grid-cols-2">
