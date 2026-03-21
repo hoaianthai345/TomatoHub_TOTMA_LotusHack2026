@@ -63,6 +63,10 @@ interface ListPublishedCampaignsOptions {
   supportType?: CampaignSupportType;
 }
 
+const CAMPAIGN_LIST_LIMIT_DEFAULT = 20;
+const CAMPAIGN_LIST_LIMIT_MIN = 1;
+const CAMPAIGN_LIST_LIMIT_MAX = 100;
+
 interface BackendPublishCampaignResponse {
   message: string;
   campaign: BackendCampaign;
@@ -182,16 +186,23 @@ export function mapCampaign(campaign: BackendCampaign): Campaign {
 }
 
 export async function listPublishedCampaigns(
-  limitOrOptions: number | ListPublishedCampaignsOptions = 20,
+  limitOrOptions: number | ListPublishedCampaignsOptions = CAMPAIGN_LIST_LIMIT_DEFAULT,
   options: ListPublishedCampaignsOptions = {}
 ): Promise<Campaign[]> {
   const resolvedOptions =
     typeof limitOrOptions === "number"
       ? { ...options, limit: limitOrOptions }
       : limitOrOptions;
+  const requestedLimit = resolvedOptions.limit ?? CAMPAIGN_LIST_LIMIT_DEFAULT;
+  const normalizedLimit = Number.isFinite(requestedLimit)
+    ? Math.min(
+        CAMPAIGN_LIST_LIMIT_MAX,
+        Math.max(CAMPAIGN_LIST_LIMIT_MIN, Math.trunc(requestedLimit))
+      )
+    : CAMPAIGN_LIST_LIMIT_DEFAULT;
   const query = new URLSearchParams({
     status: "published",
-    limit: String(resolvedOptions.limit ?? 20),
+    limit: String(normalizedLimit),
   });
 
   if (resolvedOptions.province?.trim()) {

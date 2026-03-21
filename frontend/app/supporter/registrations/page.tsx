@@ -37,29 +37,36 @@ export default function RegistrationsPage() {
     let cancelled = false;
 
     const loadData = async () => {
-      try {
-        const [registrationList, campaignList] = await Promise.all([
-          listVolunteerRegistrations({
-            userId: currentUser.id,
-            token: accessToken,
-            limit: 300,
-          }),
-          listPublishedCampaigns(200),
-        ]);
+      const [registrationResult, campaignResult] = await Promise.allSettled([
+        listVolunteerRegistrations({
+          userId: currentUser.id,
+          token: accessToken,
+          limit: 300,
+        }),
+        listPublishedCampaigns(200),
+      ]);
 
-        if (!cancelled) {
-          setRegistrations(registrationList);
-          setCampaigns(campaignList);
-          setErrorMessage(null);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setErrorMessage(
-            error instanceof ApiError
-              ? error.message
-              : "Failed to load your registrations."
-          );
-        }
+      if (cancelled) {
+        return;
+      }
+
+      if (registrationResult.status === "fulfilled") {
+        setRegistrations(registrationResult.value);
+        setErrorMessage(null);
+      } else {
+        const reason = registrationResult.reason;
+        setRegistrations([]);
+        setErrorMessage(
+          reason instanceof ApiError
+            ? reason.message
+            : "Failed to load your registrations."
+        );
+      }
+
+      if (campaignResult.status === "fulfilled") {
+        setCampaigns(campaignResult.value);
+      } else {
+        setCampaigns([]);
       }
     };
 
