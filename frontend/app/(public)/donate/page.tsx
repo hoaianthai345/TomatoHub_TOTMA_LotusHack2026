@@ -83,6 +83,14 @@ export default function DonatePage() {
     () => campaigns.find((campaign) => campaign.id === selectedCampaignId) ?? null,
     [campaigns, selectedCampaignId]
   );
+  const remainingAmount = useMemo(() => {
+    if (!selectedCampaign) {
+      return 0;
+    }
+    const goalAmount = selectedCampaign.goalAmount ?? selectedCampaign.targetAmount ?? 0;
+    const raisedAmount = selectedCampaign.raisedAmount ?? 0;
+    return Math.max(goalAmount - raisedAmount, 0);
+  }, [selectedCampaign]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -101,6 +109,16 @@ export default function DonatePage() {
     }
     if (!Number.isFinite(amountValue) || amountValue <= 0) {
       setErrorMessage("Amount must be greater than 0.");
+      return;
+    }
+    if (remainingAmount <= 0) {
+      setErrorMessage("This campaign has already reached its goal.");
+      return;
+    }
+    if (amountValue > remainingAmount) {
+      setErrorMessage(
+        `Amount exceeds remaining goal. Maximum allowed is ${formatCurrency(remainingAmount)}.`
+      );
       return;
     }
 
@@ -203,14 +221,18 @@ export default function DonatePage() {
                   id="amount"
                   type="number"
                   min={1}
-                  step={1000}
+                  max={remainingAmount > 0 ? remainingAmount : undefined}
+                  step={1}
                   className="input-base"
                   value={amount}
                   onChange={(event) => setAmount(event.target.value)}
                   placeholder="Example: 500000"
                   required
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || remainingAmount <= 0}
                 />
+                <p className="mt-2 text-xs text-text-muted">
+                  Max donation for this campaign: {formatCurrency(remainingAmount)}
+                </p>
               </div>
 
               <div>
@@ -247,7 +269,7 @@ export default function DonatePage() {
               <button
                 type="submit"
                 className="btn-base btn-primary w-full"
-                disabled={isSubmitting || campaigns.length === 0}
+                disabled={isSubmitting || campaigns.length === 0 || remainingAmount <= 0}
               >
                 {isSubmitting ? "Submitting..." : "Submit donation"}
               </button>
@@ -270,6 +292,12 @@ export default function DonatePage() {
                   /{" "}
                   <span className="text-text-muted">
                     {formatCurrency(selectedCampaign.goalAmount ?? selectedCampaign.targetAmount)}
+                  </span>
+                </p>
+                <p className="mt-1 text-sm text-text">
+                  Remaining:{" "}
+                  <span className="font-semibold text-primary">
+                    {formatCurrency(remainingAmount)}
                   </span>
                 </p>
                 <Link
