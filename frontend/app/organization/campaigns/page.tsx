@@ -1,20 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
 import { useAuth } from "@/lib/auth";
-<<<<<<< HEAD
 import {
   deleteCampaign,
   listCampaignsByOrganization,
   publishCampaign,
   updateCampaign,
 } from "@/lib/api/campaigns";
-=======
-import { listCampaignsByOrganization, publishCampaign } from "@/lib/api/campaigns";
->>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
 import { ApiError } from "@/lib/api/http";
 import { listVolunteerRegistrations } from "@/lib/api/volunteer-registrations";
 import { formatCurrency, formatDateTime } from "@/utils/format";
@@ -28,16 +23,11 @@ const STATUS_STYLE: Record<string, string> = {
 };
 
 export default function CampaignsPage() {
-<<<<<<< HEAD
-=======
-  const searchParams = useSearchParams();
->>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
   const { currentUser, accessToken, isLoading } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [registrations, setRegistrations] = useState<VolunteerRegistration[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-<<<<<<< HEAD
   const [loadingCampaignId, setLoadingCampaignId] = useState<string | null>(null);
   const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
@@ -46,9 +36,6 @@ export default function CampaignsPage() {
     description: "",
     goalAmount: "",
   });
-=======
-  const [publishingCampaignId, setPublishingCampaignId] = useState<string | null>(null);
->>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
 
   useEffect(() => {
     const organizationId = currentUser?.organizationId;
@@ -94,7 +81,11 @@ export default function CampaignsPage() {
   }, [accessToken, currentUser?.organizationId, currentUser?.role, isLoading]);
 
   useEffect(() => {
-    const createdCampaignId = searchParams.get("created");
+    if (typeof window === "undefined") {
+      return;
+    }
+    const query = new URLSearchParams(window.location.search);
+    const createdCampaignId = query.get("created");
     if (!createdCampaignId) {
       return;
     }
@@ -105,10 +96,14 @@ export default function CampaignsPage() {
         ? `Draft "${createdCampaign.title}" was created successfully.`
         : "Draft campaign created successfully."
     );
-  }, [campaigns, searchParams]);
+  }, [campaigns]);
 
   useEffect(() => {
-    const updatedCampaignId = searchParams.get("updated");
+    if (typeof window === "undefined") {
+      return;
+    }
+    const query = new URLSearchParams(window.location.search);
+    const updatedCampaignId = query.get("updated");
     if (!updatedCampaignId) {
       return;
     }
@@ -119,33 +114,7 @@ export default function CampaignsPage() {
         ? `Campaign "${updatedCampaign.title}" was updated successfully.`
         : "Campaign updated successfully."
     );
-  }, [campaigns, searchParams]);
-
-  const handlePublish = async (campaignId: string) => {
-    if (!accessToken) {
-      setErrorMessage("Organization authentication is required to publish a campaign.");
-      return;
-    }
-
-    setPublishingCampaignId(campaignId);
-    setErrorMessage(null);
-
-    try {
-      const publishedCampaign = await publishCampaign(campaignId, accessToken);
-      setCampaigns((current) =>
-        current.map((campaign) =>
-          campaign.id === publishedCampaign.id ? publishedCampaign : campaign
-        )
-      );
-      setSuccessMessage(`Campaign "${publishedCampaign.title}" is now published.`);
-    } catch (error) {
-      setErrorMessage(
-        error instanceof ApiError ? error.message : "Failed to publish campaign."
-      );
-    } finally {
-      setPublishingCampaignId(null);
-    }
-  };
+  }, [campaigns]);
 
   const registrationStatsByCampaign = useMemo(() => {
     const map = new Map<
@@ -218,6 +187,12 @@ export default function CampaignsPage() {
       return;
     }
 
+    const title = editForm.title.trim();
+    if (!title) {
+      setErrorMessage("Title is required.");
+      return;
+    }
+
     const parsedGoal = Number(editForm.goalAmount);
     if (!Number.isFinite(parsedGoal) || parsedGoal <= 0) {
       setErrorMessage("Goal amount must be greater than 0.");
@@ -229,7 +204,7 @@ export default function CampaignsPage() {
       const updated = await updateCampaign(
         campaignId,
         {
-          title: editForm.title.trim(),
+          title,
           shortDescription: editForm.shortDescription.trim() || undefined,
           description: editForm.description.trim() || undefined,
           goalAmount: parsedGoal,
@@ -294,7 +269,7 @@ export default function CampaignsPage() {
       setCampaigns((prev) =>
         prev.map((item) => (item.id === campaign.id ? publishedCampaign : item))
       );
-      setSuccessMessage("Campaign published successfully.");
+      setSuccessMessage(`Campaign "${publishedCampaign.title}" is now published.`);
       setErrorMessage(null);
     } catch (error) {
       setErrorMessage(
@@ -325,12 +300,6 @@ export default function CampaignsPage() {
             {errorMessage}
           </p>
         ) : null}
-        {successMessage ? (
-          <p className="mb-6 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-            {successMessage}
-          </p>
-        ) : null}
-
         {successMessage ? (
           <p className="mb-6 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
             {successMessage}
@@ -407,16 +376,15 @@ export default function CampaignsPage() {
                     href={`/organization/campaigns/${campaign.id}/edit`}
                     className="btn-base btn-secondary text-sm"
                   >
-                    Edit
+                    Edit page
                   </Link>
-<<<<<<< HEAD
                   <button
                     type="button"
                     onClick={() => startEdit(campaign)}
                     className="btn-base btn-secondary text-sm"
                     disabled={loadingCampaignId === campaign.id}
                   >
-                    Edit
+                    Quick edit
                   </button>
                   {campaign.status === "draft" ? (
                     <button
@@ -425,26 +393,7 @@ export default function CampaignsPage() {
                       className="btn-base btn-primary text-sm"
                       disabled={loadingCampaignId === campaign.id}
                     >
-                      Publish
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(campaign)}
-                    className="btn-base text-sm text-white bg-danger rounded-lg"
-                    disabled={loadingCampaignId === campaign.id}
-                  >
-                    Delete
-                  </button>
-=======
-                  {campaign.status === "draft" ? (
-                    <button
-                      type="button"
-                      onClick={() => handlePublish(campaign.id)}
-                      disabled={publishingCampaignId === campaign.id}
-                      className="btn-base btn-primary text-sm disabled:opacity-50"
-                    >
-                      {publishingCampaignId === campaign.id ? "Publishing..." : "Publish"}
+                      {loadingCampaignId === campaign.id ? "Publishing..." : "Publish"}
                     </button>
                   ) : null}
                   {campaign.status === "published" ? (
@@ -455,7 +404,14 @@ export default function CampaignsPage() {
                       View public page
                     </Link>
                   ) : null}
->>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(campaign)}
+                    className="btn-base text-sm text-white bg-danger rounded-lg"
+                    disabled={loadingCampaignId === campaign.id}
+                  >
+                    {loadingCampaignId === campaign.id ? "Working..." : "Delete"}
+                  </button>
                 </div>
 
                 {editingCampaignId === campaign.id ? (
