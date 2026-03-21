@@ -9,5 +9,6 @@ __all__ = [
     "health",
     "organizations",
     "supporters",
+    "transparency",
     "volunteer_registrations",
 ]

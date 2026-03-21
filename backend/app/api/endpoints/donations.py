@@ -22,7 +22,34 @@ def list_donations(
     donor_user_id: UUID | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> list[MonetaryDonation]:
+    if donor_user_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to query user donations",
+            )
+        if not current_user.is_superuser:
+            ensure_authenticated_user_matches(
+                current_user,
+                donor_user_id,
+                auth_detail="Authentication required to query user donations",
+                mismatch_detail="Cannot query donations for another user",
+            )
+
+    if organization_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to query organization donations",
+            )
+        if not current_user.is_superuser and current_user.organization_id != organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot query donations for another organization",
+            )
+
     stmt = (
         select(MonetaryDonation)
         .order_by(MonetaryDonation.donated_at.desc())
@@ -50,22 +77,46 @@ def create_donation(
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
 
-    donor_name = payload.donor_name
-    if payload.donor_user_id is not None:
-        ensure_authenticated_user_matches(
-            current_user,
-            payload.donor_user_id,
-            auth_detail="Authentication required to create a linked donation",
-            mismatch_detail="Cannot create donation for another user",
-        )
-        donor_user = db.get(User, payload.donor_user_id)
+    donor_user_id = payload.donor_user_id
+    donor_name = payload.donor_name.strip()
+
+    if current_user is not None and not current_user.is_superuser:
+        if donor_user_id is not None and donor_user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot create donation for another user",
+            )
+        donor_user_id = current_user.id
+        donor_name = current_user.full_name
+
+    if donor_user_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to create a linked donation",
+            )
+        if not current_user.is_superuser:
+            ensure_authenticated_user_matches(
+                current_user,
+                donor_user_id,
+                auth_detail="Authentication required to create a linked donation",
+                mismatch_detail="Cannot create donation for another user",
+            )
+        donor_user = db.get(User, donor_user_id)
         if donor_user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Donor user not found")
-        donor_name = donor_user.full_name
+        if not donor_name:
+            donor_name = donor_user.full_name
+
+    if not donor_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="donor_name cannot be empty",
+        )
 
     donation = MonetaryDonation(
         campaign_id=payload.campaign_id,
-        donor_user_id=payload.donor_user_id,
+        donor_user_id=donor_user_id,
         donor_name=donor_name,
         amount=payload.amount,
         currency=payload.currency.upper(),

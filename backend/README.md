@@ -176,6 +176,13 @@ curl -X GET "http://127.0.0.1:8000/api/v1/auth/me" \
 - `GET /api/v1/volunteer-registrations/?organization_id=<uuid>`
 - `POST /api/v1/volunteer-registrations/`
 - `PATCH /api/v1/volunteer-registrations/{registration_id}/status` (organization token required)
+- `GET /api/v1/transparency/logs?campaign_id=<uuid>` or `?organization_id=<uuid>`
+
+Notes:
+
+- `organization_id` filters in supporters / beneficiaries / donations / volunteer registrations require authenticated access to that organization (or superuser).
+- `donor_user_id` / `user_id` filters require authenticated access to the same user (or superuser).
+- `POST /donations` and `POST /volunteer-registrations` automatically bind to the authenticated user when a bearer token is provided.
 
 ## 6. Deploy on Linux VM (basic)
 

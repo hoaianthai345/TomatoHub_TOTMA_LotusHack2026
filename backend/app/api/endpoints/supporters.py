@@ -1,10 +1,10 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db
+from app.api.deps import get_db, get_optional_current_user
 from app.models.campaign import Campaign
 from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
@@ -30,10 +30,22 @@ def list_supporters(
     organization_id: UUID | None = Query(default=None),
     limit: int = Query(default=200, ge=1, le=500),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> list[SupporterRead]:
     supporters_by_id: dict[UUID, SupporterRead] = {}
 
     if organization_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to query organization supporters",
+            )
+        if not current_user.is_superuser and current_user.organization_id != organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot query supporters for another organization",
+            )
+
         campaign_ids = list(
             db.scalars(select(Campaign.id).where(Campaign.organization_id == organization_id)).all()
         )

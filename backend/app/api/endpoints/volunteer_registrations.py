@@ -30,7 +30,34 @@ def list_volunteer_registrations(
     registration_status: VolunteerStatus | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> list[VolunteerRegistration]:
+    if user_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to query user registrations",
+            )
+        if not current_user.is_superuser:
+            ensure_authenticated_user_matches(
+                current_user,
+                user_id,
+                auth_detail="Authentication required to query user registrations",
+                mismatch_detail="Cannot query registrations for another user",
+            )
+
+    if organization_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to query organization registrations",
+            )
+        if not current_user.is_superuser and current_user.organization_id != organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot query registrations for another organization",
+            )
+
     stmt = (
         select(VolunteerRegistration)
         .order_by(VolunteerRegistration.registered_at.desc())
@@ -59,24 +86,49 @@ def create_volunteer_registration(
     if campaign is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
 
-    full_name = payload.full_name
+    user_id = payload.user_id
+    full_name = payload.full_name.strip()
     email = payload.email
-    if payload.user_id is not None:
-        ensure_authenticated_user_matches(
-            current_user,
-            payload.user_id,
-            auth_detail="Authentication required to create a linked registration",
-            mismatch_detail="Cannot create registration for another user",
-        )
-        user = db.get(User, payload.user_id)
+
+    if current_user is not None and not current_user.is_superuser:
+        if user_id is not None and user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot create registration for another user",
+            )
+        user_id = current_user.id
+        full_name = current_user.full_name
+        email = current_user.email
+
+    if user_id is not None:
+        if current_user is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required to create a linked registration",
+            )
+        if not current_user.is_superuser:
+            ensure_authenticated_user_matches(
+                current_user,
+                user_id,
+                auth_detail="Authentication required to create a linked registration",
+                mismatch_detail="Cannot create registration for another user",
+            )
+        user = db.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-        full_name = user.full_name
+        if not full_name:
+            full_name = user.full_name
         email = user.email
+
+    if not full_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="full_name cannot be empty",
+        )
 
     registration = VolunteerRegistration(
         campaign_id=payload.campaign_id,
-        user_id=payload.user_id,
+        user_id=user_id,
         full_name=full_name,
         email=email,
         phone_number=payload.phone_number,
