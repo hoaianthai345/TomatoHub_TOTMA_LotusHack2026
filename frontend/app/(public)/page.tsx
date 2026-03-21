@@ -103,6 +103,7 @@ export default async function HomePage() {
   const heroCampaign = pickCampaign(campaigns, 0);
   const spotlightCampaign = pickCampaign(campaigns, 1) ?? heroCampaign;
   const updateCampaigns = campaigns.slice(0, 3);
+  const mapCampaigns = campaigns.filter((campaign) => campaign.coordinates !== null);
 
   const totalRaised = sumBy(campaigns, (campaign) => campaign.raisedAmount);
   const totalSupporters = sumBy(campaigns, (campaign) => campaign.supporterCount);
@@ -312,14 +313,14 @@ export default async function HomePage() {
           )}
         </section>
 
-        {campaigns.some((campaign) => campaign.coordinates !== null) ? (
+        {mapCampaigns.length > 0 ? (
           <section className="mt-12">
             <SectionTitle
               title="Campaigns Near You"
               description="Use your location to discover nearby public campaigns."
             />
             <div className="mb-8">
-              <NearbyCampaignMap campaigns={campaigns} />
+              <NearbyCampaignMap campaigns={mapCampaigns} maxCampaigns={3} />
             </div>
           </section>
         ) : null}

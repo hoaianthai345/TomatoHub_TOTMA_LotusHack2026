@@ -7,6 +7,7 @@ interface NearbyCampaignMapProps {
   campaigns: Campaign[];
   className?: string;
   showHeader?: boolean;
+  maxCampaigns?: number;
 }
 
 type LocationStatus =
@@ -28,7 +29,7 @@ const FALLBACK_LOCATION: CampaignCoordinates = {
 };
 
 const NEARBY_RADIUS_KM = 25;
-const MAX_NEARBY_CAMPAIGNS = 6;
+const DEFAULT_MAX_NEARBY_CAMPAIGNS = 6;
 
 function toRadians(value: number): number {
   return (value * Math.PI) / 180;
@@ -90,6 +91,7 @@ export default function NearbyCampaignMap({
   campaigns,
   className = "",
   showHeader = true,
+  maxCampaigns = DEFAULT_MAX_NEARBY_CAMPAIGNS,
 }: NearbyCampaignMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
@@ -131,6 +133,13 @@ export default function NearbyCampaignMap({
     locateUser();
   }, [locateUser]);
 
+  const normalizedMaxCampaigns = useMemo(() => {
+    if (!Number.isFinite(maxCampaigns)) {
+      return DEFAULT_MAX_NEARBY_CAMPAIGNS;
+    }
+    return Math.max(1, Math.trunc(maxCampaigns));
+  }, [maxCampaigns]);
+
   const sortedCampaigns = useMemo<CampaignWithDistance[]>(() => {
     return campaigns
       .filter((campaign) => campaign.coordinates !== null)
@@ -151,7 +160,7 @@ export default function NearbyCampaignMap({
     }
 
     if (!userLocation) {
-      return sortedCampaigns.slice(0, MAX_NEARBY_CAMPAIGNS);
+      return sortedCampaigns.slice(0, normalizedMaxCampaigns);
     }
 
     const matched = sortedCampaigns.filter(
@@ -159,11 +168,11 @@ export default function NearbyCampaignMap({
     );
 
     if (matched.length) {
-      return matched.slice(0, MAX_NEARBY_CAMPAIGNS);
+      return matched.slice(0, normalizedMaxCampaigns);
     }
 
-    return sortedCampaigns.slice(0, MAX_NEARBY_CAMPAIGNS);
-  }, [sortedCampaigns, userLocation]);
+    return sortedCampaigns.slice(0, normalizedMaxCampaigns);
+  }, [normalizedMaxCampaigns, sortedCampaigns, userLocation]);
 
   const mapCenter = userLocation ?? FALLBACK_LOCATION;
 

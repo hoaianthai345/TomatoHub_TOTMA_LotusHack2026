@@ -97,6 +97,9 @@ def _sanitize_generated_text(
         return ""
 
     normalized = unicodedata.normalize("NFKC", str(value))
+    if allow_newlines:
+        normalized = re.sub(r"\\r\\n|\\n|\\r", "\n", normalized)
+
     sanitized_chars: list[str] = []
     for char in normalized:
         if char == "\n" and allow_newlines:
@@ -122,6 +125,32 @@ def _sanitize_generated_text(
     if max_chars is not None and max_chars > 0:
         cleaned = cleaned[:max_chars]
     return cleaned.strip()
+
+
+def _strip_title_prefix_from_short_description(
+    short_description: str,
+    campaign_title: str | None,
+) -> str:
+    if not short_description:
+        return ""
+
+    cleaned_short = short_description.strip()
+    cleaned_title = _sanitize_generated_text(campaign_title or "").strip()
+    if not cleaned_title:
+        return cleaned_short
+
+    prefixes = [
+        cleaned_title,
+        f'"{cleaned_title}"',
+        f"'{cleaned_title}'",
+    ]
+    for prefix in prefixes:
+        if cleaned_short[: len(prefix)].lower() != prefix.lower():
+            continue
+        remainder = cleaned_short[len(prefix):].lstrip(" :,-–—|")
+        return remainder.strip()
+
+    return cleaned_short
 
 
 def _sanitize_generated_list(
@@ -242,7 +271,7 @@ def _heuristic_campaign_draft_recommendation(
     support_type_labels = ", ".join(support_type.value for support_type in support_types)
 
     short_description = (
-        f"{payload.title.strip()}: mobilize {support_type_labels} support "
+        f"mobilize {support_type_labels} support "
         "to address urgent community needs with a transparent execution plan."
     )
 
@@ -255,14 +284,14 @@ def _heuristic_campaign_draft_recommendation(
     )
 
     description = (
-        f"Campaign objective:\\n{payload.campaign_goal.strip()}\\n\\n"
-        f"Beneficiary context:\\n{context_line.strip()}\\n\\n"
-        f"Delivery location:\\n{location_line.strip()}\\n\\n"
-        "Suggested execution plan:\\n"
-        "- Define weekly milestones and publish measurable progress updates.\\n"
-        "- Assign clear responsibilities for organization staff, coordinators, and supporters.\\n"
-        "- Standardize handover checklists to reduce losses and missing records.\\n\\n"
-        f"Constraints to respect:\\n{constraint_line.strip()}"
+        f"Campaign objective:\n{payload.campaign_goal.strip()}\n\n"
+        f"Beneficiary context:\n{context_line.strip()}\n\n"
+        f"Delivery location:\n{location_line.strip()}\n\n"
+        "Suggested execution plan:\n"
+        "- Define weekly milestones and publish measurable progress updates.\n"
+        "- Assign clear responsibilities for organization staff, coordinators, and supporters.\n"
+        "- Standardize handover checklists to reduce losses and missing records.\n\n"
+        f"Constraints to respect:\n{constraint_line.strip()}"
     )
 
     base_tags = [
@@ -325,6 +354,7 @@ def _merge_campaign_draft_llm_output(
     llm_data: dict[str, Any],
     model: str,
     generated_by: str,
+    campaign_title: str | None = None,
 ) -> CampaignDraftRecommendationResponse:
     suggested_support_types = _to_support_types(
         llm_data.get("suggested_support_types")
@@ -337,6 +367,10 @@ def _merge_campaign_draft_llm_output(
     short_description = _sanitize_generated_text(
         str(llm_data.get("short_description") or ""),
         max_chars=_MAX_SHORT_DESCRIPTION_CHARS,
+    )
+    short_description = _strip_title_prefix_from_short_description(
+        short_description,
+        campaign_title,
     )
     description = _sanitize_generated_text(
         str(llm_data.get("description") or ""),
@@ -446,6 +480,7 @@ def recommend_campaign_draft(
             generated_by=(
                 f"groq-{model_tier}" if model_tier in {"light", "heavy"} else "groq"
             ),
+            campaign_title=payload.title,
         )
     except Exception:
         return heuristic
