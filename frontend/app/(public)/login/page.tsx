@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import FormField from "@/components/common/form-field";
+import StatePanel from "@/components/common/state-panel";
 import { AuthApiError } from "@/lib/auth/api";
 import { useAuth } from "@/lib/auth";
 
@@ -57,8 +59,7 @@ export default function LoginPage() {
 				<p className="text-center text-body mb-8">Sign in to continue to your dashboard</p>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
-					<div>
-						<label className="label-text block mb-1">Email</label>
+					<FormField label="Email" required>
 						<input
 							type="email"
 							required
@@ -67,10 +68,9 @@ export default function LoginPage() {
 							value={formData.email}
 							onChange={(event) => setFormData((prev) => ({ ...prev, email: event.target.value }))}
 						/>
-					</div>
+					</FormField>
 
-					<div>
-						<label className="label-text block mb-1">Password</label>
+					<FormField label="Password" required>
 						<input
 							type="password"
 							required
@@ -80,9 +80,9 @@ export default function LoginPage() {
 							value={formData.password}
 							onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
 						/>
-					</div>
+					</FormField>
 
-					{errorMessage ? <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">{errorMessage}</p> : null}
+					{errorMessage ? <StatePanel variant="error" message={errorMessage} /> : null}
 
 					<button type="submit" disabled={isLoading} className="btn-base w-full btn-primary disabled:opacity-50 justify-center">
 						{isLoading ? "Logging in..." : "Sign in"}
@@ -104,7 +104,7 @@ export default function LoginPage() {
 
 				<div className="relative my-6">
 					<div className="absolute inset-0 flex items-center">
-						<div className="w-full border-t border-main"></div>
+						<div className="w-full divider-line"></div>
 					</div>
 					<div className="relative flex justify-center text-sm">
 						<span className="px-2 bg-page text-muted">Don&apos;t have account?</span>

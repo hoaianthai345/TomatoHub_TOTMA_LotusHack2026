@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Campaign, CampaignCoordinates } from "@/types/campaign";
+import { getMapMarkerColors } from "@/lib/ui/tokens";
 
 interface NearbyCampaignMapProps {
   campaigns: Campaign[];
@@ -200,13 +201,14 @@ export default function NearbyCampaignMap({
       }).addTo(mapInstance);
 
       const bounds = L.latLngBounds([[mapCenter.latitude, mapCenter.longitude]]);
+      const markerColors = getMapMarkerColors();
 
       const userMarker = L.circleMarker(
         [mapCenter.latitude, mapCenter.longitude],
         {
           radius: 8,
-          color: "#1d4ed8",
-          fillColor: "#2563eb",
+          color: markerColors.userStroke,
+          fillColor: markerColors.userFill,
           fillOpacity: 1,
           weight: 2,
         }
@@ -224,8 +226,8 @@ export default function NearbyCampaignMap({
           ],
           {
             radius: 9,
-            color: "#c2410c",
-            fillColor: "#fb923c",
+            color: markerColors.campaignStroke,
+            fillColor: markerColors.campaignFill,
             fillOpacity: 0.95,
             weight: 2,
           }

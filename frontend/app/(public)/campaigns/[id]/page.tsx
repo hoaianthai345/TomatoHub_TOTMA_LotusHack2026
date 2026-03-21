@@ -4,11 +4,10 @@ import Container from "@/components/common/container";
 import CampaignLocationMap from "@/components/campaign/campaign-location-map";
 import CampaignDetailActionBar from "@/components/campaign/campaign-detail-action-bar";
 import CampaignVolunteerCheckinPanel from "@/components/campaign/campaign-volunteer-checkin-panel";
-import {
-  getCampaignPhase,
-  getCampaignPhaseBadgeClass,
-  getCampaignPhaseLabel,
-} from "@/lib/campaign-phase";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
+import { getCampaignPhase } from "@/lib/campaign-phase";
 import { getCampaignActivitySummary, getCampaignBySlug } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
 import { getOrganizationById } from "@/lib/api/organizations";
@@ -81,9 +80,7 @@ export default async function CampaignDetailPage({
             />
             <div className="p-6 md:p-8">
               <div className="mb-3 flex flex-wrap gap-2">
-                <span className={getCampaignPhaseBadgeClass(phase)}>
-                  {getCampaignPhaseLabel(phase)}
-                </span>
+                <StatusBadge kind="campaign_phase" value={phase} size={14} />
                 {campaign.tags.map((tag) => (
                   <span
                     key={tag}
@@ -181,7 +178,7 @@ export default async function CampaignDetailPage({
                 <p className="flex items-start justify-between gap-4">
                   <span className="text-text-muted">Location</span>
                   <span className="text-right font-medium text-text">
-                    {campaign.location || "Not specified"}
+                    {campaign.location ? <span>{campaign.location}</span> : <MissingValue />}
                   </span>
                 </p>
                 <p className="flex items-start justify-between gap-4">
@@ -193,7 +190,12 @@ export default async function CampaignDetailPage({
                 <p className="flex items-start justify-between gap-4">
                   <span className="text-text-muted">Campaign phase</span>
                   <span className="text-right font-medium text-text">
-                    {getCampaignPhaseLabel(phase)}
+                    <StatusBadge
+                      kind="campaign_phase"
+                      value={phase}
+                      size={14}
+                      className="align-middle"
+                    />
                   </span>
                 </p>
                 <p className="flex items-start justify-between gap-4">
@@ -225,9 +227,11 @@ export default async function CampaignDetailPage({
                 </p>
               </div>
               {!hasActionBar ? (
-                <div className="mt-4 rounded-xl border border-border bg-surface-muted p-3 text-sm text-text-muted">
-                  This campaign currently has no direct money or volunteer flow.
-                </div>
+                <StatePanel
+                  variant="info"
+                  className="mt-4"
+                  message="This campaign currently has no direct money or volunteer flow."
+                />
               ) : null}
             </aside>
           </section>
@@ -261,9 +265,11 @@ export default async function CampaignDetailPage({
     return (
       <div className="py-10">
         <Container>
-          <div className="card-base p-6 text-sm text-danger">
-            Failed to load campaign details from the backend.
-          </div>
+          <StatePanel
+            variant="error"
+            title="Campaign details unavailable"
+            message="Failed to load campaign details from the backend."
+          />
         </Container>
       </div>
     );

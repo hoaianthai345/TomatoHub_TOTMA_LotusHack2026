@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import CampaignCard from "@/components/campaign/campaign-card";
 import Container from "@/components/common/container";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { getCampaignPhase } from "@/lib/campaign-phase";
 import { listCampaigns } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
@@ -102,9 +105,11 @@ export default async function OrganizationDetailPage({
     return (
       <div className="py-10">
         <Container>
-          <div className="card-base border border-danger/20 bg-danger/5 p-6 text-sm text-danger">
-            Failed to load organization profile from the backend.
-          </div>
+          <StatePanel
+            variant="error"
+            title="Organization profile unavailable"
+            message="Failed to load organization profile from the backend."
+          />
         </Container>
       </div>
     );
@@ -169,7 +174,7 @@ export default async function OrganizationDetailPage({
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-3xl font-bold text-heading">{organization.name}</h1>
                 {organization.verified ? (
-                  <span className="badge-base badge-success">Verified</span>
+                  <StatusBadge kind="verified_state" value="verified" size={14} />
                 ) : null}
               </div>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-text-muted">
@@ -201,13 +206,13 @@ export default async function OrganizationDetailPage({
                 <p className="flex items-start justify-between gap-3">
                   <span className="text-text-muted">Location</span>
                   <span className="text-right font-medium text-text">
-                    {organization.location || "Not specified"}
+                    {organization.location ? <span>{organization.location}</span> : <MissingValue />}
                   </span>
                 </p>
                 <p className="flex items-start justify-between gap-3">
                   <span className="text-text-muted">Credit score</span>
                   <span className="text-right font-medium text-text">
-                    {organization.creditScore ?? "N/A"}
+                    {organization.creditScore ?? <MissingValue text="N/A" />}
                   </span>
                 </p>
                 <p className="flex items-start justify-between gap-3">
@@ -228,9 +233,11 @@ export default async function OrganizationDetailPage({
         </section>
 
         {loadError ? (
-          <div className="mt-6 card-base border border-border bg-surface-light p-4 text-sm text-warning">
-            Some campaign data could not be loaded completely.
-          </div>
+          <StatePanel
+            variant="warning"
+            className="mt-6"
+            message="Some campaign data could not be loaded completely."
+          />
         ) : null}
 
         <CampaignSection

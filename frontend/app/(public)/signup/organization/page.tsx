@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import FormField from "@/components/common/form-field";
+import StatePanel from "@/components/common/state-panel";
 import VietnamLocationFields from "@/components/location/VietnamLocationFields";
 import { AuthApiError } from "@/lib/auth/api";
 import { formatVietnamLocationLabel } from "@/lib/api/vietnam-location";
@@ -66,11 +68,7 @@ export default function OrganizationSignupPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Organization Name */}
-          <div>
-            <label className="label-text block mb-1">
-              Organization Name
-            </label>
+          <FormField label="Organization Name" required>
             <input
               type="text"
               required
@@ -81,13 +79,9 @@ export default function OrganizationSignupPage() {
               className="input-base"
               placeholder="Organization name"
             />
-          </div>
+          </FormField>
 
-          {/* Representative Name */}
-          <div>
-            <label className="label-text block mb-1">
-              Representative Name
-            </label>
+          <FormField label="Representative Name">
             <input
               type="text"
               value={formData.representative}
@@ -100,13 +94,9 @@ export default function OrganizationSignupPage() {
               className="input-base"
               placeholder="Your name"
             />
-          </div>
+          </FormField>
 
-          {/* Email */}
-          <div>
-            <label className="label-text block mb-1">
-              Email
-            </label>
+          <FormField label="Email" required>
             <input
               type="email"
               required
@@ -117,13 +107,9 @@ export default function OrganizationSignupPage() {
               className="input-base"
               placeholder="org@email.com"
             />
-          </div>
+          </FormField>
 
-          {/* Password */}
-          <div>
-            <label className="label-text block mb-1">
-              Password
-            </label>
+          <FormField label="Password" required>
             <input
               type="password"
               required
@@ -135,7 +121,7 @@ export default function OrganizationSignupPage() {
               className="input-base"
               placeholder="At least 8 characters"
             />
-          </div>
+          </FormField>
 
           <VietnamLocationFields
             value={locationValue}
@@ -143,11 +129,7 @@ export default function OrganizationSignupPage() {
             helperText="Use the shared Vietnam administrative dataset so organization locations stay consistent across forms."
           />
 
-          {/* Description */}
-          <div>
-            <label className="label-text block mb-1">
-              Description
-            </label>
+          <FormField label="Description">
             <textarea
               value={formData.description}
               onChange={(e) =>
@@ -160,15 +142,12 @@ export default function OrganizationSignupPage() {
               placeholder="Tell us about your organization"
               rows={3}
             />
-          </div>
+          </FormField>
 
           {errorMessage ? (
-            <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-              {errorMessage}
-            </p>
+            <StatePanel variant="error" message={errorMessage} />
           ) : null}
 
-          {/* Submit Button */}
           <button
             type="submit"
             disabled={isLoading}

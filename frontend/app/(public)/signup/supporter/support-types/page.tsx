@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import FormField from "@/components/common/form-field";
+import StatePanel from "@/components/common/state-panel";
 import { AuthApiError } from "@/lib/auth/api";
 import { useAuth } from "@/lib/auth";
 import { useSupporterSignupFlow } from "@/lib/auth/SupporterSignupFlowContext";
@@ -88,8 +90,7 @@ export default function SupporterSignupSupportTypesPage() {
 				</div>
 
 				<form onSubmit={handleSubmit} className="space-y-4">
-					<div>
-						<label className="label-text block mb-2">Choose one or more support types</label>
+					<FormField label="Choose one or more support types">
 						<div className="space-y-2">
 							{SUPPORT_TYPE_OPTIONS.map((option) => (
 								<label key={option.value} className="flex items-center">
@@ -104,9 +105,9 @@ export default function SupporterSignupSupportTypesPage() {
 								</label>
 							))}
 						</div>
-					</div>
+					</FormField>
 
-					{errorMessage ? <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">{errorMessage}</p> : null}
+					{errorMessage ? <StatePanel variant="error" message={errorMessage} /> : null}
 
 					<div className="flex gap-3">
 						<button type="button" onClick={handleBack} className="btn-base btn-secondary flex-1 justify-center">

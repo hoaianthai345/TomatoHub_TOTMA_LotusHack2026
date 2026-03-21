@@ -3,7 +3,10 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Container from "@/components/common/container";
+import FormField from "@/components/common/form-field";
+import MissingValue from "@/components/common/missing-value";
 import SectionTitle from "@/components/common/section-title";
+import StatePanel from "@/components/common/state-panel";
 import { useAuth } from "@/lib/auth";
 import { listPublishedCampaigns } from "@/lib/api/campaigns";
 import { createDonation } from "@/lib/api/donations";
@@ -161,23 +164,16 @@ export default function DonatePage() {
         />
 
         {errorMessage ? (
-          <p className="mb-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-            {errorMessage}
-          </p>
+          <StatePanel variant="error" className="mb-4" message={errorMessage} />
         ) : null}
         {successMessage ? (
-          <p className="mb-4 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-            {successMessage}
-          </p>
+          <StatePanel variant="success" className="mb-4" message={successMessage} />
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card-base p-6">
             <form className="space-y-4" onSubmit={handleSubmit}>
-              <div>
-                <label htmlFor="campaign" className="mb-2 block text-sm font-medium text-text">
-                  Campaign
-                </label>
+              <FormField label="Campaign" required>
                 <select
                   id="campaign"
                   className="input-base"
@@ -195,12 +191,9 @@ export default function DonatePage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </FormField>
 
-              <div>
-                <label htmlFor="donorName" className="mb-2 block text-sm font-medium text-text">
-                  Donor name
-                </label>
+              <FormField label="Donor name" required>
                 <input
                   id="donorName"
                   type="text"
@@ -211,12 +204,13 @@ export default function DonatePage() {
                   required
                   disabled={isSubmitting}
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label htmlFor="amount" className="mb-2 block text-sm font-medium text-text">
-                  Amount (VND)
-                </label>
+              <FormField
+                label="Amount (VND)"
+                required
+                helper={`Max donation for this campaign: ${formatCurrency(remainingAmount)}`}
+              >
                 <input
                   id="amount"
                   type="number"
@@ -230,15 +224,9 @@ export default function DonatePage() {
                   required
                   disabled={isSubmitting || remainingAmount <= 0}
                 />
-                <p className="mt-2 text-xs text-text-muted">
-                  Max donation for this campaign: {formatCurrency(remainingAmount)}
-                </p>
-              </div>
+              </FormField>
 
-              <div>
-                <label htmlFor="paymentMethod" className="mb-2 block text-sm font-medium text-text">
-                  Payment method
-                </label>
+              <FormField label="Payment method">
                 <select
                   id="paymentMethod"
                   className="input-base"
@@ -250,12 +238,9 @@ export default function DonatePage() {
                   <option value="cash">Cash</option>
                   <option value="momo">MoMo</option>
                 </select>
-              </div>
+              </FormField>
 
-              <div>
-                <label htmlFor="note" className="mb-2 block text-sm font-medium text-text">
-                  Note (optional)
-                </label>
+              <FormField label="Note (optional)">
                 <textarea
                   id="note"
                   className="input-base min-h-28"
@@ -264,7 +249,7 @@ export default function DonatePage() {
                   placeholder="Any message for organization"
                   disabled={isSubmitting}
                 />
-              </div>
+              </FormField>
 
               <button
                 type="submit"
@@ -308,8 +293,8 @@ export default function DonatePage() {
                 </Link>
               </>
             ) : (
-              <p className="mt-2 text-sm text-text-muted">
-                Select a campaign to continue.
+              <p className="mt-2 text-sm">
+                <MissingValue text="Select a campaign to continue." />
               </p>
             )}
           </aside>

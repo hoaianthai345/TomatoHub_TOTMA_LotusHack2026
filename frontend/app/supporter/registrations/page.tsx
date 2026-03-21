@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
 import { listPublishedCampaigns } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
@@ -10,13 +13,6 @@ import { listVolunteerRegistrations } from "@/lib/api/volunteer-registrations";
 import { formatDateTime } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
 import type { VolunteerRegistration } from "@/types/volunteer-registration";
-
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-surface-muted text-text-muted border-border",
-  approved: "bg-success/10 text-success border-success/30",
-  rejected: "bg-danger/10 text-danger border-danger/30",
-  cancelled: "bg-warning/10 text-warning border-warning/30",
-};
 
 export default function RegistrationsPage() {
   const { currentUser, accessToken, isLoading } = useAuth();
@@ -89,9 +85,7 @@ export default function RegistrationsPage() {
         <p className="mb-6 text-body">Campaigns where you already joined as a volunteer</p>
 
         {errorMessage ? (
-          <p className="mb-6 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-            {errorMessage}
-          </p>
+          <StatePanel variant="error" className="mb-6" message={errorMessage} />
         ) : null}
 
         {registrations.length > 0 ? (
@@ -124,18 +118,18 @@ export default function RegistrationsPage() {
                         )}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${
-                            STATUS_STYLE[item.status] ?? "bg-surface-muted text-text-muted border-border"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
+                        <StatusBadge
+                          kind="registration_status"
+                          value={item.status}
+                          size={14}
+                        />
                       </td>
                       <td className="px-4 py-3 text-text-muted">
                         {formatDateTime(item.registeredAt)}
                       </td>
-                      <td className="px-4 py-3 text-text-muted">{item.message ?? "-"}</td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {item.message ? <span>{item.message}</span> : <MissingValue text="N/A" />}
+                      </td>
                     </tr>
                   );
                 })}
@@ -143,9 +137,11 @@ export default function RegistrationsPage() {
             </table>
           </div>
         ) : (
-          <div className="card-container p-6 text-center text-muted">
-            <p>You have no volunteer registrations yet.</p>
-          </div>
+          <StatePanel
+            variant="empty"
+            className="card-container p-6 text-center"
+            message="You have no volunteer registrations yet."
+          />
         )}
       </div>
     </RoleGate>

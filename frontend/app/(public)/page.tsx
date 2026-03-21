@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
-import { HandHeart, HeartHandshake, LifeBuoy, MoveRight } from "lucide-react";
+import { CircleDot, HandHeart, HeartHandshake, LifeBuoy, MoveRight } from "lucide-react";
 import Container from "@/components/common/container";
 import CampaignCard from "@/components/campaign/campaign-card";
 import NearbyCampaignMap from "@/components/campaign/nearby-campaign-map";
+import MissingValue from "@/components/common/missing-value";
 import SectionTitle from "@/components/common/section-title";
-import { listPublishedCampaigns } from "@/lib/api/campaigns";
+import StatePanel from "@/components/common/state-panel";
+import { getPlatformActivitySummary, listPublishedCampaigns } from "@/lib/api/campaigns";
 import { formatCurrency } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
 
@@ -69,7 +71,7 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className={`group flex min-h-[250px] flex-col justify-between rounded-[2rem] border p-6 shadow-[0_14px_34px_rgba(17,24,39,0.05)] transition duration-200 hover:-translate-y-0.5 ${palette}`}
+      className={`group flex min-h-[250px] flex-col justify-between rounded-[2rem] border p-6 shadow-card-token transition duration-200 hover:-translate-y-0.5 ${palette}`}
     >
       <div className={`flex h-11 w-11 items-center justify-center rounded-full border ${iconPalette}`}>
         <Icon className="h-5 w-5" strokeWidth={2.2} />
@@ -93,11 +95,21 @@ function ActionCard({
 
 export default async function HomePage() {
   let campaigns: Campaign[] = [];
+  let totalSupporters = 0;
+  let totalBeneficiaries = 0;
 
-  try {
-    campaigns = await listPublishedCampaigns(8);
-  } catch {
-    campaigns = [];
+  const [campaignsResult, platformSummaryResult] = await Promise.allSettled([
+    listPublishedCampaigns(8),
+    getPlatformActivitySummary(),
+  ]);
+
+  if (campaignsResult.status === "fulfilled") {
+    campaigns = campaignsResult.value;
+  }
+
+  if (platformSummaryResult.status === "fulfilled") {
+    totalSupporters = platformSummaryResult.value.supporterCount;
+    totalBeneficiaries = platformSummaryResult.value.beneficiaryCount;
   }
 
   const heroCampaign = pickCampaign(campaigns, 0);
@@ -106,16 +118,11 @@ export default async function HomePage() {
   const mapCampaigns = campaigns.filter((campaign) => campaign.coordinates !== null);
 
   const totalRaised = sumBy(campaigns, (campaign) => campaign.raisedAmount);
-  const totalSupporters = sumBy(campaigns, (campaign) => campaign.supporterCount);
-  const totalBeneficiaries = sumBy(
-    campaigns,
-    (campaign) => campaign.beneficiaryCount
-  );
 
   return (
     <div className="bg-page py-8 md:py-10">
       <Container>
-        <section className="overflow-hidden rounded-[2.5rem] border border-border bg-[linear-gradient(180deg,_#fff8ec,_#fffaf5)] px-5 py-8 shadow-[0_18px_44px_rgba(17,24,39,0.05)] md:px-8 md:py-10 lg:px-10">
+        <section className="hero-gradient shadow-card-token overflow-hidden rounded-[2.5rem] border border-border px-5 py-8 md:px-8 md:py-10 lg:px-10">
           <div className="flex flex-col gap-8">
             <div>
               <div className="mb-6 flex items-center justify-between gap-4">
@@ -132,7 +139,7 @@ export default async function HomePage() {
 
               <div className="flex flex-wrap items-center gap-x-5 gap-y-4 text-[clamp(3.6rem,9vw,7.5rem)] font-bold leading-[0.92] tracking-[-0.06em] text-heading">
                 <span>Hope</span>
-                <div className="overflow-hidden rounded-full border border-border bg-white shadow-[0_12px_30px_rgba(17,24,39,0.08)]">
+                <div className="shadow-popover-token overflow-hidden rounded-full border border-border bg-white">
                   {heroCampaign ? (
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -209,7 +216,7 @@ export default async function HomePage() {
 
         <section className="mt-10">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex rounded-full bg-[#dff3df] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#2c6b4f]">
+            <div className="accent-pill inline-flex rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
               What we do
             </div>
             <h2 className="mt-6 text-4xl font-bold leading-tight text-heading md:text-5xl">
@@ -254,7 +261,7 @@ export default async function HomePage() {
         {spotlightCampaign ? (
           <Link
             href={`/campaigns/${spotlightCampaign.slug}`}
-            className="card-hover mt-12 block overflow-hidden rounded-[2.5rem] border border-border bg-white shadow-[0_18px_44px_rgba(17,24,39,0.05)]"
+            className="card-hover shadow-card-token mt-12 block overflow-hidden rounded-[2.5rem] border border-border bg-white"
           >
             <div className="p-6 text-center md:p-10">
               <div className="inline-flex rounded-full border border-border bg-surface-muted px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
@@ -267,10 +274,16 @@ export default async function HomePage() {
                 {spotlightCampaign.shortDescription || spotlightCampaign.description}
               </p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm font-medium text-text-muted">
-                <span>{spotlightCampaign.location || "Across Vietnam"}</span>
-                <span>-</span>
+                <span>
+                  {spotlightCampaign.location ? (
+                    <span>{spotlightCampaign.location}</span>
+                  ) : (
+                    <MissingValue text="Across Vietnam" />
+                  )}
+                </span>
+                <CircleDot className="icon-14" aria-hidden="true" />
                 <span>{supportLabel(spotlightCampaign)}</span>
-                <span>-</span>
+                <CircleDot className="icon-14" aria-hidden="true" />
                 <span>{formatCurrency(spotlightCampaign.raisedAmount)} raised</span>
               </div>
             </div>
@@ -307,9 +320,10 @@ export default async function HomePage() {
               ))}
             </div>
           ) : (
-            <div className="card-base p-6 text-sm text-text-muted">
-              There are no campaign updates available right now.
-            </div>
+            <StatePanel
+              variant="empty"
+              message="There are no campaign updates available right now."
+            />
           )}
         </section>
 

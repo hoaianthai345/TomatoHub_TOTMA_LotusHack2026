@@ -40,21 +40,21 @@ function resolveTaskPhase(registration: VolunteerRegistration): {
 
   if (shiftStart && now < shiftStart) {
     return {
-      title: "Chờ tới lịch",
+      title: "Waiting for shift",
       hint: `Shift starts at ${formatDateTime(registration.shiftStartAt)}.`,
     };
   }
 
   if (shiftStart && shiftEnd && now >= shiftStart && now <= shiftEnd) {
     return {
-      title: "Đang trong ca",
+      title: "On shift",
       hint: `Shift ends at ${formatDateTime(registration.shiftEndAt)}.`,
     };
   }
 
   if (shiftEnd && now > shiftEnd) {
     return {
-      title: "Quá ca/chưa check-in",
+      title: "Shift ended / not checked in",
       hint: `Shift ended at ${formatDateTime(registration.shiftEndAt)}.`,
     };
   }
@@ -63,6 +63,19 @@ function resolveTaskPhase(registration: VolunteerRegistration): {
     title: "Ready to check in",
     hint: "Scan QR at checkpoint to record attendance.",
   };
+}
+
+function formatShiftRange(registration: VolunteerRegistration): string {
+  if (registration.shiftStartAt && registration.shiftEndAt) {
+    return `${formatDateTime(registration.shiftStartAt)} - ${formatDateTime(registration.shiftEndAt)}`;
+  }
+  if (registration.shiftStartAt) {
+    return `Starts at ${formatDateTime(registration.shiftStartAt)}`;
+  }
+  if (registration.shiftEndAt) {
+    return `Ends at ${formatDateTime(registration.shiftEndAt)}`;
+  }
+  return "Not specified";
 }
 
 export default function TasksPage() {
@@ -168,10 +181,7 @@ export default function TasksPage() {
                   Role: {task.role ?? "volunteer"}
                 </p>
                 <p className="mt-1 text-sm text-text-muted">
-                  Shift:{" "}
-                  {task.shiftStartAt || task.shiftEndAt
-                    ? `${formatDateTime(task.shiftStartAt)} - ${formatDateTime(task.shiftEndAt)}`
-                    : "Not specified"}
+                  Shift: {formatShiftRange(task)}
                 </p>
                 <p className="mt-1 text-sm text-text-muted">{resolveTaskPhase(task).hint}</p>
                 <p className="mt-1 text-sm text-text">

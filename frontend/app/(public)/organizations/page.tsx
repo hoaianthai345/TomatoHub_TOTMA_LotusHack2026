@@ -1,5 +1,8 @@
 import Link from "next/link";
 import Container from "@/components/common/container";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { listOrganizations } from "@/lib/api/organizations";
 import type { Organization } from "@/types/organization";
 import { formatDateTime } from "@/utils/format";
@@ -39,9 +42,12 @@ export default async function OrganizationListPage() {
         </section>
 
         {loadError ? (
-          <div className="mt-6 card-base border border-danger/20 bg-danger/5 p-4 text-sm text-danger">
-            Failed to load organizations from the backend.
-          </div>
+          <StatePanel
+            variant="error"
+            className="mt-6"
+            title="Organization data unavailable"
+            message="Failed to load organizations from the backend."
+          />
         ) : null}
 
         {organizations.length > 0 ? (
@@ -80,7 +86,7 @@ export default async function OrganizationListPage() {
                     </div>
 
                     {organization.verified ? (
-                      <span className="badge-base badge-success">Verified</span>
+                      <StatusBadge kind="verified_state" value="verified" size={14} />
                     ) : null}
                   </div>
 
@@ -92,13 +98,17 @@ export default async function OrganizationListPage() {
                     <p className="flex items-start justify-between gap-3">
                       <span className="text-text-muted">Location</span>
                       <span className="text-right font-medium text-text">
-                        {organization.location || "Not specified"}
+                        {organization.location ? (
+                          <span>{organization.location}</span>
+                        ) : (
+                          <MissingValue />
+                        )}
                       </span>
                     </p>
                     <p className="flex items-start justify-between gap-3">
                       <span className="text-text-muted">Credit score</span>
                       <span className="text-right font-medium text-text">
-                        {organization.creditScore ?? "N/A"}
+                        {organization.creditScore ?? <MissingValue text="N/A" />}
                       </span>
                     </p>
                     <p className="flex items-start justify-between gap-3">
@@ -132,9 +142,11 @@ export default async function OrganizationListPage() {
             })}
           </section>
         ) : (
-          <div className="mt-6 card-base p-6 text-sm text-text-muted">
-            No organizations available yet.
-          </div>
+          <StatePanel
+            variant="empty"
+            className="mt-6"
+            message="No organizations available yet."
+          />
         )}
       </Container>
     </div>

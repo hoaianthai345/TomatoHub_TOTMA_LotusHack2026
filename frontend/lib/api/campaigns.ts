@@ -353,14 +353,7 @@ export async function getCampaignActivitySummary(
     ),
   ]);
 
-  const supporters = new Set<string>();
-
-  donations.forEach((donation) => {
-    supporters.add(donation.donor_user_id ?? `donor:${donation.donor_name}`);
-  });
-  registrations.forEach((registration) => {
-    supporters.add(registration.user_id ?? `registration:${registration.email}`);
-  });
+  const supporters = buildSupporterIdentitySet(donations, registrations);
 
   return {
     beneficiaryCount: beneficiaries.length,
@@ -368,6 +361,47 @@ export async function getCampaignActivitySummary(
     volunteerRegistrationCount: registrations.length,
     supporterCount: supporters.size,
   };
+}
+
+export async function getPlatformActivitySummary(
+  limit: number = 500
+): Promise<CampaignActivitySummary> {
+  const safeLimit = Number.isFinite(limit)
+    ? Math.min(500, Math.max(1, Math.trunc(limit)))
+    : 500;
+  const query = new URLSearchParams({ limit: String(safeLimit) }).toString();
+  const [beneficiaries, donations, registrations] = await Promise.all([
+    requestJson<BackendBeneficiary[]>(`/beneficiaries/?${query}`),
+    requestJson<BackendDonation[]>(`/donations/?${query}`),
+    requestJson<BackendVolunteerRegistration[]>(`/volunteer-registrations/?${query}`),
+  ]);
+
+  const supporters = buildSupporterIdentitySet(donations, registrations);
+
+  return {
+    beneficiaryCount: beneficiaries.length,
+    donationCount: donations.length,
+    volunteerRegistrationCount: registrations.length,
+    supporterCount: supporters.size,
+  };
+}
+
+function buildSupporterIdentitySet(
+  donations: BackendDonation[],
+  registrations: BackendVolunteerRegistration[]
+): Set<string> {
+  const supporters = new Set<string>();
+
+  donations.forEach((donation) => {
+    const donorIdentity = donation.donor_user_id ?? `donor:${donation.donor_name}`;
+    supporters.add(donorIdentity);
+  });
+  registrations.forEach((registration) => {
+    const registrationIdentity =
+      registration.user_id ?? `registration:${registration.email}`;
+    supporters.add(registrationIdentity);
+  });
+  return supporters;
 }
 
 export async function listCampaignVolunteerParticipants(

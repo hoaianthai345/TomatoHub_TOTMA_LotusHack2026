@@ -1,9 +1,9 @@
 import Link from "next/link";
 import {
   getCampaignPhase,
-  getCampaignPhaseBadgeClass,
-  getCampaignPhaseLabel,
 } from "@/lib/campaign-phase";
+import StatusBadge from "@/components/common/status-badge";
+import MissingValue from "@/components/common/missing-value";
 import type { Campaign } from "@/types/campaign";
 import { formatCurrency, formatDateTime } from "@/utils/format";
 
@@ -52,9 +52,7 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
 
       <div className="flex flex-1 flex-col p-5">
         <div className="mb-3 flex flex-wrap gap-2">
-          <span className={getCampaignPhaseBadgeClass(phase)}>
-            {getCampaignPhaseLabel(phase)}
-          </span>
+          <StatusBadge kind="campaign_phase" value={phase} size={14} />
 
           {campaign.tags.map((tag) => (
             <span
@@ -79,7 +77,9 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
         <div className="mt-5 space-y-2 rounded-lg border border-border/50 bg-surface-muted p-3 text-sm font-medium text-text">
           <p className="flex justify-between gap-3">
             <span>Location:</span>
-            <span className="text-right">{campaign.location || "Not specified"}</span>
+            <span className="text-right">
+              {campaign.location ? <span>{campaign.location}</span> : <MissingValue />}
+            </span>
           </p>
 
           <p className="flex justify-between gap-3">
@@ -97,4 +97,3 @@ export default function CampaignCard({ campaign }: CampaignCardProps) {
     </Link>
   );
 }
-

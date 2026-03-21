@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import RoleGate from "@/components/auth/RoleGate";
+import FormField from "@/components/common/form-field";
+import MissingValue from "@/components/common/missing-value";
+import StatePanel from "@/components/common/state-panel";
+import StatusBadge from "@/components/common/status-badge";
 import { useAuth } from "@/lib/auth";
 import { listPublishedCampaigns } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
@@ -16,13 +20,6 @@ import type {
   VolunteerRegistration,
   VolunteerRole,
 } from "@/types/volunteer-registration";
-
-const STATUS_STYLE: Record<string, string> = {
-  pending: "bg-surface-muted text-text-muted border-border",
-  approved: "bg-success/10 text-success border-success/30",
-  rejected: "bg-danger/10 text-danger border-danger/30",
-  cancelled: "bg-warning/10 text-warning border-warning/30",
-};
 
 const VOLUNTEER_ROLE_OPTIONS: Array<{ value: VolunteerRole; label: string }> = [
   { value: "delivery", label: "Delivery" },
@@ -42,6 +39,19 @@ function toIsoDateTime(value: string): string | undefined {
   }
 
   return date.toISOString();
+}
+
+function formatShiftRange(startAt?: string, endAt?: string): string {
+  if (startAt && endAt) {
+    return `${formatDateTime(startAt)} - ${formatDateTime(endAt)}`;
+  }
+  if (startAt) {
+    return `Starts at ${formatDateTime(startAt)}`;
+  }
+  if (endAt) {
+    return `Ends at ${formatDateTime(endAt)}`;
+  }
+  return "N/A";
 }
 
 export default function RegisterSupportPage() {
@@ -205,23 +215,16 @@ export default function RegisterSupportPage() {
         </p>
 
         {errorMessage ? (
-          <p className="mb-4 rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">
-            {errorMessage}
-          </p>
+          <StatePanel variant="error" className="mb-4" message={errorMessage} />
         ) : null}
         {successMessage ? (
-          <p className="mb-4 rounded-lg border border-success/20 bg-success/5 p-3 text-sm text-success">
-            {successMessage}
-          </p>
+          <StatePanel variant="success" className="mb-4" message={successMessage} />
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
           <div className="card-base p-6">
             <form className="space-y-4" onSubmit={handleSubmit}>
-              <div>
-                <label htmlFor="campaign" className="mb-2 block text-sm font-medium text-text">
-                  Campaign
-                </label>
+              <FormField label="Campaign" required>
                 <select
                   id="campaign"
                   className="input-base"
@@ -239,12 +242,9 @@ export default function RegisterSupportPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </FormField>
 
-              <div>
-                <label htmlFor="phone" className="mb-2 block text-sm font-medium text-text">
-                  Phone number (optional)
-                </label>
+              <FormField label="Phone number (optional)">
                 <input
                   id="phone"
                   type="text"
@@ -253,12 +253,9 @@ export default function RegisterSupportPage() {
                   onChange={(event) => setPhoneNumber(event.target.value)}
                   placeholder="Your contact number"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <label htmlFor="role" className="mb-2 block text-sm font-medium text-text">
-                  Volunteer role
-                </label>
+              <FormField label="Volunteer role">
                 <select
                   id="role"
                   className="input-base"
@@ -271,16 +268,10 @@ export default function RegisterSupportPage() {
                     </option>
                   ))}
                 </select>
-              </div>
+              </FormField>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <label
-                    htmlFor="shift-start"
-                    className="mb-2 block text-sm font-medium text-text"
-                  >
-                    Shift start (optional)
-                  </label>
+                <FormField label="Shift start (optional)">
                   <input
                     id="shift-start"
                     type="datetime-local"
@@ -288,15 +279,9 @@ export default function RegisterSupportPage() {
                     value={shiftStartAt}
                     onChange={(event) => setShiftStartAt(event.target.value)}
                   />
-                </div>
+                </FormField>
 
-                <div>
-                  <label
-                    htmlFor="shift-end"
-                    className="mb-2 block text-sm font-medium text-text"
-                  >
-                    Shift end (optional)
-                  </label>
+                <FormField label="Shift end (optional)">
                   <input
                     id="shift-end"
                     type="datetime-local"
@@ -304,13 +289,10 @@ export default function RegisterSupportPage() {
                     value={shiftEndAt}
                     onChange={(event) => setShiftEndAt(event.target.value)}
                   />
-                </div>
+                </FormField>
               </div>
 
-              <div>
-                <label htmlFor="message" className="mb-2 block text-sm font-medium text-text">
-                  Message (optional)
-                </label>
+              <FormField label="Message (optional)">
                 <textarea
                   id="message"
                   className="input-base min-h-28"
@@ -318,7 +300,7 @@ export default function RegisterSupportPage() {
                   onChange={(event) => setMessage(event.target.value)}
                   placeholder="How can you help this campaign?"
                 />
-              </div>
+              </FormField>
 
               <button
                 type="submit"
@@ -372,20 +354,22 @@ export default function RegisterSupportPage() {
                       <td className="px-4 py-3 text-text">
                         {campaignTitleById.get(item.campaignId) ?? item.campaignId}
                       </td>
-                      <td className="px-4 py-3 text-text-muted">{item.role ?? "-"}</td>
                       <td className="px-4 py-3 text-text-muted">
-                        {item.shiftStartAt || item.shiftEndAt
-                          ? `${formatDateTime(item.shiftStartAt)} - ${formatDateTime(item.shiftEndAt)}`
-                          : "-"}
+                        {item.role ? <span>{item.role}</span> : <MissingValue text="Not assigned" />}
+                      </td>
+                      <td className="px-4 py-3 text-text-muted">
+                        {item.shiftStartAt || item.shiftEndAt ? (
+                          <span>{formatShiftRange(item.shiftStartAt, item.shiftEndAt)}</span>
+                        ) : (
+                          <MissingValue text="N/A" />
+                        )}
                       </td>
                       <td className="px-4 py-3">
-                        <span
-                          className={`rounded-full border px-2 py-1 text-xs font-semibold ${
-                            STATUS_STYLE[item.status] ?? "bg-surface-muted text-text-muted border-border"
-                          }`}
-                        >
-                          {item.status}
-                        </span>
+                        <StatusBadge
+                          kind="registration_status"
+                          value={item.status}
+                          size={14}
+                        />
                       </td>
                       <td className="px-4 py-3 text-text-muted">
                         {formatDateTime(item.registeredAt)}
@@ -396,9 +380,11 @@ export default function RegisterSupportPage() {
               </table>
             </div>
           ) : (
-            <div className="mt-4 rounded-lg border border-border bg-surface-muted/50 p-4 text-sm text-text-muted">
-              You have no registration yet.
-            </div>
+            <StatePanel
+              variant="empty"
+              className="mt-4"
+              message="You have no registration yet."
+            />
           )}
         </div>
       </div>

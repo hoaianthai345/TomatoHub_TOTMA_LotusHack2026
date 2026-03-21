@@ -50,6 +50,11 @@ from app.services.credit_service import (
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
 
 
+def _resolve_actor_user_id(current_user: User) -> UUID | None:
+    # Keep endpoint behavior stable in tests/mocks where current_user may be a lightweight object.
+    return getattr(current_user, "id", None)
+
+
 def _to_campaign_image_read(
     image: CampaignImage,
     *,
@@ -394,7 +399,7 @@ def publish_campaign_endpoint(
             db,
             target_type=CreditTargetType.organization,
             target_organization_id=campaign.organization_id,
-            actor_user_id=current_user.id,
+            actor_user_id=_resolve_actor_user_id(current_user),
             event_type="campaign_published",
             points=CAMPAIGN_PUBLISHED_ORGANIZATION_POINTS,
             note=f"Campaign published: {campaign.title}",
@@ -427,7 +432,7 @@ def close_campaign_endpoint(
             db,
             target_type=CreditTargetType.organization,
             target_organization_id=campaign.organization_id,
-            actor_user_id=current_user.id,
+            actor_user_id=_resolve_actor_user_id(current_user),
             event_type="campaign_closed",
             points=CAMPAIGN_CLOSED_ORGANIZATION_POINTS,
             note=f"Campaign closed: {campaign.title}",
