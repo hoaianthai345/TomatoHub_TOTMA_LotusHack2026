@@ -8,6 +8,8 @@ import {
   getCampaignBySlug,
 } from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
+import { listTransparencyLogs } from "@/lib/api/transparency";
+import { formatDateTime } from "@/utils/format";
 
 interface CampaignDetailPageProps {
   params: Promise<{
@@ -22,7 +24,13 @@ export default async function CampaignDetailPage({
 
   try {
     const campaign = await getCampaignBySlug(id);
-    const summary = await getCampaignActivitySummary(campaign.id);
+    const [summary, transparencyLogs] = await Promise.all([
+      getCampaignActivitySummary(campaign.id),
+      listTransparencyLogs({
+        campaignId: campaign.id,
+        limit: 20,
+      }).catch(() => []),
+    ]);
 
     return (
       <div className="py-10">
@@ -63,6 +71,35 @@ export default async function CampaignDetailPage({
                   </div>
                 ))}
               </div>
+
+              <div className="mt-8">
+                <SectionTitle
+                  title="Transparency Timeline"
+                  description="Public scan logs, donations, and activity milestones for this campaign."
+                />
+                {transparencyLogs.length > 0 ? (
+                  <div className="space-y-3">
+                    {transparencyLogs.slice(0, 12).map((log) => (
+                      <article key={log.id} className="card-base border-border p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <h3 className="font-semibold text-heading">{log.title}</h3>
+                          <span className="rounded-full border border-border bg-surface-muted px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-text-muted">
+                            {log.type}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-text-muted">{log.description}</p>
+                        <p className="mt-2 text-xs text-text-muted/70">
+                          {formatDateTime(log.createdAt)}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="card-base border-border p-4 text-sm text-text-muted">
+                    No transparency logs for this campaign yet.
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="card-base border-border p-6 h-fit sticky top-24">
@@ -82,7 +119,7 @@ export default async function CampaignDetailPage({
                   Donate money
                 </Link>
                 <Link
-                  href="/supporter/register"
+                  href={`/supporter/register?campaignId=${campaign.id}`}
                   className="w-full btn-base btn-secondary text-center"
                 >
                   Register as supporter

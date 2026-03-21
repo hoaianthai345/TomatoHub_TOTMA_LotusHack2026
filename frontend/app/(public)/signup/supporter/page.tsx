@@ -60,6 +60,22 @@ export default function SupporterSignupPage() {
 		router.push("/signup/supporter/support-types");
 	};
 
+<<<<<<< HEAD
+          <div>
+            <label className="label-text block mb-1">Password</label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              value={formData.password}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, password: event.target.value }))
+              }
+              className="input-base"
+              placeholder="At least 8 characters"
+            />
+          </div>
+=======
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-page p-4">
 			<div className="card-base p-8 w-full max-w-2xl">
@@ -68,6 +84,7 @@ export default function SupporterSignupPage() {
 					<h1 className="mt-2 text-3xl font-bold text-heading">Join as Supporter</h1>
 					<p className="mt-2 text-body">Create your account first, then choose how you want to support.</p>
 				</div>
+>>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
 
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div>

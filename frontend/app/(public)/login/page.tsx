@@ -53,6 +53,21 @@ export default function LoginPage() {
 						/>
 					</div>
 
+<<<<<<< HEAD
+          <div>
+            <label className="label-text block mb-1">Password</label>
+            <input
+              type="password"
+              required
+              className="input-base"
+              placeholder="Your password"
+              value={formData.password}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, password: event.target.value }))
+              }
+            />
+          </div>
+=======
 					<div>
 						<label className="label-text block mb-1">Password</label>
 						<input
@@ -65,6 +80,7 @@ export default function LoginPage() {
 							onChange={(event) => setFormData((prev) => ({ ...prev, password: event.target.value }))}
 						/>
 					</div>
+>>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
 
 					{errorMessage ? <p className="rounded-lg border border-danger/20 bg-danger/5 p-3 text-sm text-danger">{errorMessage}</p> : null}
 

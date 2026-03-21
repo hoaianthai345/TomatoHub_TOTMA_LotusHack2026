@@ -95,6 +95,14 @@ export interface UpdateCampaignInput {
   endsAt?: string | null;
 }
 
+<<<<<<< HEAD
+interface CampaignPublishApiResponse {
+  message: string;
+  campaign: BackendCampaign;
+}
+
+=======
+>>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
 const DEFAULT_COVER_IMAGE =
   "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=1200&q=80";
 
@@ -265,6 +273,8 @@ export async function createCampaign(
   return mapCampaign(campaign);
 }
 
+<<<<<<< HEAD
+=======
 export async function publishCampaign(
   campaignId: string,
   token: string
@@ -280,6 +290,7 @@ export async function publishCampaign(
   return mapCampaign(response.campaign);
 }
 
+>>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
 export async function updateCampaign(
   campaignId: string,
   payload: UpdateCampaignInput,
@@ -304,10 +315,41 @@ export async function updateCampaign(
         address_line: payload.addressLine,
         media_urls: payload.mediaUrls,
         starts_at: payload.startsAt,
+<<<<<<< HEAD
+        ends_at: payload.endsAt,
+=======
         ends_at: payload.endsAt === null ? null : payload.endsAt,
+>>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
       }),
     }
   );
 
   return mapCampaign(campaign);
 }
+<<<<<<< HEAD
+
+export async function publishCampaign(
+  campaignId: string,
+  token: string
+): Promise<Campaign> {
+  const response = await requestJson<CampaignPublishApiResponse>(
+    `/campaigns/${encodeURIComponent(campaignId)}/publish`,
+    {
+      method: "POST",
+      token,
+    }
+  );
+  return mapCampaign(response.campaign);
+}
+
+export async function deleteCampaign(
+  campaignId: string,
+  token: string
+): Promise<void> {
+  await requestJson<{ message: string }>(`/campaigns/${encodeURIComponent(campaignId)}`, {
+    method: "DELETE",
+    token,
+  });
+}
+=======
+>>>>>>> ddb368634730f09946690238c9cd465bfe8b282b
