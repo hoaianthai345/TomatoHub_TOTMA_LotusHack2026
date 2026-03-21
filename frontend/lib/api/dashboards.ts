@@ -12,7 +12,7 @@ import { requestJson } from "./http";
 type ApiDecimal = string | number;
 
 const DEFAULT_COVER_IMAGE =
-  "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?w=1200&q=80";
+  "/images/campaigns/default-cover.svg";
 
 interface BackendSupporterParticipationCard {
   id: string;
