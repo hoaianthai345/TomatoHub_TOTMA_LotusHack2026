@@ -233,6 +233,21 @@ body {
   transition: background-color 180ms var(--ease-default);
 }
 
+@utility sidebar-link-active {
+  border: 1px solid color-mix(in oklab, var(--color-primary) 18%, var(--color-border));
+  box-shadow: var(--shadow-soft);
+}
+
+@utility sidebar-link-active-supporter {
+  background: color-mix(in oklab, var(--color-supporter) 12%, white);
+  color: var(--color-supporter);
+}
+
+@utility sidebar-link-active-org {
+  background: color-mix(in oklab, var(--color-org) 10%, white);
+  color: var(--color-org);
+}
+
 /* Sidebar link hover - use CSS class instead */
 .sidebar-link:hover {
   background: var(--color-surface-muted);

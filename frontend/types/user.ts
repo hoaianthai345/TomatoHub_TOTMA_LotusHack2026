@@ -1,3 +1,5 @@
+import type { VietnamLocationValue } from "./location";
+
 export type UserRole = "guest" | "supporter" | "organization";
 
 export type SupportType =
@@ -38,6 +40,7 @@ export interface SupporterSignupDraft {
   email: string;
   password: string;
   location?: string;
+  locationSelection?: VietnamLocationValue;
   supportTypes: SupportType[];
 }
 
