@@ -14,9 +14,7 @@ from app.api.permissions import ensure_matching_organization
 from app.models.campaign_image import CampaignImage
 from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.credit_event import CreditTargetType
-from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
-from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 from app.schemas.campaign import (
     CampaignCloseRequest,
     CampaignCloseResponse,
@@ -78,38 +76,22 @@ def _to_campaign_image_read(
 
 def _ensure_campaign_media_upload_permission(
     *,
-    db: Session,
     campaign: Campaign,
     current_user: User,
 ) -> None:
     if current_user.is_superuser:
         return
 
-    if current_user.organization_id is not None:
-        if current_user.organization_id != campaign.organization_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Cannot upload media for another organization campaign",
-            )
-        return
-
-    approved_registration = db.scalar(
-        select(VolunteerRegistration.id).where(
-            VolunteerRegistration.campaign_id == campaign.id,
-            VolunteerRegistration.user_id == current_user.id,
-            VolunteerRegistration.status == VolunteerStatus.approved,
-        )
-    )
-    donation_id = db.scalar(
-        select(MonetaryDonation.id).where(
-            MonetaryDonation.campaign_id == campaign.id,
-            MonetaryDonation.donor_user_id == current_user.id,
-        )
-    )
-    if approved_registration is None and donation_id is None:
+    if current_user.organization_id is None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You must be an approved volunteer or donor of this campaign to upload images",
+            detail="Organization account required to upload campaign images",
+        )
+
+    if current_user.organization_id != campaign.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cannot upload media for another organization campaign",
         )
 
 
@@ -207,7 +189,6 @@ def upload_campaign_image(
 ) -> CampaignImageRead:
     campaign = get_campaign_or_404(db, campaign_id)
     _ensure_campaign_media_upload_permission(
-        db=db,
         campaign=campaign,
         current_user=current_user,
     )
@@ -295,15 +276,11 @@ def delete_campaign_image(
             detail="Campaign image not found",
         )
 
-    can_delete = (
-        current_user.is_superuser
-        or current_user.organization_id == campaign.organization_id
-        or image.uploaded_by_user_id == current_user.id
-    )
+    can_delete = current_user.is_superuser or current_user.organization_id == campaign.organization_id
     if not can_delete:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No permission to delete this campaign image",
+            detail="Only campaign organization can delete campaign images",
         )
 
     public_path = build_public_upload_url(image.relative_path)

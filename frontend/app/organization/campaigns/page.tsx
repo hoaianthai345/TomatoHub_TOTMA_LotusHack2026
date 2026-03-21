@@ -604,6 +604,12 @@ export default function CampaignsPage() {
                 </div>
 
                 <div className="mt-4 flex gap-3">
+                  <Link
+                    href={`/organization/campaigns/${campaign.id}/edit`}
+                    className="btn-base btn-secondary text-sm"
+                  >
+                    Edit details
+                  </Link>
                   <button
                     type="button"
                     onClick={() => startEdit(campaign)}
