@@ -88,6 +88,23 @@ def create_donation(
             detail="Campaign is not open for donations",
         )
 
+    goal_amount = Decimal(campaign.goal_amount)
+    raised_amount = Decimal(campaign.raised_amount)
+    remaining_amount = goal_amount - raised_amount
+    if remaining_amount <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Campaign has already reached its funding goal",
+        )
+    if Decimal(payload.amount) > remaining_amount:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Donation amount exceeds remaining campaign goal. "
+                f"Maximum allowed is {remaining_amount}"
+            ),
+        )
+
     donor_user_id = payload.donor_user_id
     donor_name = payload.donor_name.strip()
 
@@ -136,7 +153,7 @@ def create_donation(
     )
     db.add(donation)
 
-    campaign.raised_amount = Decimal(campaign.raised_amount) + Decimal(payload.amount)
+    campaign.raised_amount = raised_amount + Decimal(payload.amount)
     db.flush()
 
     if donor_user_id is not None:
