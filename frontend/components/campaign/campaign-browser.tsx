@@ -342,16 +342,15 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
               goalAmount > 0 ? Math.min(100, (raisedAmount / goalAmount) * 100) : 0;
 
             return (
-              <article
+              <Link
                 key={campaign.id}
+                href={`/campaigns/${campaign.slug}`}
                 className="card-base card-hover flex h-full flex-col overflow-hidden"
               >
-                <Link href={`/campaigns/${campaign.slug}`} className="block">
-                  <div
-                    className="h-52 w-full border-b border-border bg-cover bg-center"
-                    style={{ backgroundImage: `url(${campaign.coverImage})` }}
-                  />
-                </Link>
+                <div
+                  className="h-52 w-full border-b border-border bg-cover bg-center"
+                  style={{ backgroundImage: `url(${campaign.coverImage})` }}
+                />
 
                 <div className="flex flex-1 flex-col p-5">
                   <div className="mb-3 flex flex-wrap gap-2">
@@ -365,12 +364,9 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
                     ))}
                   </div>
 
-                  <Link
-                    href={`/campaigns/${campaign.slug}`}
-                    className="line-clamp-2 min-h-[3.5rem] text-xl font-bold text-heading hover:text-primary"
-                  >
+                  <h3 className="line-clamp-2 min-h-[3.5rem] text-xl font-bold text-heading">
                     {campaign.title}
-                  </Link>
+                  </h3>
 
                   <p className="mt-2 line-clamp-3 min-h-[4.5rem] text-sm text-text-muted">
                     {campaign.shortDescription || campaign.description}
@@ -424,7 +420,7 @@ export default function CampaignBrowser({ campaigns }: CampaignBrowserProps) {
                     </div>
                   </div>
                 </div>
-              </article>
+              </Link>
             );
           })}
         </div>

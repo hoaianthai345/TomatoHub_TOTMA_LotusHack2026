@@ -136,7 +136,7 @@ export default async function HomePage() {
                     <>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={heroCampaign.coverImage}
+                        src="/images/herohome.jpg"
                         alt={heroCampaign.title}
                         className="h-[92px] w-[180px] object-cover sm:h-[110px] sm:w-[240px] lg:h-[126px] lg:w-[320px]"
                       />
@@ -251,7 +251,10 @@ export default async function HomePage() {
         </section>
 
         {spotlightCampaign ? (
-          <section className="mt-12 overflow-hidden rounded-[2.5rem] border border-border bg-white shadow-[0_18px_44px_rgba(17,24,39,0.05)]">
+          <Link
+            href={`/campaigns/${spotlightCampaign.slug}`}
+            className="card-hover mt-12 block overflow-hidden rounded-[2.5rem] border border-border bg-white shadow-[0_18px_44px_rgba(17,24,39,0.05)]"
+          >
             <div className="p-6 text-center md:p-10">
               <div className="inline-flex rounded-full border border-border bg-surface-muted px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
                 Spotlight story
@@ -283,14 +286,11 @@ export default async function HomePage() {
                 See the campaign details, support types, and latest progress in one
                 page.
               </p>
-              <Link
-                href={`/campaigns/${spotlightCampaign.slug}`}
-                className="btn-base btn-primary rounded-full !px-6"
-              >
-                View campaign
-              </Link>
+              <span className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
+                Open campaign <MoveRight className="h-4 w-4" />
+              </span>
             </div>
-          </section>
+          </Link>
         ) : null}
 
         <section className="mt-12">
