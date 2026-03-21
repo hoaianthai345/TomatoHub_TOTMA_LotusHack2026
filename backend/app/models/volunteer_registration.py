@@ -86,4 +86,11 @@ class VolunteerRegistration(Base):
     )
 
     campaign: Mapped["Campaign"] = relationship(back_populates="volunteer_registrations")
-    user: Mapped["User | None"] = relationship(back_populates="volunteer_registrations")
+    user: Mapped["User | None"] = relationship(
+        back_populates="volunteer_registrations",
+        foreign_keys=[user_id],
+    )
+    attendance_marked_by_user: Mapped["User | None"] = relationship(
+        back_populates="attendance_marked_registrations",
+        foreign_keys=[attendance_marked_by_user_id],
+    )
