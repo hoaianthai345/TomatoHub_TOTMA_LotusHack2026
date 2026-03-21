@@ -5,6 +5,8 @@ import type { Campaign, CampaignCoordinates } from "@/types/campaign";
 
 interface NearbyCampaignMapProps {
   campaigns: Campaign[];
+  className?: string;
+  showHeader?: boolean;
 }
 
 type LocationStatus =
@@ -51,26 +53,26 @@ function calculateDistanceKm(
 
 function getLocationMessage(status: LocationStatus): string {
   if (status === "ready") {
-    return "Đang hiển thị campaign gần vị trí hiện tại của bạn.";
+    return "Showing campaigns close to your current location.";
   }
   if (status === "locating") {
-    return "Đang xác định vị trí của bạn...";
+    return "Checking your location...";
   }
   if (status === "denied") {
-    return "Bạn đã chặn quyền vị trí. Đang dùng vị trí mặc định tại TP.HCM.";
+    return "Location access is blocked. Using the default point in Ho Chi Minh City.";
   }
   if (status === "unsupported") {
-    return "Trình duyệt không hỗ trợ geolocation. Đang dùng vị trí mặc định tại TP.HCM.";
+    return "Your browser does not support geolocation. Using the default point in Ho Chi Minh City.";
   }
   if (status === "error") {
-    return "Không lấy được vị trí hiện tại. Đang dùng vị trí mặc định tại TP.HCM.";
+    return "We could not detect your location. Using the default point in Ho Chi Minh City.";
   }
-  return "Cho phép quyền vị trí để tìm campaign gần bạn chính xác hơn.";
+  return "Allow location access to find campaigns closer to you.";
 }
 
 function formatDistance(distanceKm: number | null): string {
   if (distanceKm === null) {
-    return "Chưa xác định";
+    return "Unknown";
   }
   return `${distanceKm.toFixed(1)} km`;
 }
@@ -84,7 +86,11 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#039;");
 }
 
-export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps) {
+export default function NearbyCampaignMap({
+  campaigns,
+  className = "",
+  showHeader = true,
+}: NearbyCampaignMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const [locationStatus, setLocationStatus] = useState<LocationStatus>("idle");
   const [userLocation, setUserLocation] = useState<CampaignCoordinates | null>(
@@ -184,9 +190,7 @@ export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps)
           '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       }).addTo(mapInstance);
 
-      const bounds = L.latLngBounds([
-        [mapCenter.latitude, mapCenter.longitude],
-      ]);
+      const bounds = L.latLngBounds([[mapCenter.latitude, mapCenter.longitude]]);
 
       const userMarker = L.circleMarker(
         [mapCenter.latitude, mapCenter.longitude],
@@ -200,7 +204,7 @@ export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps)
       ).addTo(mapInstance);
 
       userMarker.bindPopup(
-        userLocation ? "Vị trí của bạn" : "Vị trí mặc định (TP.HCM)"
+        userLocation ? "Your location" : "Default location (Ho Chi Minh City)"
       );
 
       nearbyCampaigns.forEach((item) => {
@@ -221,7 +225,7 @@ export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps)
         marker.bindPopup(
           `<strong>${escapeHtml(item.campaign.title)}</strong><br/>` +
             `${escapeHtml(item.campaign.location)}<br/>` +
-            `Khoảng cách: ${formatDistance(item.distanceKm)}`
+            `Distance: ${formatDistance(item.distanceKm)}`
         );
 
         bounds.extend([
@@ -248,27 +252,31 @@ export default function NearbyCampaignMap({ campaigns }: NearbyCampaignMapProps)
   }, [mapCenter, nearbyCampaigns, userLocation]);
 
   return (
-    <section className="card-base p-5 md:p-6">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-heading">Campaign gần bạn</h2>
-          <p className="mt-1 text-sm text-text-muted">
-            {getLocationMessage(locationStatus)}
-          </p>
+    <section className={`card-base p-5 md:p-6 ${className}`.trim()}>
+      {showHeader ? (
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-xl font-bold text-heading">Campaigns near you</h2>
+            <p className="mt-1 text-sm text-text-muted">
+              {getLocationMessage(locationStatus)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={locateUser}
+            disabled={locationStatus === "locating"}
+            className="btn-base btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {locationStatus === "locating"
+              ? "Checking location..."
+              : "Refresh location"}
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={locateUser}
-          disabled={locationStatus === "locating"}
-          className="btn-base btn-secondary disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {locationStatus === "locating"
-            ? "Đang lấy vị trí..."
-            : "Cập nhật vị trí"}
-        </button>
-      </div>
+      ) : null}
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+      <div
+        className={`${showHeader ? "mt-5" : ""} grid gap-5 lg:grid-cols-[minmax(0,1.2fr)_minmax(280px,0.8fr)]`.trim()}
+      >
         <div className="overflow-hidden rounded-xl border border-border bg-surface-muted">
           <div ref={mapRef} className="nearby-map h-[360px] w-full" />
         </div>

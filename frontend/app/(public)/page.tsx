@@ -1,69 +1,323 @@
 import Link from "next/link";
 import Container from "@/components/common/container";
-import SectionTitle from "@/components/common/section-title";
 import CampaignCard from "@/components/campaign/campaign-card";
+import NearbyCampaignMap from "@/components/campaign/nearby-campaign-map";
+import SectionTitle from "@/components/common/section-title";
 import { listPublishedCampaigns } from "@/lib/api/campaigns";
+import { formatCurrency } from "@/utils/format";
 import type { Campaign } from "@/types/campaign";
 
-export default async function HomePage() {
-  let featuredCampaigns: Campaign[] = [];
+function sumBy(
+  campaigns: Campaign[],
+  selector: (campaign: Campaign) => number | undefined
+): number {
+  return campaigns.reduce((total, campaign) => total + (selector(campaign) ?? 0), 0);
+}
 
-  try {
-    featuredCampaigns = await listPublishedCampaigns(2);
-  } catch {
-    featuredCampaigns = [];
+function pickCampaign(campaigns: Campaign[], index: number): Campaign | null {
+  return campaigns[index] ?? campaigns[0] ?? null;
+}
+
+function supportLabel(campaign: Campaign): string {
+  if (!campaign.supportTypes?.length) {
+    return "Open support";
   }
 
-  return (
-    <div className="py-10">
-      <Container>
-        <section className="rounded-3xl bg-primary px-6 py-12 text-white shadow-pop md:px-10">
-          <p className="text-sm font-medium uppercase tracking-[0.2em] opacity-80">
-            TomatoHub MVP
-          </p>
-          <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight">
-            Volunteer & Aid Coordination Platform built for clear flow and
-            transparency
-          </h1>
-          <p className="mt-4 max-w-2xl opacity-90">
-            Organizations create campaigns. Supporters contribute through money,
-            goods, volunteering, shipping, or coordination. Beneficiary support
-            is tracked inside the system.
-          </p>
+  if (campaign.supportTypes.includes("volunteer")) {
+    return "Volunteer";
+  }
 
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link
-              href="/campaigns"
-              className="btn-base bg-white text-primary hover:bg-surface-muted shadow-soft"
-            >
-              Explore campaigns
-            </Link>
-            <Link
-              href="/organization"
-              className="btn-base border border-white/40 text-white hover:bg-white/10"
-            >
-              Organization dashboard
-            </Link>
+  if (campaign.supportTypes.includes("goods")) {
+    return "Goods";
+  }
+
+  return "Donate";
+}
+
+function statValue(value: number): string {
+  return value > 0 ? value.toLocaleString("en-US") : "0";
+}
+
+function ActionCard({
+  title,
+  description,
+  eyebrow,
+  href,
+  variant,
+}: {
+  title: string;
+  description: string;
+  eyebrow: string;
+  href: string;
+  variant: "primary" | "light";
+}) {
+  const palette =
+    variant === "primary"
+      ? "bg-primary text-white border-primary/20"
+      : "bg-white text-heading border-border";
+
+  const bodyText = variant === "primary" ? "text-white/80" : "text-text-muted";
+
+  return (
+    <Link
+      href={href}
+      className={`group flex min-h-[250px] flex-col justify-between rounded-[2rem] border p-6 shadow-[0_14px_34px_rgba(17,24,39,0.05)] transition duration-200 hover:-translate-y-0.5 ${palette}`}
+    >
+      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/85 text-lg font-bold text-heading">
+        +
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.22em] opacity-70">
+          {eyebrow}
+        </p>
+        <h3 className="mt-3 text-2xl font-bold">{title}</h3>
+        <p className={`mt-3 text-sm leading-7 ${bodyText}`}>{description}</p>
+      </div>
+
+      <div className="mt-6 inline-flex items-center gap-2 text-sm font-semibold">
+        Learn more
+        <span className="transition group-hover:translate-x-1">-&gt;</span>
+      </div>
+    </Link>
+  );
+}
+
+export default async function HomePage() {
+  let campaigns: Campaign[] = [];
+
+  try {
+    campaigns = await listPublishedCampaigns(8);
+  } catch {
+    campaigns = [];
+  }
+
+  const heroCampaign = pickCampaign(campaigns, 0);
+  const spotlightCampaign = pickCampaign(campaigns, 1) ?? heroCampaign;
+  const updateCampaigns = campaigns.slice(0, 3);
+
+  const totalRaised = sumBy(campaigns, (campaign) => campaign.raisedAmount);
+  const totalSupporters = sumBy(campaigns, (campaign) => campaign.supporterCount);
+  const totalBeneficiaries = sumBy(
+    campaigns,
+    (campaign) => campaign.beneficiaryCount
+  );
+
+  return (
+    <div className="bg-page py-8 md:py-10">
+      <Container>
+        <section className="overflow-hidden rounded-[2.5rem] border border-border bg-[linear-gradient(180deg,_#fff8ec,_#fffaf5)] px-5 py-8 shadow-[0_18px_44px_rgba(17,24,39,0.05)] md:px-8 md:py-10 lg:px-10">
+          <div className="flex flex-col gap-8">
+            <div>
+              <div className="mb-6 flex items-center justify-between gap-4">
+                <div className="inline-flex items-center rounded-full border border-border bg-white/85 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-primary">
+                  TomatoHub Community
+                </div>
+                <Link
+                  href="/campaigns"
+                  className="hidden rounded-full border border-border bg-white/90 px-5 py-2 text-sm font-semibold text-heading md:inline-flex"
+                >
+                  Browse all
+                </Link>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-4 text-[clamp(3.6rem,9vw,7.5rem)] font-bold leading-[0.92] tracking-[-0.06em] text-heading">
+                <span>Hope</span>
+                <div className="overflow-hidden rounded-full border border-border bg-white shadow-[0_12px_30px_rgba(17,24,39,0.08)]">
+                  {heroCampaign ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={heroCampaign.coverImage}
+                        alt={heroCampaign.title}
+                        className="h-[92px] w-[180px] object-cover sm:h-[110px] sm:w-[240px] lg:h-[126px] lg:w-[320px]"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src="/images/TOMATOHUB.svg"
+                        alt="TomatoHub"
+                        className="h-[92px] w-[180px] object-contain bg-white px-5 py-4 sm:h-[110px] sm:w-[240px] lg:h-[126px] lg:w-[320px]"
+                      />
+                    </>
+                  )}
+                </div>
+                <span>Moves</span>
+                <span>With Support</span>
+              </div>
+
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <Link href="/campaigns" className="btn-base rounded-full !px-6 btn-primary">
+                  Donate now
+                </Link>
+                <Link
+                  href="/signup/supporter"
+                  className="btn-base rounded-full !px-6 btn-secondary"
+                >
+                  Become a supporter
+                </Link>
+                <Link
+                  href="/signup/organization"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-border bg-white text-lg font-semibold text-heading"
+                >
+                  -&gt;
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid gap-4 border-t border-border pt-5 md:grid-cols-4">
+              <div className="rounded-2xl bg-white/85 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">
+                  Raised
+                </p>
+                <p className="mt-2 text-2xl font-bold text-heading">
+                  {formatCurrency(totalRaised)}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/85 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">
+                  Supporters
+                </p>
+                <p className="mt-2 text-2xl font-bold text-heading">
+                  {statValue(totalSupporters)}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/85 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">
+                  Beneficiaries
+                </p>
+                <p className="mt-2 text-2xl font-bold text-heading">
+                  {statValue(totalBeneficiaries)}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/85 p-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">
+                  Live campaigns
+                </p>
+                <p className="mt-2 text-2xl font-bold text-heading">
+                  {statValue(campaigns.length)}
+                </p>
+              </div>
+            </div>
           </div>
         </section>
 
-        <section className="mt-16">
+        <section className="mt-10">
+          <div className="mx-auto max-w-3xl text-center">
+            <div className="inline-flex rounded-full bg-[#dff3df] px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#2c6b4f]">
+              What we do
+            </div>
+            <h2 className="mt-6 text-4xl font-bold leading-tight text-heading md:text-5xl">
+              Real help, clear action,
+              <br />
+              and stories people can trust.
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-text-muted">
+              TomatoHub makes it easier to discover public campaigns, support the
+              right need, and follow progress without friction.
+            </p>
+          </div>
+
+          <div className="mt-8 grid gap-6 lg:grid-cols-3">
+            <ActionCard
+              eyebrow="Support"
+              title="Make a donation"
+              description="Fund urgent needs, recovery efforts, and direct campaign goals in just a few taps."
+              href="/campaigns"
+              variant="light"
+            />
+            <ActionCard
+              eyebrow="Relief"
+              title="Get support"
+              description="Start a campaign, share verified updates, and connect your cause with people who care."
+              href="/signup/organization"
+              variant="light"
+            />
+            <ActionCard
+              eyebrow="Community"
+              title="Become a volunteer"
+              description="Join campaigns that need time, hands, and field support in your area."
+              href="/signup/supporter"
+              variant="primary"
+            />
+          </div>
+        </section>
+
+        {spotlightCampaign ? (
+          <section className="mt-12 overflow-hidden rounded-[2.5rem] border border-border bg-white shadow-[0_18px_44px_rgba(17,24,39,0.05)]">
+            <div className="p-6 text-center md:p-10">
+              <div className="inline-flex rounded-full border border-border bg-surface-muted px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-muted">
+                Spotlight story
+              </div>
+              <h2 className="mx-auto mt-6 max-w-3xl text-4xl font-bold leading-tight text-heading md:text-5xl">
+                {spotlightCampaign.title}
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-text-muted">
+                {spotlightCampaign.shortDescription || spotlightCampaign.description}
+              </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm font-medium text-text-muted">
+                <span>{spotlightCampaign.location || "Across Vietnam"}</span>
+                <span>-</span>
+                <span>{supportLabel(spotlightCampaign)}</span>
+                <span>-</span>
+                <span>{formatCurrency(spotlightCampaign.raisedAmount)} raised</span>
+              </div>
+            </div>
+
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={spotlightCampaign.coverImage}
+              alt={spotlightCampaign.title}
+              className="h-[280px] w-full object-cover md:h-[420px]"
+            />
+
+            <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border p-6 md:px-10">
+              <p className="text-sm text-text-muted">
+                See the campaign details, support types, and latest progress in one
+                page.
+              </p>
+              <Link
+                href={`/campaigns/${spotlightCampaign.slug}`}
+                className="btn-base btn-primary rounded-full !px-6"
+              >
+                View campaign
+              </Link>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="mt-12">
           <SectionTitle
-            title="Featured Campaigns"
-            description="Featured campaigns are now loaded from the live backend instead of static mock data."
+            title="Field Updates"
+            description="A quick view of the latest campaigns and stories from the platform."
           />
-          {featuredCampaigns.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2">
-              {featuredCampaigns.map((campaign) => (
+
+          {updateCampaigns.length > 0 ? (
+            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {updateCampaigns.map((campaign) => (
                 <CampaignCard key={campaign.id} campaign={campaign} />
               ))}
             </div>
           ) : (
             <div className="card-base p-6 text-sm text-text-muted">
-              Backend is reachable but no featured campaigns are available yet.
+              There are no campaign updates available right now.
             </div>
           )}
         </section>
+
+        {campaigns.some((campaign) => campaign.coordinates !== null) ? (
+          <section className="mt-12">
+            <SectionTitle
+              title="Campaigns Near You"
+              description="Use your location to discover nearby public campaigns."
+            />
+            <div className="mb-8">
+              <NearbyCampaignMap campaigns={campaigns} />
+            </div>
+          </section>
+        ) : null}
       </Container>
     </div>
   );

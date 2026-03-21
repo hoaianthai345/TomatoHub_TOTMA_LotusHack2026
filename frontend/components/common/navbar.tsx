@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { APP_NAME, NAV_LINKS } from "@/lib/constants";
+import { NAV_LINKS } from "@/lib/constants";
 import Container from "./container";
 import { useAuth } from "@/lib/auth";
 
@@ -22,9 +22,16 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/90 backdrop-blur">
       <Container className="flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="text-xl font-bold text-primary">
-          {APP_NAME}
+        <Link href="/" className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/images/TOMATOHUB.svg"
+            alt="TomatoHub"
+            className="h-9 w-auto md:h-10"
+          />
+          <span className="hidden text-xs font-semibold uppercase tracking-[0.3em] text-primary/80 lg:inline-block">
+            Relief Network
+          </span>
         </Link>
 
         {/* Nav Links */}
