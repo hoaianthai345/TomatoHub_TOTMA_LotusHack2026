@@ -10,6 +10,7 @@ __all__ = [
     "donations",
     "health",
     "organizations",
+    "recommendations",
     "supporters",
     "transparency",
     "volunteer_registrations",

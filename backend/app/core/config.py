@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     UPLOAD_URL_PREFIX: str = "/uploads"
     CAMPAIGN_IMAGE_MAX_SIZE_MB: int = 10
+    RECOMMENDATION_USE_LLM: bool = True
+    GROQ_API_KEY: str | None = None
+    GROQ_API_BASE_URL: str = "https://api.groq.com/openai/v1"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_TIMEOUT_SECONDS: int = 20
+    SUPPORTER_RECOMMENDATION_MAX_LIMIT: int = 20
 
     DATABASE_URL: str = Field(
         default="postgresql+psycopg2://postgres:postgres@localhost:5432/lotushack"

@@ -4,6 +4,7 @@ Database change process for team:
 
 - See [docs/database-change-guide.md](docs/database-change-guide.md)
 - Current schema snapshot: [docs/database-current-schema.md](docs/database-current-schema.md)
+- Recommendation feature: [docs/recommendation-feature.md](docs/recommendation-feature.md)
 
 ## 1. Setup local
 
@@ -288,6 +289,9 @@ curl -X POST "http://127.0.0.1:8000/api/v1/auth/reset-password" \
 - `POST /api/v1/campaigns/{campaign_id}/close` (organization owner, body optional: `closed_at`)
 - `POST /api/v1/campaigns/{campaign_id}/reopen` (organization owner)
 - `PATCH /api/v1/organizations/{organization_id}` (owner org/superuser)
+- `POST /api/v1/recommendations/campaign-draft` (organization token required)
+- `GET /api/v1/recommendations/me/campaigns` (supporter token required)
+- `GET /api/v1/recommendations/supporters/{supporter_id}/campaigns` (self/superuser)
 
 Notes:
 
@@ -363,6 +367,50 @@ Set cover by image id:
 ```bash
 curl -X POST "http://127.0.0.1:8000/api/v1/campaigns/<campaign_id>/images/<image_id>/set-cover" \
   -H "Authorization: Bearer <organization_or_superuser_token>"
+```
+
+## 5G. AI recommendations (Groq LLM + heuristic fallback)
+
+Enable Groq in `.env`:
+
+```env
+RECOMMENDATION_USE_LLM=true
+GROQ_API_KEY=<your-groq-api-key>
+GROQ_MODEL=llama-3.3-70b-versatile
+SUPPORTER_RECOMMENDATION_MAX_LIMIT=20
+```
+
+If `GROQ_API_KEY` is empty or Groq call fails, backend automatically falls back to heuristic logic.
+
+Generate campaign draft recommendation:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/api/v1/recommendations/campaign-draft" \
+  -H "Authorization: Bearer <organization_token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Flood Relief in Thu Duc",
+    "campaign_goal": "Huy động tài chính và tình nguyện viên để hỗ trợ 300 hộ dân bị ngập.",
+    "beneficiary_context": "Hộ gia đình thu nhập thấp, có người già và trẻ nhỏ.",
+    "location_hint": "Thu Duc, Ho Chi Minh City",
+    "support_types_hint": ["money", "volunteer"],
+    "constraints": ["Minh bạch sao kê theo tuần", "Ưu tiên giải ngân trong 14 ngày"],
+    "tone": "clear, transparent, urgent"
+  }'
+```
+
+Get recommendation campaigns for current supporter:
+
+```bash
+curl -X GET "http://127.0.0.1:8000/api/v1/recommendations/me/campaigns?limit=8" \
+  -H "Authorization: Bearer <supporter_token>"
+```
+
+Get recommendation campaigns for a specific supporter (self/superuser):
+
+```bash
+curl -X GET "http://127.0.0.1:8000/api/v1/recommendations/supporters/<supporter_id>/campaigns?limit=8" \
+  -H "Authorization: Bearer <access_token>"
 ```
 
 ## 6. Deploy on Linux VM (basic)
