@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException, UploadFile, status
@@ -43,6 +44,83 @@ def _required_s3_setting(name: str, value: str | None) -> str:
     return value.strip()
 
 
+def _normalize_supabase_host(hostname: str | None) -> str | None:
+    if hostname is None:
+        return None
+    lower = hostname.strip().lower()
+    if not lower:
+        return None
+    if lower.endswith(".storage.supabase.co"):
+        return f"{lower[:-len('.storage.supabase.co')]}.supabase.co"
+    return lower
+
+
+def _normalize_supabase_public_base_url(value: str, *, bucket: str) -> str:
+    parsed = urlsplit(value)
+    scheme = parsed.scheme or "https"
+    original_host = (parsed.hostname or "").strip().lower()
+    if not original_host.endswith("supabase.co"):
+        return value.rstrip("/")
+    host = _normalize_supabase_host(original_host)
+    if not host:
+        return value.rstrip("/")
+
+    path = parsed.path.rstrip("/")
+    if path.endswith("/storage/v1/s3"):
+        path = f"/storage/v1/object/public/{bucket}"
+    elif path.endswith("/storage/v1/object/public"):
+        path = f"/storage/v1/object/public/{bucket}"
+    elif "/storage/v1/object/public/" not in path:
+        path = f"/storage/v1/object/public/{bucket}"
+
+    normalized = urlunsplit((scheme, host, path, "", ""))
+    return normalized.rstrip("/")
+
+
+def _resolve_s3_public_base_url() -> str:
+    bucket = _required_s3_setting("S3_BUCKET", settings.S3_BUCKET)
+    configured_public_base = (settings.S3_PUBLIC_BASE_URL or "").strip()
+    if configured_public_base:
+        return _normalize_supabase_public_base_url(
+            configured_public_base,
+            bucket=bucket,
+        )
+
+    endpoint = _required_s3_setting("S3_ENDPOINT_URL", settings.S3_ENDPOINT_URL)
+    endpoint_host = (urlsplit(endpoint).hostname or "").strip().lower()
+    if not endpoint_host.endswith("supabase.co"):
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="S3 storage misconfigured: missing S3_PUBLIC_BASE_URL",
+        )
+    return _normalize_supabase_public_base_url(
+        endpoint,
+        bucket=bucket,
+    )
+
+
+def normalize_upload_url_if_needed(value: str) -> str:
+    trimmed = value.strip()
+    if not trimmed:
+        return trimmed
+
+    parsed = urlsplit(trimmed)
+    host = (parsed.hostname or "").strip().lower()
+    path = parsed.path or ""
+
+    if not host.endswith("supabase.co"):
+        return trimmed
+
+    if "/storage/v1/s3/" not in path:
+        return trimmed
+
+    bucket = _required_s3_setting("S3_BUCKET", settings.S3_BUCKET)
+    normalized_host = _normalize_supabase_host(host) or host
+    rest = path.split("/storage/v1/s3/", maxsplit=1)[1].lstrip("/")
+    normalized_path = f"/storage/v1/object/public/{bucket}/{rest}"
+    return urlunsplit((parsed.scheme or "https", normalized_host, normalized_path, "", ""))
+
+
 def _build_s3_client():
     if boto3 is None or BotocoreConfig is None:
         raise HTTPException(
@@ -78,7 +156,7 @@ def _build_s3_storage_key(*, campaign_id: UUID, stored_filename: str) -> str:
 def build_public_upload_url(relative_path: str) -> str:
     normalized = _normalize_storage_key(relative_path)
     if settings.is_s3_storage():
-        base_url = _required_s3_setting("S3_PUBLIC_BASE_URL", settings.S3_PUBLIC_BASE_URL).rstrip("/")
+        base_url = _resolve_s3_public_base_url()
         return f"{base_url}/{normalized}"
 
     prefix = settings.UPLOAD_URL_PREFIX.rstrip("/")

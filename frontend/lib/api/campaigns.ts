@@ -3,7 +3,7 @@ import type {
   CampaignCoordinates,
   CampaignSupportType,
 } from "@/types/campaign";
-import { requestJson } from "./http";
+import { requestJson, resolveApiAssetUrl } from "./http";
 
 type ApiDecimal = string | number;
 
@@ -159,6 +159,13 @@ function buildCoordinates(campaign: BackendCampaign): CampaignCoordinates | null
 export function mapCampaign(campaign: BackendCampaign): Campaign {
   const targetAmount = toNumber(campaign.goal_amount);
   const location = buildLocationLabel(campaign);
+  const mediaUrls = (campaign.media_urls ?? [])
+    .map((value) => resolveApiAssetUrl(value) ?? value)
+    .filter(Boolean);
+  const coverImageUrl =
+    resolveApiAssetUrl(campaign.cover_image_url) ??
+    mediaUrls[0] ??
+    undefined;
 
   return {
     id: campaign.id,
@@ -175,16 +182,13 @@ export function mapCampaign(campaign: BackendCampaign): Campaign {
     raisedAmount: toNumber(campaign.raised_amount),
     supportTypes: campaign.support_types ?? [],
     needs: [],
-    coverImage:
-      campaign.cover_image_url ??
-      campaign.media_urls?.[0] ??
-      DEFAULT_CAMPAIGN_COVER_IMAGE,
-    coverImageUrl: campaign.cover_image_url ?? undefined,
+    coverImage: coverImageUrl ?? DEFAULT_CAMPAIGN_COVER_IMAGE,
+    coverImageUrl,
     province: campaign.province ?? undefined,
     district: campaign.district ?? undefined,
     addressLine: campaign.address_line ?? undefined,
     coordinates: buildCoordinates(campaign),
-    mediaUrls: campaign.media_urls ?? [],
+    mediaUrls,
     startsAt: campaign.starts_at,
     endsAt: campaign.ends_at ?? undefined,
     isActive: campaign.is_active,

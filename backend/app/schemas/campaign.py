@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.campaign import CampaignStatus, SupportType
+from app.services.campaign_image_storage import normalize_upload_url_if_needed
 
 
 def _coerce_raw_to_list(value: Any) -> list[Any]:
@@ -160,12 +161,22 @@ class CampaignRead(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_validator("cover_image_url", mode="before")
+    @classmethod
+    def normalize_cover_image_url(cls, value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if not text:
+            return None
+        return normalize_upload_url_if_needed(text)
+
     @field_validator("tags", "media_urls", mode="before")
     @classmethod
     def normalize_read_string_lists(cls, value: Any) -> list[str]:
         normalized: list[str] = []
         for item in _coerce_raw_to_list(value):
-            text = str(item).strip()
+            text = normalize_upload_url_if_needed(str(item).strip())
             if text and text not in normalized:
                 normalized.append(text)
         return normalized

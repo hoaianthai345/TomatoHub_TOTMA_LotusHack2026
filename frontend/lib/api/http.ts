@@ -4,6 +4,7 @@ const normalizedApiBaseUrl = rawApiBaseUrl.replace(/\/+$/, "");
 const API_BASE_URL = /\/api\/v\d+$/i.test(normalizedApiBaseUrl)
   ? normalizedApiBaseUrl
   : `${normalizedApiBaseUrl}/api/v1`;
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/v\d+$/i, "");
 
 export class ApiError extends Error {
   status: number;
@@ -20,6 +21,33 @@ interface RequestJsonOptions extends RequestInit {
 
 export function getApiBaseUrl(): string {
   return API_BASE_URL;
+}
+
+export function resolveApiAssetUrl(value: string | null | undefined): string | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  if (
+    /^https?:\/\//i.test(trimmed) ||
+    /^\/\//.test(trimmed) ||
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("blob:")
+  ) {
+    return trimmed;
+  }
+
+  if (!API_ORIGIN) {
+    return trimmed;
+  }
+
+  const normalizedPath = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+  return `${API_ORIGIN}${normalizedPath}`;
 }
 
 function buildHeaders(init?: RequestInit, token?: string): Headers {

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
+import CampaignLocationMap from "@/components/campaign/campaign-location-map";
 import { useAuth } from "@/lib/auth";
 import {
   closeCampaign,
@@ -462,6 +463,13 @@ export default function CampaignsPage() {
             <p className="mt-2 text-2xl font-bold text-danger">{volunteerOverview.rejected}</p>
           </div>
         </div>
+
+        {campaigns.length > 0 ? (
+          <CampaignLocationMap
+            campaigns={campaigns}
+            className="mb-6"
+          />
+        ) : null}
 
         {campaigns.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2">
