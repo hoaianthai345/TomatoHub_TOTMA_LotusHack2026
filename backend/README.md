@@ -23,7 +23,9 @@ CORS note:
 - Local dev frontend port is not always `3000` (can be `5173`, `3001`, ...).
 - `BACKEND_CORS_ALLOW_ORIGIN_REGEX` in `.env` already allows localhost/127.0.0.1 with any port by default.
 - For deployment, set `BACKEND_CORS_ORIGINS` to your real frontend domain(s).
-- Campaign image uploads are saved under `UPLOAD_DIR` and served from `UPLOAD_URL_PREFIX`.
+- Campaign image storage can run in:
+  - `local` mode: saved under `UPLOAD_DIR`, served from `UPLOAD_URL_PREFIX`
+  - `s3` mode: uploaded to S3-compatible storage (Supabase Storage S3 API)
 
 ## 2. Create PostgreSQL database
 
@@ -49,6 +51,27 @@ python -c "import urllib.parse; print(urllib.parse.quote_plus('your-password'))"
 ```
 
 If you use Aiven, skip step 2 (create local database) and continue with migration.
+
+## 2B. Use Supabase Storage (S3-compatible) for campaign images
+
+Set these variables in `backend/.env` (and Render env for production):
+
+```env
+STORAGE_BACKEND=s3
+S3_ENDPOINT_URL=https://<project-ref>.supabase.co/storage/v1/s3
+S3_ACCESS_KEY_ID=<supabase-s3-access-key>
+S3_SECRET_ACCESS_KEY=<supabase-s3-secret-key>
+S3_REGION=us-east-1
+S3_BUCKET=tomato_storage
+S3_KEY_PREFIX=lotushack
+S3_PUBLIC_BASE_URL=https://<project-ref>.supabase.co/storage/v1/object/public/tomato_storage
+S3_FORCE_PATH_STYLE=true
+```
+
+Notes:
+- Bucket must be public if you want direct image URL rendering without signed URLs.
+- `S3_PUBLIC_BASE_URL` must point to `.../storage/v1/object/public/<bucket>`.
+- If frontend and backend are on different domains, backend now returns absolute image URL in `s3` mode.
 
 ## 3. Run migration
 
