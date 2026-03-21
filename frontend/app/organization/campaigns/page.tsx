@@ -1,9 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
-import CampaignLocationMap from "@/components/campaign/campaign-location-map";
 import FormField from "@/components/common/form-field";
 import MissingValue from "@/components/common/missing-value";
 import StatePanel from "@/components/common/state-panel";
@@ -28,6 +28,31 @@ import type {
   VolunteerRegistration,
   VolunteerRegistrationStatus,
 } from "@/types/volunteer-registration";
+
+const REGISTRATION_STATUS_ACTIONS: Array<{
+  status: VolunteerRegistrationStatus;
+  label: string;
+}> = [
+  { status: "approved", label: "Approved" },
+  { status: "pending", label: "Pending" },
+  { status: "rejected", label: "Rejected" },
+];
+
+function registrationStatusActionClass(
+  status: VolunteerRegistrationStatus,
+  isActive: boolean
+): string {
+  if (isActive && status === "approved") {
+    return "border-success/30 bg-success/10 text-success";
+  }
+  if (isActive && status === "rejected") {
+    return "border-danger/30 bg-danger/10 text-danger";
+  }
+  if (isActive) {
+    return "border-primary/30 bg-primary/10 text-primary";
+  }
+  return "border-border bg-white text-text-muted hover:border-primary/30 hover:text-primary";
+}
 
 export default function CampaignsPage() {
   const { currentUser, accessToken, isLoading } = useAuth();
@@ -420,9 +445,6 @@ export default function CampaignsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/organization/checkpoints" className="btn-base btn-secondary">
-              Manage checkpoints
-            </Link>
             <Link href="/organization/campaigns/create" className="btn-base btn-primary">
               Create campaign
             </Link>
@@ -464,286 +486,275 @@ export default function CampaignsPage() {
         </div>
 
         {campaigns.length > 0 ? (
-          <CampaignLocationMap
-            campaigns={campaigns}
-            className="mb-6"
-          />
-        ) : null}
-
-        {campaigns.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-4">
             {campaigns.map((campaign) => (
               <article key={campaign.id} className="card-base p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-lg font-semibold text-heading">{campaign.title}</h3>
-                  <StatusBadge
-                    kind="campaign_status"
-                    value={campaign.status}
-                    size={14}
-                  />
-                </div>
-                <p className="mt-2 text-sm text-text-muted line-clamp-2">
-                  {campaign.shortDescription || campaign.description}
-                </p>
-
-                <div className="mt-4 grid gap-2 text-sm text-text">
-                  <p>
-                    Raised:{" "}
-                    <span className="font-semibold text-primary">
-                      {formatCurrency(campaign.raisedAmount)}
-                    </span>{" "}
-                    / {formatCurrency(campaign.goalAmount ?? campaign.targetAmount)}
-                  </p>
-                  <p>
-                    Location:{" "}
-                    {campaign.location ? <span>{campaign.location}</span> : <MissingValue />}
-                  </p>
-                  <p>Created: {formatDateTime(campaign.createdAt)}</p>
-                  <p>
-                    Volunteers:{" "}
-                    <span className="font-semibold text-heading">
-                      {registrationStatsByCampaign.get(campaign.id)?.total ?? 0}
-                    </span>{" "}
-                    (approved {registrationStatsByCampaign.get(campaign.id)?.approved ?? 0}, pending{" "}
-                    {registrationStatsByCampaign.get(campaign.id)?.pending ?? 0}, rejected{" "}
-                    {registrationStatsByCampaign.get(campaign.id)?.rejected ?? 0}, cancelled{" "}
-                    {registrationStatsByCampaign.get(campaign.id)?.cancelled ?? 0})
-                  </p>
-                </div>
-
-                <div className="mt-4 rounded-lg border border-border bg-surface-muted/30 p-4">
-                  <p className="text-sm font-semibold text-heading">
-                    Volunteer review
-                  </p>
-                  <p className="mt-1 text-xs text-text-muted">
-                    Approve or reject registrations directly from this campaign.
-                  </p>
-
-                  {((registrationsByCampaign.get(campaign.id) ?? []).length > 0) ? (
-                    <div className="mt-3 space-y-3">
-                      {(registrationsByCampaign.get(campaign.id) ?? [])
-                        .slice(0, 5)
-                        .map((registration) => (
-                          <div
-                            key={registration.id}
-                            className="rounded-md border border-border bg-white p-3"
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-sm font-semibold text-heading">
-                                  {registration.fullName}
-                                </p>
-                                <p className="text-xs text-text-muted">
-                                  {registration.email} |{" "}
-                                  {formatDateTime(registration.registeredAt)}
-                                </p>
-                                {registration.message ? (
-                                  <p className="mt-1 text-xs text-text">
-                                    {registration.message}
-                                  </p>
-                                ) : null}
-                              </div>
-                              <StatusBadge
-                                kind="registration_status"
-                                value={registration.status}
-                                size={14}
-                              />
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {registration.status !== "approved" ? (
-                                <button
-                                  type="button"
-                                  className="btn-base btn-primary text-xs"
-                                  disabled={loadingRegistrationId === registration.id}
-                                  onClick={() =>
-                                    handleUpdateRegistrationStatus(
-                                      registration,
-                                      "approved"
-                                    )
-                                  }
-                                >
-                                  {loadingRegistrationId === registration.id
-                                    ? "Saving..."
-                                    : "Approve"}
-                                </button>
-                              ) : null}
-                              {registration.status !== "rejected" ? (
-                                <button
-                                  type="button"
-                                  className="btn-base btn-danger text-xs"
-                                  disabled={loadingRegistrationId === registration.id}
-                                  onClick={() =>
-                                    handleUpdateRegistrationStatus(
-                                      registration,
-                                      "rejected"
-                                    )
-                                  }
-                                >
-                                  {loadingRegistrationId === registration.id
-                                    ? "Saving..."
-                                    : "Reject"}
-                                </button>
-                              ) : null}
-                              {registration.status !== "pending" ? (
-                                <button
-                                  type="button"
-                                  className="btn-base btn-secondary text-xs"
-                                  disabled={loadingRegistrationId === registration.id}
-                                  onClick={() =>
-                                    handleUpdateRegistrationStatus(
-                                      registration,
-                                      "pending"
-                                    )
-                                  }
-                                >
-                                  {loadingRegistrationId === registration.id
-                                    ? "Saving..."
-                                    : "Set pending"}
-                                </button>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  ) : (
-                    <StatePanel
-                      variant="empty"
-                      className="mt-3"
-                      message="No volunteer registrations yet for this campaign."
-                    />
-                  )}
-                </div>
-
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="space-y-5">
                   <Link
-                    href={`/organization/campaigns/${campaign.id}/edit`}
-                    className="btn-base btn-secondary text-sm whitespace-nowrap"
+                    href={
+                      campaign.status === "published"
+                        ? `/campaigns/${campaign.slug}`
+                        : `/organization/campaigns/${campaign.id}/edit`
+                    }
+                    className="group relative block h-32 w-full overflow-hidden rounded-2xl border border-border bg-surface-light md:h-36"
                   >
-                    Edit details
+                    <Image
+                      src={campaign.coverImage}
+                      alt={campaign.title}
+                      fill
+                      className="object-cover transition duration-200 group-hover:scale-[1.02]"
+                      sizes="(max-width: 1024px) 100vw, 720px"
+                    />
+                    <span className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-heading">
+                      Open details
+                    </span>
                   </Link>
-                  <button
-                    type="button"
-                    onClick={() => startEdit(campaign)}
-                    className="btn-base btn-secondary text-sm whitespace-nowrap"
-                    disabled={loadingCampaignId === campaign.id}
-                  >
-                    Quick edit
-                  </button>
-                  {campaign.status === "draft" ? (
-                    <button
-                      type="button"
-                      onClick={() => handlePublish(campaign)}
-                      className="btn-base btn-primary text-sm whitespace-nowrap"
-                      disabled={loadingCampaignId === campaign.id}
-                    >
-                      {loadingCampaignId === campaign.id ? "Publishing..." : "Publish"}
-                    </button>
-                  ) : null}
-                  {campaign.status === "published" ? (
-                    <button
-                      type="button"
-                      onClick={() => handleClose(campaign)}
-                      className="btn-base btn-danger text-sm whitespace-nowrap"
-                      disabled={loadingCampaignId === campaign.id}
-                    >
-                      {loadingCampaignId === campaign.id ? "Closing..." : "Close"}
-                    </button>
-                  ) : null}
-                  {campaign.status === "closed" ? (
-                    <button
-                      type="button"
-                      onClick={() => handleReopen(campaign)}
-                      className="btn-base btn-secondary text-sm whitespace-nowrap"
-                      disabled={loadingCampaignId === campaign.id}
-                    >
-                      {loadingCampaignId === campaign.id ? "Reopening..." : "Reopen"}
-                    </button>
-                  ) : null}
-                  {campaign.status === "published" ? (
-                    <Link
-                      href={`/campaigns/${campaign.slug}`}
-                      className="btn-base btn-secondary text-sm whitespace-nowrap"
-                    >
-                      View public page
-                    </Link>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(campaign)}
-                    className="btn-base btn-danger text-sm whitespace-nowrap"
-                    disabled={loadingCampaignId === campaign.id}
-                  >
-                    {loadingCampaignId === campaign.id ? "Working..." : "Delete"}
-                  </button>
-                </div>
 
-                {editingCampaignId === campaign.id ? (
-                  <div className="mt-4 space-y-3 rounded-lg border border-border bg-surface-muted/40 p-4">
-                    <FormField label="Title">
-                      <input
-                        className="input-base"
-                        value={editForm.title}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({ ...prev, title: event.target.value }))
-                        }
+                  <div className="min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 className="text-lg font-semibold text-heading">{campaign.title}</h3>
+                      <StatusBadge
+                        kind="campaign_status"
+                        value={campaign.status}
+                        size={14}
                       />
-                    </FormField>
-                    <FormField label="Short Description">
-                      <input
-                        className="input-base"
-                        value={editForm.shortDescription}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            shortDescription: event.target.value,
-                          }))
-                        }
-                      />
-                    </FormField>
-                    <FormField label="Description">
-                      <textarea
-                        className="input-base min-h-24"
-                        value={editForm.description}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({
-                            ...prev,
-                            description: event.target.value,
-                          }))
-                        }
-                      />
-                    </FormField>
-                    <FormField label="Goal Amount">
-                      <input
-                        type="number"
-                        min={1}
-                        className="input-base"
-                        value={editForm.goalAmount}
-                        onChange={(event) =>
-                          setEditForm((prev) => ({ ...prev, goalAmount: event.target.value }))
-                        }
-                      />
-                    </FormField>
-                    <div className="flex gap-3">
+                    </div>
+                    <p className="mt-2 text-sm text-text-muted line-clamp-2">
+                      {campaign.shortDescription || campaign.description}
+                    </p>
+
+                    <div className="mt-4 grid gap-2 text-sm text-text">
+                      <p>
+                        Raised:{" "}
+                        <span className="font-semibold text-primary">
+                          {formatCurrency(campaign.raisedAmount)}
+                        </span>{" "}
+                        / {formatCurrency(campaign.goalAmount ?? campaign.targetAmount)}
+                      </p>
+                      <p>
+                        Location:{" "}
+                        {campaign.location ? <span>{campaign.location}</span> : <MissingValue />}
+                      </p>
+                      <p>Created: {formatDateTime(campaign.createdAt)}</p>
+                      <p>
+                        Volunteers:{" "}
+                        <span className="font-semibold text-heading">
+                          {registrationStatsByCampaign.get(campaign.id)?.total ?? 0}
+                        </span>{" "}
+                        (approved {registrationStatsByCampaign.get(campaign.id)?.approved ?? 0}, pending{" "}
+                        {registrationStatsByCampaign.get(campaign.id)?.pending ?? 0}, rejected{" "}
+                        {registrationStatsByCampaign.get(campaign.id)?.rejected ?? 0}, cancelled{" "}
+                        {registrationStatsByCampaign.get(campaign.id)?.cancelled ?? 0})
+                      </p>
+                    </div>
+
+                    <div className="mt-4 rounded-lg border border-border bg-surface-muted/30 p-4">
+                      <p className="text-sm font-semibold text-heading">Volunteer review</p>
+                      <p className="mt-1 text-xs text-text-muted">
+                        Click a status label to approve or update volunteer registrations.
+                      </p>
+
+                      {(registrationsByCampaign.get(campaign.id) ?? []).length > 0 ? (
+                        <div className="mt-3 space-y-3">
+                          {(registrationsByCampaign.get(campaign.id) ?? [])
+                            .slice(0, 5)
+                            .map((registration) => (
+                              <div
+                                key={registration.id}
+                                className="rounded-md border border-border bg-white p-3"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-heading">
+                                      {registration.fullName}
+                                    </p>
+                                    <p className="truncate text-xs text-text-muted">
+                                      {registration.email} | {formatDateTime(registration.registeredAt)}
+                                    </p>
+                                    {registration.message ? (
+                                      <p className="mt-1 text-xs text-text">
+                                        {registration.message}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <StatusBadge
+                                    kind="registration_status"
+                                    value={registration.status}
+                                    size={14}
+                                  />
+                                </div>
+
+                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-text-muted">
+                                    Set status
+                                  </span>
+                                  {REGISTRATION_STATUS_ACTIONS.map((action) => {
+                                    const isCurrent = registration.status === action.status;
+                                    const isSubmitting = loadingRegistrationId === registration.id;
+                                    return (
+                                      <button
+                                        key={action.status}
+                                        type="button"
+                                        className={`badge-base border text-xs transition ${registrationStatusActionClass(
+                                          action.status,
+                                          isCurrent
+                                        )}`}
+                                        disabled={isSubmitting}
+                                        onClick={() =>
+                                          handleUpdateRegistrationStatus(
+                                            registration,
+                                            action.status
+                                          )
+                                        }
+                                      >
+                                        {isSubmitting && !isCurrent ? "Saving..." : action.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      ) : (
+                        <StatePanel
+                          variant="empty"
+                          className="mt-3"
+                          message="No volunteer registrations yet for this campaign."
+                        />
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex flex-wrap gap-3">
+                      <Link
+                        href={`/organization/campaigns/${campaign.id}/edit`}
+                        className="btn-base btn-secondary text-sm whitespace-nowrap"
+                      >
+                        Edit details
+                      </Link>
                       <button
                         type="button"
-                        onClick={() => handleSaveEdit(campaign.id)}
-                        className="btn-base btn-primary text-sm"
+                        onClick={() => startEdit(campaign)}
+                        className="btn-base btn-secondary text-sm whitespace-nowrap"
                         disabled={loadingCampaignId === campaign.id}
                       >
-                        Save
+                        Quick edit
                       </button>
+                      {campaign.status === "draft" ? (
+                        <button
+                          type="button"
+                          onClick={() => handlePublish(campaign)}
+                          className="btn-base btn-primary text-sm whitespace-nowrap"
+                          disabled={loadingCampaignId === campaign.id}
+                        >
+                          {loadingCampaignId === campaign.id ? "Publishing..." : "Publish"}
+                        </button>
+                      ) : null}
+                      {campaign.status === "published" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleClose(campaign)}
+                          className="btn-base btn-danger text-sm whitespace-nowrap"
+                          disabled={loadingCampaignId === campaign.id}
+                        >
+                          {loadingCampaignId === campaign.id ? "Closing..." : "Close"}
+                        </button>
+                      ) : null}
+                      {campaign.status === "closed" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleReopen(campaign)}
+                          className="btn-base btn-secondary text-sm whitespace-nowrap"
+                          disabled={loadingCampaignId === campaign.id}
+                        >
+                          {loadingCampaignId === campaign.id ? "Reopening..." : "Reopen"}
+                        </button>
+                      ) : null}
+                      {campaign.status === "published" ? (
+                        <Link
+                          href={`/campaigns/${campaign.slug}`}
+                          className="btn-base btn-secondary text-sm whitespace-nowrap"
+                        >
+                          View public page
+                        </Link>
+                      ) : null}
                       <button
                         type="button"
-                        onClick={cancelEdit}
-                        className="btn-base btn-secondary text-sm"
+                        onClick={() => handleDelete(campaign)}
+                        className="btn-base btn-danger text-sm whitespace-nowrap"
                         disabled={loadingCampaignId === campaign.id}
                       >
-                        Cancel
+                        {loadingCampaignId === campaign.id ? "Working..." : "Delete"}
                       </button>
                     </div>
+
+                    {editingCampaignId === campaign.id ? (
+                      <div className="mt-4 grid gap-3 rounded-lg border border-border bg-surface-muted/40 p-4 md:grid-cols-2">
+                        <FormField label="Title" className="md:col-span-2">
+                          <input
+                            className="input-base"
+                            value={editForm.title}
+                            onChange={(event) =>
+                              setEditForm((prev) => ({ ...prev, title: event.target.value }))
+                            }
+                          />
+                        </FormField>
+                        <FormField label="Short Description">
+                          <input
+                            className="input-base"
+                            value={editForm.shortDescription}
+                            onChange={(event) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                shortDescription: event.target.value,
+                              }))
+                            }
+                          />
+                        </FormField>
+                        <FormField label="Goal Amount">
+                          <input
+                            type="number"
+                            min={1}
+                            className="input-base"
+                            value={editForm.goalAmount}
+                            onChange={(event) =>
+                              setEditForm((prev) => ({ ...prev, goalAmount: event.target.value }))
+                            }
+                          />
+                        </FormField>
+                        <FormField label="Description" className="md:col-span-2">
+                          <textarea
+                            className="input-base min-h-24"
+                            value={editForm.description}
+                            onChange={(event) =>
+                              setEditForm((prev) => ({
+                                ...prev,
+                                description: event.target.value,
+                              }))
+                            }
+                          />
+                        </FormField>
+                        <div className="flex gap-3 md:col-span-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEdit(campaign.id)}
+                            className="btn-base btn-primary text-sm"
+                            disabled={loadingCampaignId === campaign.id}
+                          >
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            className="btn-base btn-secondary text-sm"
+                            disabled={loadingCampaignId === campaign.id}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
+                </div>
               </article>
             ))}
           </div>

@@ -21,7 +21,6 @@ from app.schemas.dashboard import (
     OrganizationActivityItemRead,
     OrganizationCampaignSnapshotRead,
     OrganizationCampaignPipelineItemRead,
-    OrganizationCampaignSnapshotRead,
     OrganizationDashboardRead,
     SupporterContributionItemRead,
     SupporterDashboardRead,
@@ -101,41 +100,45 @@ def _resolve_approved_schedule_state(
 
     if shift_start is not None and now < shift_start:
         start_label = _format_schedule_datetime(shift_start)
-        due_label = f"Chờ tới lịch ({start_label})" if start_label else "Chờ tới lịch"
+        due_label = f"Waiting for shift ({start_label})" if start_label else "Waiting for shift"
         return (
             "waiting_shift",
             due_label,
-            "Chờ tới lịch volunteer và đến checkpoint đúng giờ để scan QR check-in.",
+            "Wait for the volunteer shift and arrive at the checkpoint on time to scan QR.",
         )
 
     if shift_start is not None and shift_end is not None and shift_start <= now <= shift_end:
         end_label = _format_schedule_datetime(shift_end)
-        due_label = f"Đang trong ca (đến {end_label})" if end_label else "Đang trong ca"
+        due_label = f"In shift (until {end_label})" if end_label else "In shift"
         return (
             "in_shift",
             due_label,
-            "Bạn đang trong ca volunteer. Hãy scan QR check-in/check-out tại checkpoint.",
+            "You are currently in shift. Scan QR check-in/check-out at the checkpoint.",
         )
 
     if shift_end is not None and now > shift_end:
         end_label = _format_schedule_datetime(shift_end)
-        due_label = f"Quá ca/chưa check-in ({end_label})" if end_label else "Quá ca/chưa check-in"
+        due_label = (
+            f"Shift ended / not checked in ({end_label})"
+            if end_label
+            else "Shift ended / not checked in"
+        )
         return (
             "past_shift",
             due_label,
-            "Ca volunteer đã qua. Nếu bạn chưa check-in, hãy liên hệ organization để được hỗ trợ.",
+            "Your volunteer shift has ended. If you missed check-in, contact the organization.",
         )
 
     if shift_start is not None and shift_end is None and now >= shift_start:
         return (
             "in_shift",
-            "Đang trong ca",
-            "Bạn đang trong ca volunteer. Hãy scan QR check-in/check-out tại checkpoint.",
+            "In shift",
+            "You are currently in shift. Scan QR check-in/check-out at the checkpoint.",
         )
 
     return (
         "ready",
-        "Sẵn sàng check-in",
+        "Ready to check in",
         "Arrive at checkpoint and scan QR to check in.",
     )
 
@@ -173,11 +176,11 @@ def _resolve_registration_task_state(
         now,
     )
     if schedule_status == "waiting_shift":
-        task_title = "Chờ tới lịch volunteer"
+        task_title = "Waiting for volunteer shift"
     elif schedule_status == "in_shift":
-        task_title = "Đang trong ca volunteer"
+        task_title = "In volunteer shift"
     elif schedule_status == "past_shift":
-        task_title = "Quá ca/chưa check-in"
+        task_title = "Shift ended / not checked in"
     else:
         task_title = "Check in at campaign checkpoint"
 
@@ -229,8 +232,11 @@ def _build_organization_campaign_snapshots(
             OrganizationCampaignSnapshotRead(
                 id=f"campaign-snapshot-{campaign.id}",
                 campaign_id=campaign.id,
+                campaign_slug=campaign.slug,
+                campaign_status=campaign.status.value,
                 campaign_title=campaign.title,
                 location=_campaign_location_label(campaign) or "Location pending",
+                cover_image_url=campaign.cover_image_url or None,
                 status_label=status_label,
                 support_label=support_label,
                 progress_percent=progress_percent,
@@ -1096,3 +1102,5 @@ def supporter_contributions(
 
     items.sort(key=lambda item: item.created_at, reverse=True)
     return items[:limit]
+
+

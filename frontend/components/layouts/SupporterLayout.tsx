@@ -21,8 +21,6 @@ export default function SupporterLayout({ children }: SupporterLayoutProps) {
   const { currentUser } = useAuth();
   const sidebarLinks = [
     { label: "Dashboard", href: "/supporter" },
-    { label: "Register Support", href: "/supporter/register" },
-    { label: "Scan QR", href: "/supporter/scan" },
     { label: "My Contributions", href: "/supporter/contributions" },
     { label: "My Registrations", href: "/supporter/registrations" },
     { label: "My Tasks", href: "/supporter/tasks" },

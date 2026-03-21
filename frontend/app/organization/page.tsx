@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getOrganizationDashboard } from "@/lib/api/dashboards";
@@ -24,12 +25,12 @@ export default function OrganizationDashboardPage() {
 
     const loadDashboard = async () => {
       try {
-        const response = await getOrganizationDashboard(
+        const dashboardData = await getOrganizationDashboard(
           organizationId,
           accessToken ?? undefined
         );
         if (!cancelled) {
-          setDashboard(response);
+          setDashboard(dashboardData);
           setErrorMessage(null);
         }
       } catch (error) {
@@ -76,18 +77,18 @@ export default function OrganizationDashboardPage() {
                 {currentUser?.organizationName ?? currentUser?.name}
               </h1>
               <p className="mt-3 max-w-2xl text-base text-text-muted">
-                Main control room for campaign delivery, supporter momentum, and transparency reporting.
+                Main control room for campaign delivery and supporter momentum.
               </p>
 
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link href="/organization/campaigns/create" className="btn-base bg-org text-white">
                   Create campaign
                 </Link>
+                <Link href="/organization/campaigns" className="btn-base btn-secondary">
+                  Manage campaigns
+                </Link>
                 <Link href="/organization/supporters" className="btn-base btn-secondary">
                   View supporters
-                </Link>
-                <Link href="/organization/transparency" className="btn-base btn-secondary">
-                  Transparency
                 </Link>
               </div>
             </div>
@@ -150,30 +151,64 @@ export default function OrganizationDashboardPage() {
 
             {campaignSnapshots.length > 0 ? (
               <div className="mt-5 grid gap-4">
-                {campaignSnapshots.map((item) => (
-                  <article key={item.id} className="rounded-3xl border border-border bg-white p-5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="badge-base badge-org">{item.statusLabel}</span>
-                      <span className="badge-base border border-border bg-surface-light text-text">
-                        {item.location || "Location pending"}
-                      </span>
-                    </div>
-                    <h3 className="mt-3 text-lg font-bold text-heading">{item.campaignTitle}</h3>
-                    <p className="mt-2 text-sm text-text-muted">{item.supportLabel}</p>
-                    <div className="mt-4 h-2 rounded-full bg-surface-light">
-                      <div
-                        className="h-2 rounded-full bg-org"
-                        style={{ width: `${item.progressPercent}%` }}
-                      />
-                    </div>
-                    <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-                      <span className="font-semibold text-[color:var(--color-org)]">
-                        {item.progressPercent}% to fundraising target
-                      </span>
-                      <span className="text-text-muted">{item.note}</span>
-                    </div>
-                  </article>
-                ))}
+                {campaignSnapshots.map((item) => {
+                  const detailHref =
+                    item.campaignStatus === "published"
+                      ? `/campaigns/${item.campaignSlug}`
+                      : `/organization/campaigns/${item.campaignId}/edit`;
+                  const coverImage =
+                    item.coverImageUrl ?? "/images/campaigns/default-cover.jpg";
+
+                  return (
+                    <Link
+                      key={item.id}
+                      href={detailHref}
+                      className="card-hover rounded-3xl border border-border bg-white p-4"
+                    >
+                      <div className="space-y-4">
+                        <div className="relative aspect-[16/7] w-full overflow-hidden rounded-2xl border border-border bg-surface-light">
+                          <Image
+                            src={coverImage}
+                            alt={item.campaignTitle}
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 640px"
+                          />
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="badge-base badge-org">{item.statusLabel}</span>
+                            <span className="badge-base border border-border bg-surface-light text-text">
+                              {item.location || "Location pending"}
+                            </span>
+                          </div>
+                          <h3 className="mt-3 truncate text-lg font-bold text-heading">
+                            {item.campaignTitle}
+                          </h3>
+                          <p className="mt-1 text-sm text-text-muted">{item.supportLabel}</p>
+
+                          <div className="mt-4 h-2 rounded-full bg-surface-light">
+                            <div
+                              className="h-2 rounded-full bg-org"
+                              style={{ width: `${item.progressPercent}%` }}
+                            />
+                          </div>
+
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+                            <span className="font-semibold text-[color:var(--color-org)]">
+                              {item.progressPercent}% to fundraising target
+                            </span>
+                            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-org">
+                              Open details
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-text-muted">{item.note}</p>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <div className="mt-5 rounded-3xl border border-border bg-surface-light p-5 text-sm text-text-muted">
@@ -214,7 +249,7 @@ export default function OrganizationDashboardPage() {
               <p className="mt-3 text-sm text-text-muted">
                 {isLoading || !dashboard
                   ? "Loading live organization metrics from the backend..."
-                  : "The metrics, campaign pipeline, and recent activity feed are all sourced from the real backend data for this organization."}
+                  : "The metrics, campaign pipeline, and recent activity feed are sourced from your real backend records."}
               </p>
             </div>
           </div>
