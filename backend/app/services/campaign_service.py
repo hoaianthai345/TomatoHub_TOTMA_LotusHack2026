@@ -192,3 +192,9 @@ def publish_campaign(db: Session, campaign_id: uuid.UUID) -> Campaign:
     db.commit()
     db.refresh(campaign)
     return campaign
+
+
+def delete_campaign(db: Session, campaign_id: uuid.UUID) -> None:
+    campaign = get_campaign_or_404(db, campaign_id)
+    db.delete(campaign)
+    db.commit()
