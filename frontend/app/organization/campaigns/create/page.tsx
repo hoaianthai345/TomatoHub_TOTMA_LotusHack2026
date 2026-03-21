@@ -7,7 +7,11 @@ import Container from "@/components/common/container";
 import SectionTitle from "@/components/common/section-title";
 import VietnamLocationFields from "@/components/location/VietnamLocationFields";
 import { useAuth } from "@/lib/auth";
-import { createCampaign } from "@/lib/api/campaigns";
+import {
+  createCampaign,
+  DEFAULT_CAMPAIGN_COVER_IMAGE,
+  uploadCampaignImage,
+} from "@/lib/api/campaigns";
 import { ApiError } from "@/lib/api/http";
 import type { CampaignSupportType } from "@/types/campaign";
 import type { VietnamLocationValue } from "@/types/location";
@@ -33,12 +37,12 @@ export default function CreateCampaignPage() {
     shortDescription: "",
     description: "",
     goalAmount: "5000",
-    coverImageUrl: "",
     tags: "",
     startsAt: buildDefaultDateTime(8),
     endsAt: buildDefaultDateTime(18),
     supportTypes: ["money"] as CampaignSupportType[],
   });
+  const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
   const [locationValue, setLocationValue] = useState<VietnamLocationValue>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,7 +86,7 @@ export default function CreateCampaignPage() {
           province: locationValue.provinceName,
           district: locationValue.districtName,
           addressLine: locationValue.addressLine?.trim() || undefined,
-          coverImageUrl: formData.coverImageUrl.trim() || undefined,
+          coverImageUrl: DEFAULT_CAMPAIGN_COVER_IMAGE,
           tags: formData.tags
             .split(",")
             .map((value) => value.trim())
@@ -95,6 +99,12 @@ export default function CreateCampaignPage() {
         },
         accessToken
       );
+
+      if (coverImageFile) {
+        await uploadCampaignImage(campaign.id, coverImageFile, accessToken, {
+          setAsCover: true,
+        });
+      }
 
       router.replace(`/organization/campaigns?created=${campaign.id}`);
     } catch (error) {
@@ -200,18 +210,23 @@ export default function CreateCampaignPage() {
               />
 
               <label className="grid gap-2 text-sm text-text">
-                <span>Cover image URL</span>
+                <span>Cover image (optional)</span>
                 <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
                   className="input-base"
-                  placeholder="Cover image URL"
-                  value={formData.coverImageUrl}
                   onChange={(event) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      coverImageUrl: event.target.value,
-                    }))
+                    setCoverImageFile(event.target.files?.[0] ?? null)
                   }
                 />
+                <p className="text-xs text-text-muted">
+                  If empty, campaign will use default image from public assets.
+                </p>
+                {coverImageFile ? (
+                  <p className="text-xs text-body">
+                    Selected file: {coverImageFile.name}
+                  </p>
+                ) : null}
               </label>
 
               <div className="grid gap-4 md:grid-cols-2">
