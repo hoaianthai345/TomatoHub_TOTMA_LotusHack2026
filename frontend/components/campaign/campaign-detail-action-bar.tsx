@@ -9,7 +9,6 @@ import { ApiError } from "@/lib/api/http";
 import {
   createVolunteerRegistration,
   listVolunteerRegistrations,
-  quickJoinVolunteerRegistration,
 } from "@/lib/api/volunteer-registrations";
 import type { VolunteerRegistrationStatus } from "@/types/volunteer-registration";
 
@@ -125,11 +124,23 @@ export default function CampaignDetailActionBar({
       });
       return;
     }
+    if (!currentUser.email) {
+      setFeedback({
+        type: "error",
+        message: "Your supporter account is missing email. Please update profile and try again.",
+      });
+      return;
+    }
 
     setIsJoining(true);
     try {
-      const registration = await quickJoinVolunteerRegistration(
-        { campaignId },
+      const registration = await createVolunteerRegistration(
+        {
+          campaignId,
+          userId: currentUser.id,
+          fullName: currentUser.name,
+          email: currentUser.email,
+        },
         accessToken
       );
       setRegistrationStatus(registration.status);
@@ -138,39 +149,6 @@ export default function CampaignDetailActionBar({
         message: `Joined "${campaignTitle}". You can review it in My joined campaigns.`,
       });
     } catch (error) {
-      if (
-        error instanceof ApiError &&
-        (error.status === 404 || error.status === 405 || error.status === 422) &&
-        currentUser.email
-      ) {
-        try {
-          const fallbackRegistration = await createVolunteerRegistration(
-            {
-              campaignId,
-              userId: currentUser.id,
-              fullName: currentUser.name,
-              email: currentUser.email,
-            },
-            accessToken
-          );
-          setRegistrationStatus(fallbackRegistration.status);
-          setFeedback({
-            type: "success",
-            message: `Joined "${campaignTitle}".`,
-          });
-          return;
-        } catch (fallbackError) {
-          setFeedback({
-            type: "error",
-            message:
-              fallbackError instanceof ApiError
-                ? fallbackError.message
-                : "Cannot join this volunteer campaign right now.",
-          });
-          return;
-        }
-      }
-
       setFeedback({
         type: "error",
         message:
