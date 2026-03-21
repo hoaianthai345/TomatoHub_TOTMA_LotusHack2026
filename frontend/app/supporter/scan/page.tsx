@@ -5,11 +5,13 @@ import { useAuth } from "@/lib/auth";
 import RoleGate from "@/components/auth/RoleGate";
 import { ApiError } from "@/lib/api/http";
 import {
+  listMyGoodsCheckins,
   listMyAttendance,
   scanCampaignCheckpoint,
 } from "@/lib/api/campaign-checkpoints";
 import type {
   CampaignCheckpointScanResponse,
+  GoodsCheckin,
   VolunteerAttendance,
 } from "@/types/checkpoint";
 import { formatDateTime } from "@/utils/format";
@@ -28,6 +30,8 @@ export default function SupporterScanQrPage() {
   const [attendanceHistory, setAttendanceHistory] = useState<VolunteerAttendance[]>(
     []
   );
+  const [goodsHistory, setGoodsHistory] = useState<GoodsCheckin[]>([]);
+  const [historyTab, setHistoryTab] = useState<"attendance" | "goods">("attendance");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -51,20 +55,25 @@ export default function SupporterScanQrPage() {
 
     let cancelled = false;
 
-    const loadAttendance = async () => {
+    const loadHistory = async () => {
       try {
-        const data = await listMyAttendance(accessToken);
+        const [attendances, goodsCheckins] = await Promise.all([
+          listMyAttendance(accessToken),
+          listMyGoodsCheckins(accessToken),
+        ]);
         if (!cancelled) {
-          setAttendanceHistory(data);
+          setAttendanceHistory(attendances);
+          setGoodsHistory(goodsCheckins);
         }
       } catch {
         if (!cancelled) {
           setAttendanceHistory([]);
+          setGoodsHistory([]);
         }
       }
     };
 
-    loadAttendance();
+    loadHistory();
 
     return () => {
       cancelled = true;
@@ -108,11 +117,15 @@ export default function SupporterScanQrPage() {
       setSuccessMessage(response.message);
 
       if (response.flowType === "volunteer") {
-        const refreshed = await listMyAttendance(accessToken);
-        setAttendanceHistory(refreshed);
+        const refreshedAttendance = await listMyAttendance(accessToken);
+        setAttendanceHistory(refreshedAttendance);
+        setHistoryTab("attendance");
       }
 
       if (response.flowType === "goods") {
+        const refreshedGoods = await listMyGoodsCheckins(accessToken);
+        setGoodsHistory(refreshedGoods);
+        setHistoryTab("goods");
         setDonorName("");
         setItemName("");
         setQuantity("");
@@ -246,28 +259,82 @@ export default function SupporterScanQrPage() {
         </div>
 
         <div className="mt-8 card-base p-6">
-          <h2 className="text-lg font-semibold text-heading">
-            My Volunteer Attendance
-          </h2>
-          {attendanceHistory.length > 0 ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-heading">My Check-in History</h2>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={`btn-base text-sm ${
+                  historyTab === "attendance" ? "btn-primary" : "btn-secondary"
+                }`}
+                onClick={() => setHistoryTab("attendance")}
+              >
+                Volunteer attendance
+              </button>
+              <button
+                type="button"
+                className={`btn-base text-sm ${
+                  historyTab === "goods" ? "btn-primary" : "btn-secondary"
+                }`}
+                onClick={() => setHistoryTab("goods")}
+              >
+                Goods check-ins
+              </button>
+            </div>
+          </div>
+
+          {historyTab === "attendance" ? (
+            attendanceHistory.length > 0 ? (
+              <div className="mt-4 overflow-hidden rounded-xl border border-border">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-surface-muted text-text-muted">
+                    <tr>
+                      <th className="px-4 py-3 font-semibold">Check-in</th>
+                      <th className="px-4 py-3 font-semibold">Check-out</th>
+                      <th className="px-4 py-3 font-semibold">Duration (min)</th>
+                      <th className="px-4 py-3 font-semibold">Campaign</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendanceHistory.slice(0, 20).map((item) => (
+                      <tr key={item.id} className="border-t border-border">
+                        <td className="px-4 py-3">{formatDateTime(item.checkInAt)}</td>
+                        <td className="px-4 py-3">
+                          {item.checkOutAt ? formatDateTime(item.checkOutAt) : "-"}
+                        </td>
+                        <td className="px-4 py-3">{item.durationMinutes ?? "-"}</td>
+                        <td className="px-4 py-3 text-text-muted">{item.campaignId}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="mt-3 text-sm text-text-muted">
+                No attendance records yet.
+              </p>
+            )
+          ) : goodsHistory.length > 0 ? (
             <div className="mt-4 overflow-hidden rounded-xl border border-border">
               <table className="w-full text-left text-sm">
                 <thead className="bg-surface-muted text-text-muted">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Check-in</th>
-                    <th className="px-4 py-3 font-semibold">Check-out</th>
-                    <th className="px-4 py-3 font-semibold">Duration (min)</th>
+                    <th className="px-4 py-3 font-semibold">Checked in at</th>
+                    <th className="px-4 py-3 font-semibold">Item</th>
+                    <th className="px-4 py-3 font-semibold">Quantity</th>
+                    <th className="px-4 py-3 font-semibold">Donor</th>
                     <th className="px-4 py-3 font-semibold">Campaign</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {attendanceHistory.slice(0, 10).map((item) => (
+                  {goodsHistory.slice(0, 20).map((item) => (
                     <tr key={item.id} className="border-t border-border">
-                      <td className="px-4 py-3">{formatDateTime(item.checkInAt)}</td>
+                      <td className="px-4 py-3">{formatDateTime(item.checkedInAt)}</td>
+                      <td className="px-4 py-3">{item.itemName}</td>
                       <td className="px-4 py-3">
-                        {item.checkOutAt ? formatDateTime(item.checkOutAt) : "-"}
+                        {item.quantity} {item.unit}
                       </td>
-                      <td className="px-4 py-3">{item.durationMinutes ?? "-"}</td>
+                      <td className="px-4 py-3 text-text-muted">{item.donorName}</td>
                       <td className="px-4 py-3 text-text-muted">{item.campaignId}</td>
                     </tr>
                   ))}
@@ -276,7 +343,7 @@ export default function SupporterScanQrPage() {
             </div>
           ) : (
             <p className="mt-3 text-sm text-text-muted">
-              No attendance records yet.
+              No goods check-in records yet.
             </p>
           )}
         </div>

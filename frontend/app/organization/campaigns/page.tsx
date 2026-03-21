@@ -421,9 +421,14 @@ export default function CampaignsPage() {
               Manage campaign publishing and monitor volunteer participation.
             </p>
           </div>
-          <Link href="/organization/campaigns/create" className="btn-base btn-primary">
-            Create campaign
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/organization/checkpoints" className="btn-base btn-secondary">
+              Manage checkpoints
+            </Link>
+            <Link href="/organization/campaigns/create" className="btn-base btn-primary">
+              Create campaign
+            </Link>
+          </div>
         </div>
 
         {errorMessage ? (

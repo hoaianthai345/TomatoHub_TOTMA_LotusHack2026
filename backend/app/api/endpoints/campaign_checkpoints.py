@@ -24,11 +24,16 @@ from app.models.checkpoint_scan_log import (
 from app.models.goods_checkin import GoodsCheckin
 from app.models.user import User
 from app.models.volunteer_attendance import VolunteerAttendance
-from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
+from app.models.volunteer_registration import (
+    VolunteerAttendanceStatus,
+    VolunteerRegistration,
+    VolunteerStatus,
+)
 from app.schemas.campaign_checkpoint import (
     CampaignCheckpointCreate,
     CampaignCheckpointGenerateQrRequest,
     CampaignCheckpointGenerateQrResponse,
+    CampaignCheckpointManualAttendanceRequest,
     CampaignCheckpointRead,
     CampaignCheckpointScanRequest,
     CampaignCheckpointScanResponse,
@@ -94,6 +99,22 @@ def _build_scan_log(
         result=result.value,
         message=message,
         token_nonce=token_nonce,
+    )
+
+
+def _resolve_checkout_attendance_status(
+    registration: VolunteerRegistration,
+    check_out_at: datetime,
+) -> VolunteerAttendanceStatus:
+    shift_end = registration.shift_end_at
+    if shift_end is None:
+        return VolunteerAttendanceStatus.completed
+    if shift_end.tzinfo is None:
+        shift_end = shift_end.replace(tzinfo=timezone.utc)
+    return (
+        VolunteerAttendanceStatus.left_early
+        if check_out_at < shift_end
+        else VolunteerAttendanceStatus.completed
     )
 
 
@@ -241,6 +262,161 @@ def generate_checkpoint_qr(
         scan_type=payload.scan_type,
         token=token,
         expires_at=expires_at,
+    )
+
+
+@router.post(
+    "/{checkpoint_id}/manual-attendance",
+    response_model=CampaignCheckpointScanResponse,
+)
+def create_manual_volunteer_attendance(
+    checkpoint_id: UUID,
+    payload: CampaignCheckpointManualAttendanceRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> CampaignCheckpointScanResponse:
+    checkpoint = _get_checkpoint_or_404(db, checkpoint_id)
+    _ensure_checkpoint_owner(checkpoint, current_user)
+
+    if checkpoint.checkpoint_type != CheckpointType.volunteer.value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Manual attendance is only available for volunteer checkpoints",
+        )
+    if not checkpoint.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Checkpoint is inactive",
+        )
+
+    registration = db.get(VolunteerRegistration, payload.registration_id)
+    if registration is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Volunteer registration not found",
+        )
+    if registration.campaign_id != checkpoint.campaign_id:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Registration does not belong to this campaign",
+        )
+    if registration.status != VolunteerStatus.approved:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Volunteer registration must be approved for attendance",
+        )
+    if registration.user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Manual attendance requires a linked supporter account",
+        )
+
+    now = datetime.now(timezone.utc)
+    open_attendance = db.scalar(
+        select(VolunteerAttendance)
+        .where(
+            VolunteerAttendance.checkpoint_id == checkpoint.id,
+            VolunteerAttendance.user_id == registration.user_id,
+            VolunteerAttendance.check_out_at.is_(None),
+        )
+        .order_by(VolunteerAttendance.check_in_at.desc())
+    )
+
+    if payload.scan_type == CheckpointScanType.check_in:
+        if open_attendance is not None:
+            db.add(
+                _build_scan_log(
+                    checkpoint=checkpoint,
+                    user_id=registration.user_id,
+                    registration_id=registration.id,
+                    scan_type=payload.scan_type,
+                    result=CheckpointScanResult.rejected,
+                    message="Manual check-in rejected: open session already exists",
+                    token_nonce=None,
+                )
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Volunteer is already checked in and has not checked out",
+            )
+
+        attendance = VolunteerAttendance(
+            campaign_id=checkpoint.campaign_id,
+            checkpoint_id=checkpoint.id,
+            registration_id=registration.id,
+            user_id=registration.user_id,
+            check_in_at=now,
+            check_out_at=None,
+            duration_minutes=None,
+        )
+        db.add(attendance)
+        db.flush()
+        registration.attendance_status = VolunteerAttendanceStatus.arrived
+        registration.attendance_marked_at = now
+        registration.attendance_marked_by_user_id = current_user.id
+        db.add(
+            _build_scan_log(
+                checkpoint=checkpoint,
+                user_id=registration.user_id,
+                registration_id=registration.id,
+                scan_type=payload.scan_type,
+                result=CheckpointScanResult.success,
+                message="Manual check-in successful",
+                token_nonce=None,
+            )
+        )
+        db.commit()
+        db.refresh(attendance)
+        return CampaignCheckpointScanResponse(
+            message="Manual check-in successful",
+            scan_type=CheckpointScanType.check_in,
+            flow_type=CheckpointType.volunteer,
+            attendance=VolunteerAttendanceRead.model_validate(attendance),
+        )
+
+    if open_attendance is None:
+        db.add(
+            _build_scan_log(
+                checkpoint=checkpoint,
+                user_id=registration.user_id,
+                registration_id=registration.id,
+                scan_type=payload.scan_type,
+                result=CheckpointScanResult.rejected,
+                message="Manual check-out rejected: no active check-in found",
+                token_nonce=None,
+            )
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="No active check-in found for this volunteer",
+        )
+
+    duration_minutes = max(int((now - open_attendance.check_in_at).total_seconds() // 60), 0)
+    open_attendance.check_out_at = now
+    open_attendance.duration_minutes = duration_minutes
+    registration.attendance_status = _resolve_checkout_attendance_status(registration, now)
+    registration.attendance_marked_at = now
+    registration.attendance_marked_by_user_id = current_user.id
+    db.add(
+        _build_scan_log(
+            checkpoint=checkpoint,
+            user_id=registration.user_id,
+            registration_id=registration.id,
+            scan_type=payload.scan_type,
+            result=CheckpointScanResult.success,
+            message="Manual check-out successful",
+            token_nonce=None,
+        )
+    )
+    db.commit()
+    db.refresh(open_attendance)
+    return CampaignCheckpointScanResponse(
+        message="Manual check-out successful",
+        scan_type=CheckpointScanType.check_out,
+        flow_type=CheckpointType.volunteer,
+        attendance=VolunteerAttendanceRead.model_validate(open_attendance),
     )
 
 
@@ -454,6 +630,9 @@ def scan_campaign_checkpoint_qr(
         )
         db.add(attendance)
         db.flush()
+        registration.attendance_status = VolunteerAttendanceStatus.arrived
+        registration.attendance_marked_at = now
+        registration.attendance_marked_by_user_id = current_user.id
         db.add(
             _build_scan_log(
                 checkpoint=checkpoint,
@@ -494,6 +673,9 @@ def scan_campaign_checkpoint_qr(
     duration_minutes = max(int((now - open_attendance.check_in_at).total_seconds() // 60), 0)
     open_attendance.check_out_at = now
     open_attendance.duration_minutes = duration_minutes
+    registration.attendance_status = _resolve_checkout_attendance_status(registration, now)
+    registration.attendance_marked_at = now
+    registration.attendance_marked_by_user_id = current_user.id
     db.add(
         _build_scan_log(
             checkpoint=checkpoint,

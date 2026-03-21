@@ -18,6 +18,21 @@ class VolunteerStatus(str, enum.Enum):
     cancelled = "cancelled"
 
 
+class VolunteerRole(str, enum.Enum):
+    packing = "packing"
+    delivery = "delivery"
+    medic = "medic"
+    online = "online"
+
+
+class VolunteerAttendanceStatus(str, enum.Enum):
+    not_marked = "not_marked"
+    arrived = "arrived"
+    absent = "absent"
+    left_early = "left_early"
+    completed = "completed"
+
+
 class VolunteerRegistration(Base):
     __tablename__ = "volunteer_registrations"
 
@@ -37,6 +52,27 @@ class VolunteerRegistration(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     phone_number: Mapped[str | None] = mapped_column(String(30), nullable=True)
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    role: Mapped[VolunteerRole | None] = mapped_column(
+        Enum(VolunteerRole, name="volunteer_role"),
+        nullable=True,
+    )
+    shift_start_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    shift_end_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    attendance_status: Mapped[VolunteerAttendanceStatus] = mapped_column(
+        Enum(VolunteerAttendanceStatus, name="volunteer_attendance_status"),
+        default=VolunteerAttendanceStatus.not_marked,
+        nullable=False,
+    )
+    attendance_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    attendance_marked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    attendance_marked_by_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     status: Mapped[VolunteerStatus] = mapped_column(
         Enum(VolunteerStatus, name="volunteer_status"),
         default=VolunteerStatus.pending,

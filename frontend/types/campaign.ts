@@ -1,6 +1,7 @@
 export type CampaignSupportType = "money" | "goods" | "volunteer";
 
 export type CampaignStatus = "draft" | "published" | "closed";
+export type CampaignPhase = "upcoming" | "live" | "ended";
 
 export interface CampaignNeed {
 	label: string;
@@ -21,6 +22,7 @@ export interface Campaign {
 	location: string;
 	organizationId: string;
 	status: CampaignStatus;
+	phase?: CampaignPhase;
 	tags: string[];
 	targetAmount: number;
 	goalAmount?: number;

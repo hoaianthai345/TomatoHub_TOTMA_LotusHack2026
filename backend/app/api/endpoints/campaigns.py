@@ -15,6 +15,7 @@ from app.models.campaign_image import CampaignImage
 from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.credit_event import CreditTargetType
 from app.models.user import User
+from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 from app.schemas.campaign import (
     CampaignCloseRequest,
     CampaignCloseResponse,
@@ -25,6 +26,7 @@ from app.schemas.campaign import (
     CampaignUpdate,
 )
 from app.schemas.campaign_image import CampaignImageRead, CampaignImageSetCoverResponse
+from app.schemas.volunteer_registration import CampaignVolunteerParticipantRead
 from app.services.campaign_image_storage import (
     build_public_upload_url,
     delete_stored_upload,
@@ -152,6 +154,36 @@ def list_campaigns_by_organization(
 @router.get("/{campaign_id}", response_model=CampaignRead)
 def get_campaign(campaign_id: UUID, db: Session = Depends(get_db)) -> Campaign:
     return get_campaign_or_404(db, campaign_id)
+
+
+@router.get(
+    "/{campaign_id}/volunteers",
+    response_model=list[CampaignVolunteerParticipantRead],
+)
+def list_campaign_volunteers(
+    campaign_id: UUID,
+    include_pending: bool = Query(default=True),
+    limit: int = Query(default=200, ge=1, le=1000),
+    db: Session = Depends(get_db),
+) -> list[VolunteerRegistration]:
+    _ = get_campaign_or_404(db, campaign_id)
+
+    allowed_statuses: list[VolunteerStatus] = [VolunteerStatus.approved]
+    if include_pending:
+        allowed_statuses.append(VolunteerStatus.pending)
+
+    registrations = list(
+        db.scalars(
+            select(VolunteerRegistration)
+            .where(
+                VolunteerRegistration.campaign_id == campaign_id,
+                VolunteerRegistration.status.in_(allowed_statuses),
+            )
+            .order_by(VolunteerRegistration.registered_at.desc())
+            .limit(limit)
+        ).all()
+    )
+    return registrations
 
 
 @router.get("/{campaign_id}/images", response_model=list[CampaignImageRead])

@@ -112,20 +112,67 @@ function mapSupporterParticipationCard(
   };
 }
 
-function buildFallbackNextStep(status: string): string {
-  if (status === "approved") {
+function parseDate(value?: string): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+
+  return date;
+}
+
+function buildFallbackNextStep(registration: {
+  status: string;
+  shiftStartAt?: string;
+  shiftEndAt?: string;
+}): string {
+  if (registration.status === "approved") {
+    const now = new Date();
+    const shiftStart = parseDate(registration.shiftStartAt);
+    const shiftEnd = parseDate(registration.shiftEndAt);
+
+    if (shiftStart && now < shiftStart) {
+      return `Chờ tới lịch volunteer (${formatDateTime(registration.shiftStartAt)}).`;
+    }
+    if (shiftStart && shiftEnd && now >= shiftStart && now <= shiftEnd) {
+      return `Đang trong ca volunteer (đến ${formatDateTime(registration.shiftEndAt)}).`;
+    }
+    if (shiftEnd && now > shiftEnd) {
+      return `Quá ca/chưa check-in (${formatDateTime(registration.shiftEndAt)}).`;
+    }
+
     return "Arrive at checkpoint and scan QR to check in.";
   }
-  if (status === "pending") {
+  if (registration.status === "pending") {
     return "Wait for organization approval.";
   }
-  if (status === "rejected") {
+  if (registration.status === "rejected") {
     return "Registration was rejected.";
   }
-  if (status === "cancelled") {
+  if (registration.status === "cancelled") {
     return "Registration was cancelled.";
   }
   return "Follow campaign updates for the next action.";
+}
+
+function buildFallbackRoleLabel(role?: string): string {
+  if (role === "packing") {
+    return "Packing volunteer";
+  }
+  if (role === "delivery") {
+    return "Delivery volunteer";
+  }
+  if (role === "medic") {
+    return "Medic volunteer";
+  }
+  if (role === "online") {
+    return "Online volunteer";
+  }
+  return "Volunteer";
 }
 
 async function buildParticipationCardsFromRegistrations(
@@ -161,9 +208,9 @@ async function buildParticipationCardsFromRegistrations(
       campaignTitle: campaign?.title ?? `Campaign ${registration.campaignId.slice(0, 8)}`,
       campaignLocation: campaign?.location ?? "Location updating",
       coverImage: campaign?.coverImage ?? DEFAULT_COVER_IMAGE,
-      roleLabel: "Volunteer",
+      roleLabel: buildFallbackRoleLabel(registration.role),
       statusLabel: registration.status,
-      nextStep: buildFallbackNextStep(registration.status),
+      nextStep: buildFallbackNextStep(registration),
       dateLabel: formatDateTime(registration.registeredAt),
     };
   });

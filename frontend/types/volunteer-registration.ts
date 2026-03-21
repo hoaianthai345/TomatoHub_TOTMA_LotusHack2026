@@ -4,6 +4,14 @@ export type VolunteerRegistrationStatus =
   | "rejected"
   | "cancelled";
 
+export type VolunteerRole = "packing" | "delivery" | "medic" | "online";
+export type VolunteerAttendanceStatus =
+  | "not_marked"
+  | "arrived"
+  | "absent"
+  | "left_early"
+  | "completed";
+
 export interface VolunteerRegistration {
   id: string;
   campaignId: string;
@@ -12,6 +20,23 @@ export interface VolunteerRegistration {
   email: string;
   phoneNumber?: string;
   message?: string;
+  role?: VolunteerRole;
+  shiftStartAt?: string;
+  shiftEndAt?: string;
   status: VolunteerRegistrationStatus;
+  attendanceStatus: VolunteerAttendanceStatus;
+  attendanceNote?: string;
+  attendanceMarkedAt?: string;
+  attendanceMarkedByUserId?: string;
+  registeredAt: string;
+}
+
+export interface CampaignVolunteerParticipant {
+  fullName: string;
+  registrationStatus: VolunteerRegistrationStatus;
+  role?: VolunteerRole;
+  shiftStartAt?: string;
+  shiftEndAt?: string;
+  attendanceStatus: VolunteerAttendanceStatus;
   registeredAt: string;
 }

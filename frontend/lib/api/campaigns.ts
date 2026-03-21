@@ -3,6 +3,12 @@ import type {
   CampaignCoordinates,
   CampaignSupportType,
 } from "@/types/campaign";
+import type {
+  CampaignVolunteerParticipant,
+  VolunteerAttendanceStatus,
+  VolunteerRole,
+} from "@/types/volunteer-registration";
+import { getCampaignPhase } from "@/lib/campaign-phase";
 import { requestJson, resolveApiAssetUrl } from "./http";
 
 type ApiDecimal = string | number;
@@ -49,6 +55,16 @@ interface BackendVolunteerRegistration {
   email: string;
 }
 
+interface BackendCampaignVolunteerParticipant {
+  full_name: string;
+  status: "pending" | "approved" | "rejected" | "cancelled";
+  role: VolunteerRole | null;
+  shift_start_at: string | null;
+  shift_end_at: string | null;
+  attendance_status: VolunteerAttendanceStatus;
+  registered_at: string;
+}
+
 export interface CampaignActivitySummary {
   beneficiaryCount: number;
   donationCount: number;
@@ -56,8 +72,19 @@ export interface CampaignActivitySummary {
   supporterCount: number;
 }
 
+interface ListCampaignsOptions {
+  limit?: number;
+  status?: Campaign["status"];
+  organizationId?: string;
+  province?: string;
+  district?: string;
+  supportType?: CampaignSupportType;
+  token?: string;
+}
+
 interface ListPublishedCampaignsOptions {
   limit?: number;
+  organizationId?: string;
   province?: string;
   district?: string;
   supportType?: CampaignSupportType;
@@ -159,6 +186,12 @@ function buildCoordinates(campaign: BackendCampaign): CampaignCoordinates | null
 export function mapCampaign(campaign: BackendCampaign): Campaign {
   const targetAmount = toNumber(campaign.goal_amount);
   const location = buildLocationLabel(campaign);
+  const phase = getCampaignPhase({
+    status: campaign.status,
+    startsAt: campaign.starts_at,
+    endsAt: campaign.ends_at ?? undefined,
+    isActive: campaign.is_active,
+  });
   const mediaUrls = (campaign.media_urls ?? [])
     .map((value) => resolveApiAssetUrl(value) ?? value)
     .filter(Boolean);
@@ -176,6 +209,7 @@ export function mapCampaign(campaign: BackendCampaign): Campaign {
     location,
     organizationId: campaign.organization_id,
     status: campaign.status,
+    phase,
     tags: campaign.tags ?? [],
     targetAmount,
     goalAmount: targetAmount,
@@ -199,6 +233,52 @@ export function mapCampaign(campaign: BackendCampaign): Campaign {
   };
 }
 
+function normalizeCampaignListLimit(limit?: number): number {
+  const requestedLimit = limit ?? CAMPAIGN_LIST_LIMIT_DEFAULT;
+
+  return Number.isFinite(requestedLimit)
+    ? Math.min(
+        CAMPAIGN_LIST_LIMIT_MAX,
+        Math.max(CAMPAIGN_LIST_LIMIT_MIN, Math.trunc(requestedLimit))
+      )
+    : CAMPAIGN_LIST_LIMIT_DEFAULT;
+}
+
+export async function listCampaigns({
+  limit,
+  status = "published",
+  organizationId,
+  province,
+  district,
+  supportType,
+  token,
+}: ListCampaignsOptions = {}): Promise<Campaign[]> {
+  const query = new URLSearchParams({
+    status,
+    limit: String(normalizeCampaignListLimit(limit)),
+  });
+
+  if (organizationId) {
+    query.set("organization_id", organizationId);
+  }
+  if (province?.trim()) {
+    query.set("province", province.trim());
+  }
+  if (district?.trim()) {
+    query.set("district", district.trim());
+  }
+  if (supportType) {
+    query.set("support_type", supportType);
+  }
+
+  const campaigns = await requestJson<BackendCampaign[]>(
+    `/campaigns/?${query.toString()}`,
+    { token }
+  );
+
+  return campaigns.map(mapCampaign);
+}
+
 export async function listPublishedCampaigns(
   limitOrOptions: number | ListPublishedCampaignsOptions = CAMPAIGN_LIST_LIMIT_DEFAULT,
   options: ListPublishedCampaignsOptions = {}
@@ -207,32 +287,15 @@ export async function listPublishedCampaigns(
     typeof limitOrOptions === "number"
       ? { ...options, limit: limitOrOptions }
       : limitOrOptions;
-  const requestedLimit = resolvedOptions.limit ?? CAMPAIGN_LIST_LIMIT_DEFAULT;
-  const normalizedLimit = Number.isFinite(requestedLimit)
-    ? Math.min(
-        CAMPAIGN_LIST_LIMIT_MAX,
-        Math.max(CAMPAIGN_LIST_LIMIT_MIN, Math.trunc(requestedLimit))
-      )
-    : CAMPAIGN_LIST_LIMIT_DEFAULT;
-  const query = new URLSearchParams({
+
+  return listCampaigns({
     status: "published",
-    limit: String(normalizedLimit),
+    limit: resolvedOptions.limit,
+    organizationId: resolvedOptions.organizationId,
+    province: resolvedOptions.province,
+    district: resolvedOptions.district,
+    supportType: resolvedOptions.supportType,
   });
-
-  if (resolvedOptions.province?.trim()) {
-    query.set("province", resolvedOptions.province.trim());
-  }
-  if (resolvedOptions.district?.trim()) {
-    query.set("district", resolvedOptions.district.trim());
-  }
-  if (resolvedOptions.supportType) {
-    query.set("support_type", resolvedOptions.supportType);
-  }
-
-  const campaigns = await requestJson<BackendCampaign[]>(
-    `/campaigns/?${query.toString()}`
-  );
-  return campaigns.map(mapCampaign);
 }
 
 export async function listCampaignsByOrganization(
@@ -305,6 +368,32 @@ export async function getCampaignActivitySummary(
     volunteerRegistrationCount: registrations.length,
     supporterCount: supporters.size,
   };
+}
+
+export async function listCampaignVolunteerParticipants(
+  campaignId: string,
+  limit: number = 200,
+  options: {
+    includePending?: boolean;
+  } = {}
+): Promise<CampaignVolunteerParticipant[]> {
+  const query = new URLSearchParams({
+    limit: String(limit),
+    include_pending: options.includePending === false ? "false" : "true",
+  });
+  const participants = await requestJson<BackendCampaignVolunteerParticipant[]>(
+    `/campaigns/${encodeURIComponent(campaignId)}/volunteers?${query.toString()}`
+  );
+
+  return participants.map((item) => ({
+    fullName: item.full_name,
+    registrationStatus: item.status,
+    role: item.role ?? undefined,
+    shiftStartAt: item.shift_start_at ?? undefined,
+    shiftEndAt: item.shift_end_at ?? undefined,
+    attendanceStatus: item.attendance_status ?? "not_marked",
+    registeredAt: item.registered_at,
+  }));
 }
 
 export async function createCampaign(

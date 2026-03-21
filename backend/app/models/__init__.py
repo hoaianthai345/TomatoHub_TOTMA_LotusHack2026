@@ -13,7 +13,11 @@ from app.models.monetary_donation import MonetaryDonation
 from app.models.organization import Organization
 from app.models.user import User
 from app.models.volunteer_attendance import VolunteerAttendance
-from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
+from app.models.volunteer_registration import (
+    VolunteerAttendanceStatus,
+    VolunteerRegistration,
+    VolunteerStatus,
+)
 
 __all__ = [
     "User",
@@ -34,6 +38,7 @@ __all__ = [
     "BeneficiaryStatus",
     "MonetaryDonation",
     "VolunteerAttendance",
+    "VolunteerAttendanceStatus",
     "VolunteerRegistration",
     "VolunteerStatus",
 ]
