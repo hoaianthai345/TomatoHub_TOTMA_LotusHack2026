@@ -6,6 +6,10 @@ import { AuthProvider } from "@/lib/auth";
 export const metadata: Metadata = {
   title: "TomatoHub",
   description: "Volunteer & Aid Coordination Platform",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({

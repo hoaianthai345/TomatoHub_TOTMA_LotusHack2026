@@ -50,6 +50,21 @@ export interface AuthSuccessPayload {
   user: CurrentUser;
 }
 
+export interface SupporterProfileUpdatePayload {
+  name: string;
+  location?: string;
+  supportTypes: SupportType[];
+}
+
+export interface OrganizationProfileUpdatePayload {
+  organizationName: string;
+  representativeName: string;
+  location?: string;
+  description?: string;
+  website?: string;
+  logoUrl?: string;
+}
+
 export async function loginApi(payload: LoginPayload): Promise<AuthSuccessPayload> {
   const response = await requestJson<BackendTokenResponse>("/auth/login", {
     method: "POST",
@@ -109,5 +124,46 @@ export async function getMeApi(token: string): Promise<CurrentUser> {
     method: "GET",
     token,
   });
+  return mapCurrentUser(response);
+}
+
+export async function updateSupporterProfileApi(
+  payload: SupporterProfileUpdatePayload,
+  token: string
+): Promise<CurrentUser> {
+  const response = await requestJson<BackendCurrentUser>(
+    "/auth/me/supporter-profile",
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({
+        full_name: payload.name,
+        location: payload.location,
+        support_types: payload.supportTypes,
+      }),
+    }
+  );
+  return mapCurrentUser(response);
+}
+
+export async function updateOrganizationProfileApi(
+  payload: OrganizationProfileUpdatePayload,
+  token: string
+): Promise<CurrentUser> {
+  const response = await requestJson<BackendCurrentUser>(
+    "/auth/me/organization-profile",
+    {
+      method: "PATCH",
+      token,
+      body: JSON.stringify({
+        organization_name: payload.organizationName,
+        representative_name: payload.representativeName,
+        location: payload.location,
+        description: payload.description,
+        website: payload.website,
+        logo_url: payload.logoUrl,
+      }),
+    }
+  );
   return mapCurrentUser(response);
 }

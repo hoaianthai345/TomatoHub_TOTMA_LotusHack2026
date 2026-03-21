@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import VietnamLocationFields from "@/components/location/VietnamLocationFields";
@@ -10,7 +11,7 @@ import type { VietnamLocationValue } from "@/types/location";
 
 export default function OrganizationSignupPage() {
   const router = useRouter();
-  const { signupOrganization, isLoading } = useAuth();
+  const { currentUser, signupOrganization, isLoading } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     representative: "",
@@ -21,12 +22,21 @@ export default function OrganizationSignupPage() {
   const [locationValue, setLocationValue] = useState<VietnamLocationValue>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!currentUser) {
+      return;
+    }
+
+    router.replace(currentUser.role === "organization" ? "/organization" : "/supporter");
+    router.refresh();
+  }, [currentUser, router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
     try {
-      await signupOrganization({
+      const user = await signupOrganization({
         name: formData.name,
         representative: formData.representative || formData.name,
         email: formData.email,
@@ -34,7 +44,8 @@ export default function OrganizationSignupPage() {
         location: formatVietnamLocationLabel(locationValue) || undefined,
         description: formData.description,
       });
-      router.push("/organization");
+      router.replace(user.role === "organization" ? "/organization" : "/supporter");
+      router.refresh();
     } catch (error) {
       if (error instanceof AuthApiError) {
         setErrorMessage(error.message);
@@ -46,7 +57,7 @@ export default function OrganizationSignupPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-page p-4">
-      <div className="card-base p-8 w-full max-w-md">
+      <div className="card-base p-8 w-full max-w-2xl">
         <h1 className="text-3xl font-bold mb-2 text-heading">
           Join as Organization
         </h1>
@@ -161,7 +172,7 @@ export default function OrganizationSignupPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="btn-base w-full bg-org text-white disabled:opacity-50 mt-6 justify-center"
+            className="btn-base btn-primary w-full disabled:opacity-50 mt-6 justify-center"
           >
             {isLoading ? "Creating account..." : "Create Account"}
           </button>

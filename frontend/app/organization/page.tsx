@@ -5,10 +5,6 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { getOrganizationDashboard } from "@/lib/api/dashboards";
 import { ApiError } from "@/lib/api/http";
-import {
-  getOrganizationCampaignSnapshots,
-  getOrganizationRecentActivities,
-} from "@/mocks/dashboard-experience";
 import { formatCurrency } from "@/utils/format";
 import type { OrganizationDashboard } from "@/types/dashboard";
 import RoleGate from "@/components/auth/RoleGate";
@@ -64,8 +60,8 @@ export default function OrganizationDashboardPage() {
       value: formatCurrency(dashboard?.totalRaised ?? 0),
     },
   ];
-  const campaignSnapshots = getOrganizationCampaignSnapshots(currentUser?.organizationId);
-  const recentActivities = getOrganizationRecentActivities(currentUser?.organizationId);
+  const campaignSnapshots = dashboard?.campaignSnapshots ?? [];
+  const recentActivities = dashboard?.recentActivities ?? [];
 
   return (
     <RoleGate role="organization" loadingMessage="Loading organization dashboard...">
@@ -139,66 +135,78 @@ export default function OrganizationDashboardPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
-          <div className="card-base p-6">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-heading">Campaign Pipeline</h2>
-                <p className="mt-1 text-sm text-text-muted">
-                  Frontend sample cards to continue building the organization operations view.
-                </p>
+            <div className="card-base p-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-heading">Campaign Pipeline</h2>
+                  <p className="mt-1 text-sm text-text-muted">
+                    Live campaign progress and support signals from your organization workspace.
+                  </p>
+                </div>
+                <Link href="/organization/campaigns" className="text-sm font-semibold text-[color:var(--color-org)]">
+                  Manage campaigns
+                </Link>
               </div>
-              <Link href="/organization/campaigns" className="text-sm font-semibold text-[color:var(--color-org)]">
-                Manage campaigns
-              </Link>
-            </div>
 
-            <div className="mt-5 grid gap-4">
-              {campaignSnapshots.map((item) => (
-                <article key={item.id} className="rounded-3xl border border-border bg-white p-5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="badge-base badge-org">{item.statusLabel}</span>
-                    <span className="badge-base border border-border bg-surface-light text-text">
-                      {item.location}
-                    </span>
-                  </div>
-                  <h3 className="mt-3 text-lg font-bold text-heading">{item.campaignTitle}</h3>
-                  <p className="mt-2 text-sm text-text-muted">{item.supportLabel}</p>
-                  <div className="mt-4 h-2 rounded-full bg-surface-light">
-                    <div
-                      className="h-2 rounded-full bg-org"
-                      style={{ width: `${item.progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-                    <span className="font-semibold text-[color:var(--color-org)]">
-                      {item.progressPercent}% to fundraising target
-                    </span>
-                    <span className="text-text-muted">{item.note}</span>
-                  </div>
-                </article>
-              ))}
-            </div>
+            {campaignSnapshots.length > 0 ? (
+              <div className="mt-5 grid gap-4">
+                {campaignSnapshots.map((item) => (
+                  <article key={item.id} className="rounded-3xl border border-border bg-white p-5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="badge-base badge-org">{item.statusLabel}</span>
+                      <span className="badge-base border border-border bg-surface-light text-text">
+                        {item.location || "Location pending"}
+                      </span>
+                    </div>
+                    <h3 className="mt-3 text-lg font-bold text-heading">{item.campaignTitle}</h3>
+                    <p className="mt-2 text-sm text-text-muted">{item.supportLabel}</p>
+                    <div className="mt-4 h-2 rounded-full bg-surface-light">
+                      <div
+                        className="h-2 rounded-full bg-org"
+                        style={{ width: `${item.progressPercent}%` }}
+                      />
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-semibold text-[color:var(--color-org)]">
+                        {item.progressPercent}% to fundraising target
+                      </span>
+                      <span className="text-text-muted">{item.note}</span>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-3xl border border-border bg-surface-light p-5 text-sm text-text-muted">
+                Campaign snapshots will appear here once your organization creates campaigns.
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">
             <div className="card-base p-6">
               <h2 className="text-xl font-bold text-heading">Recent Team Activity</h2>
-              <div className="mt-4 space-y-4">
-                {recentActivities.map((item) => (
-                  <div key={item.id} className="rounded-2xl border border-border bg-surface-light p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold text-heading">{item.title}</p>
-                      <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
-                        {item.timeLabel}
-                      </span>
+              {recentActivities.length > 0 ? (
+                <div className="mt-4 space-y-4">
+                  {recentActivities.map((item) => (
+                    <div key={item.id} className="rounded-2xl border border-border bg-surface-light p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold text-heading">{item.title}</p>
+                        <span className="text-xs font-medium uppercase tracking-[0.16em] text-text-muted">
+                          {item.timeLabel}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-text">{item.detail}</p>
+                      <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--color-org)]">
+                        {item.actor}
+                      </p>
                     </div>
-                    <p className="mt-2 text-sm text-text">{item.detail}</p>
-                    <p className="mt-3 text-xs font-semibold uppercase tracking-[0.16em] text-[color:var(--color-org)]">
-                      {item.actor}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-text-muted">
+                  Team activity will appear here once supporters, donations, or beneficiaries start moving through your campaigns.
+                </p>
+              )}
             </div>
 
             <div className="card-base p-6">
@@ -206,7 +214,7 @@ export default function OrganizationDashboardPage() {
               <p className="mt-3 text-sm text-text-muted">
                 {isLoading || !dashboard
                   ? "Loading live organization metrics from the backend..."
-                  : "The headline metrics come from backend APIs, while the campaign pipeline and recent activity cards use sample frontend data until dedicated detail endpoints are wired."}
+                  : "The metrics, campaign pipeline, and recent activity feed are all sourced from the real backend data for this organization."}
               </p>
             </div>
           </div>
