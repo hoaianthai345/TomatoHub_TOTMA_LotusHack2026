@@ -75,12 +75,22 @@ class Campaign(Base):
     )
 
     organization: Mapped["Organization"] = relationship(back_populates="campaigns")
-    beneficiaries: Mapped[list["Beneficiary"]] = relationship(back_populates="campaign")
-    donations: Mapped[list["MonetaryDonation"]] = relationship(back_populates="campaign")
+    beneficiaries: Mapped[list["Beneficiary"]] = relationship(
+        back_populates="campaign",
+        passive_deletes=True,
+    )
+    donations: Mapped[list["MonetaryDonation"]] = relationship(
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
     volunteer_registrations: Mapped[list["VolunteerRegistration"]] = relationship(
-        back_populates="campaign"
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     images: Mapped[list["CampaignImage"]] = relationship(
         back_populates="campaign",
         cascade="all, delete-orphan",
+        passive_deletes=True,
     )
