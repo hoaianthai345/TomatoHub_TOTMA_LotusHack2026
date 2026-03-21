@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     BACKEND_CORS_ALLOW_ORIGIN_REGEX: str = (
         r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
     )
+    UPLOAD_DIR: str = "uploads"
+    UPLOAD_URL_PREFIX: str = "/uploads"
+    CAMPAIGN_IMAGE_MAX_SIZE_MB: int = 10
 
     DATABASE_URL: str = Field(
         default="postgresql+psycopg2://postgres:postgres@localhost:5432/lotushack"
@@ -37,6 +40,12 @@ class Settings(BaseSettings):
             for origin in self.BACKEND_CORS_ORIGINS.split(",")
             if origin.strip()
         ]
+
+    def upload_root_path(self) -> Path:
+        upload_path = Path(self.UPLOAD_DIR)
+        if not upload_path.is_absolute():
+            upload_path = BASE_DIR / upload_path
+        return upload_path.resolve()
 
 
 @lru_cache

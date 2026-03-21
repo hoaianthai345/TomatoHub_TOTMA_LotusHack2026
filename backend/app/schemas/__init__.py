@@ -6,7 +6,15 @@ from app.schemas.auth import (
     TokenResponse,
 )
 from app.schemas.beneficiary import BeneficiaryCreate, BeneficiaryRead, BeneficiaryUpdate
-from app.schemas.campaign import CampaignCreate, CampaignPublishResponse, CampaignRead, CampaignUpdate
+from app.schemas.campaign import (
+    CampaignCloseRequest,
+    CampaignCloseResponse,
+    CampaignCreate,
+    CampaignPublishResponse,
+    CampaignRead,
+    CampaignUpdate,
+)
+from app.schemas.campaign_image import CampaignImageRead, CampaignImageSetCoverResponse
 from app.schemas.campaign_checkpoint import (
     CampaignCheckpointCreate,
     CampaignCheckpointGenerateQrRequest,
@@ -49,6 +57,10 @@ __all__ = [
     "CampaignUpdate",
     "CampaignRead",
     "CampaignPublishResponse",
+    "CampaignCloseRequest",
+    "CampaignCloseResponse",
+    "CampaignImageRead",
+    "CampaignImageSetCoverResponse",
     "CampaignCheckpointCreate",
     "CampaignCheckpointUpdate",
     "CampaignCheckpointRead",

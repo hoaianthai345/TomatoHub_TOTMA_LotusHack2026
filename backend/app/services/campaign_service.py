@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.campaign import Campaign, CampaignStatus, SupportType
 from app.models.organization import Organization
-from app.schemas.campaign import CampaignCreate, CampaignUpdate
+from app.schemas.campaign import CampaignCloseRequest, CampaignCreate, CampaignUpdate
 
 
 def _slugify(value: str) -> str:
@@ -188,6 +188,32 @@ def publish_campaign(db: Session, campaign_id: uuid.UUID) -> Campaign:
     campaign.status = CampaignStatus.published
     campaign.published_at = datetime.now(timezone.utc)
     campaign.is_active = True
+
+    db.commit()
+    db.refresh(campaign)
+    return campaign
+
+
+def close_campaign(
+    db: Session,
+    campaign_id: uuid.UUID,
+    payload: CampaignCloseRequest | None = None,
+) -> Campaign:
+    campaign = get_campaign_or_404(db, campaign_id)
+
+    if campaign.status == CampaignStatus.closed:
+        return campaign
+
+    closed_at = payload.closed_at if payload and payload.closed_at else datetime.now(timezone.utc)
+    if closed_at < campaign.starts_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="closed_at must be greater than or equal to starts_at",
+        )
+
+    campaign.status = CampaignStatus.closed
+    campaign.is_active = False
+    campaign.closed_at = closed_at
 
     db.commit()
     db.refresh(campaign)

@@ -80,3 +80,7 @@ class Campaign(Base):
     volunteer_registrations: Mapped[list["VolunteerRegistration"]] = relationship(
         back_populates="campaign"
     )
+    images: Mapped[list["CampaignImage"]] = relationship(
+        back_populates="campaign",
+        cascade="all, delete-orphan",
+    )

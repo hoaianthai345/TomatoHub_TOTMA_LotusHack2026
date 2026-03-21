@@ -1,20 +1,32 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_organization_user, get_db
+from app.api.deps import get_current_active_user, get_current_organization_user, get_db
 from app.api.permissions import ensure_matching_organization
+from app.models.campaign_image import CampaignImage
 from app.models.campaign import Campaign, CampaignStatus
+from app.models.monetary_donation import MonetaryDonation
 from app.models.user import User
+from app.models.volunteer_registration import VolunteerRegistration, VolunteerStatus
 from app.schemas.campaign import (
+    CampaignCloseRequest,
+    CampaignCloseResponse,
     CampaignCreate,
     CampaignPublishResponse,
     CampaignRead,
     CampaignUpdate,
 )
+from app.schemas.campaign_image import CampaignImageRead, CampaignImageSetCoverResponse
+from app.services.campaign_image_storage import (
+    build_public_upload_url,
+    delete_stored_upload,
+    save_campaign_image_file,
+)
 from app.services.campaign_service import (
+    close_campaign,
     create_manual_campaign,
     delete_campaign,
     get_campaign_or_404,
@@ -23,6 +35,69 @@ from app.services.campaign_service import (
 )
 
 router = APIRouter(prefix="/campaigns", tags=["campaigns"])
+
+
+def _to_campaign_image_read(
+    image: CampaignImage,
+    *,
+    request: Request,
+) -> CampaignImageRead:
+    relative_url = build_public_upload_url(image.relative_path)
+    file_url = relative_url
+    try:
+        file_url = str(request.url_for("uploads", path=image.relative_path))
+    except RuntimeError:
+        # Fallback when request router cannot resolve mounted static route.
+        file_url = relative_url
+
+    return CampaignImageRead(
+        id=image.id,
+        campaign_id=image.campaign_id,
+        uploaded_by_user_id=image.uploaded_by_user_id,
+        original_filename=image.original_filename,
+        mime_type=image.mime_type,
+        size_bytes=image.size_bytes,
+        relative_path=image.relative_path,
+        file_url=file_url,
+        created_at=image.created_at,
+    )
+
+
+def _ensure_campaign_media_upload_permission(
+    *,
+    db: Session,
+    campaign: Campaign,
+    current_user: User,
+) -> None:
+    if current_user.is_superuser:
+        return
+
+    if current_user.organization_id is not None:
+        if current_user.organization_id != campaign.organization_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Cannot upload media for another organization campaign",
+            )
+        return
+
+    approved_registration = db.scalar(
+        select(VolunteerRegistration.id).where(
+            VolunteerRegistration.campaign_id == campaign.id,
+            VolunteerRegistration.user_id == current_user.id,
+            VolunteerRegistration.status == VolunteerStatus.approved,
+        )
+    )
+    donation_id = db.scalar(
+        select(MonetaryDonation.id).where(
+            MonetaryDonation.campaign_id == campaign.id,
+            MonetaryDonation.donor_user_id == current_user.id,
+        )
+    )
+    if approved_registration is None and donation_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You must be an approved volunteer or donor of this campaign to upload images",
+        )
 
 
 @router.get("/", response_model=list[CampaignRead])
@@ -60,6 +135,153 @@ def list_campaigns_by_organization(
 @router.get("/{campaign_id}", response_model=CampaignRead)
 def get_campaign(campaign_id: UUID, db: Session = Depends(get_db)) -> Campaign:
     return get_campaign_or_404(db, campaign_id)
+
+
+@router.get("/{campaign_id}/images", response_model=list[CampaignImageRead])
+def list_campaign_images(
+    campaign_id: UUID,
+    request: Request,
+    limit: int = Query(default=100, ge=1, le=500),
+    db: Session = Depends(get_db),
+) -> list[CampaignImageRead]:
+    _ = get_campaign_or_404(db, campaign_id)
+
+    images = list(
+        db.scalars(
+            select(CampaignImage)
+            .where(CampaignImage.campaign_id == campaign_id)
+            .order_by(CampaignImage.created_at.desc())
+            .limit(limit)
+        ).all()
+    )
+    return [_to_campaign_image_read(image, request=request) for image in images]
+
+
+@router.post(
+    "/{campaign_id}/images",
+    response_model=CampaignImageRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def upload_campaign_image(
+    campaign_id: UUID,
+    request: Request,
+    file: UploadFile = File(...),
+    set_as_cover: bool = Form(default=False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CampaignImageRead:
+    campaign = get_campaign_or_404(db, campaign_id)
+    _ensure_campaign_media_upload_permission(
+        db=db,
+        campaign=campaign,
+        current_user=current_user,
+    )
+
+    relative_path, size_bytes, mime_type, original_filename = save_campaign_image_file(
+        campaign_id=campaign.id,
+        upload_file=file,
+    )
+
+    image = CampaignImage(
+        campaign_id=campaign.id,
+        uploaded_by_user_id=current_user.id,
+        relative_path=relative_path,
+        original_filename=original_filename,
+        mime_type=mime_type,
+        size_bytes=size_bytes,
+    )
+    db.add(image)
+
+    public_path = build_public_upload_url(relative_path)
+    media_urls = list(campaign.media_urls or [])
+    if public_path not in media_urls:
+        media_urls.append(public_path)
+        campaign.media_urls = media_urls
+
+    if set_as_cover or not campaign.cover_image_url:
+        campaign.cover_image_url = public_path
+
+    db.commit()
+    db.refresh(image)
+    return _to_campaign_image_read(image, request=request)
+
+
+@router.post(
+    "/{campaign_id}/images/{image_id}/set-cover",
+    response_model=CampaignImageSetCoverResponse,
+)
+def set_campaign_cover_image(
+    campaign_id: UUID,
+    image_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> CampaignImageSetCoverResponse:
+    campaign = get_campaign_or_404(db, campaign_id)
+    if not current_user.is_superuser and current_user.organization_id != campaign.organization_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only campaign organization can set cover image",
+        )
+
+    image = db.get(CampaignImage, image_id)
+    if image is None or image.campaign_id != campaign.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign image not found",
+        )
+
+    public_path = build_public_upload_url(image.relative_path)
+    media_urls = list(campaign.media_urls or [])
+    if public_path not in media_urls:
+        media_urls.append(public_path)
+        campaign.media_urls = media_urls
+    campaign.cover_image_url = public_path
+
+    db.commit()
+    return CampaignImageSetCoverResponse(
+        message="Campaign cover image updated",
+        campaign_id=campaign.id,
+        cover_image_url=public_path,
+    )
+
+
+@router.delete("/{campaign_id}/images/{image_id}")
+def delete_campaign_image(
+    campaign_id: UUID,
+    image_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+) -> dict[str, str]:
+    campaign = get_campaign_or_404(db, campaign_id)
+    image = db.get(CampaignImage, image_id)
+    if image is None or image.campaign_id != campaign.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Campaign image not found",
+        )
+
+    can_delete = (
+        current_user.is_superuser
+        or current_user.organization_id == campaign.organization_id
+        or image.uploaded_by_user_id == current_user.id
+    )
+    if not can_delete:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No permission to delete this campaign image",
+        )
+
+    public_path = build_public_upload_url(image.relative_path)
+    media_urls = [url for url in list(campaign.media_urls or []) if url != public_path]
+    campaign.media_urls = media_urls
+    if campaign.cover_image_url == public_path:
+        campaign.cover_image_url = media_urls[0] if media_urls else None
+
+    db.delete(image)
+    db.commit()
+
+    delete_stored_upload(image.relative_path)
+    return {"message": "Campaign image deleted successfully"}
 
 
 @router.get("/slug/{slug}", response_model=CampaignRead)
@@ -124,6 +346,26 @@ def publish_campaign_endpoint(
     campaign = publish_campaign(db, campaign_id)
     return CampaignPublishResponse(
         message="Campaign published successfully",
+        campaign=CampaignRead.model_validate(campaign),
+    )
+
+
+@router.post("/{campaign_id}/close", response_model=CampaignCloseResponse)
+def close_campaign_endpoint(
+    campaign_id: UUID,
+    payload: CampaignCloseRequest | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_organization_user),
+) -> CampaignCloseResponse:
+    campaign = get_campaign_or_404(db, campaign_id)
+    ensure_matching_organization(
+        current_user,
+        campaign.organization_id,
+        detail="Cannot close campaign from another organization",
+    )
+    campaign = close_campaign(db, campaign_id, payload)
+    return CampaignCloseResponse(
+        message="Campaign closed successfully",
         campaign=CampaignRead.model_validate(campaign),
     )
 
