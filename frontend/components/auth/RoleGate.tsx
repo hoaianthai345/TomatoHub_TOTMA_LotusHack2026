@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { Skeleton, TextSkeleton } from "@/components/loading";
 import { useAuth } from "@/lib/auth";
 import type { UserRole } from "@/types/user";
 
@@ -37,8 +38,15 @@ export default function RoleGate({
   if (isLoading || !currentUser || currentUser.role !== role) {
     return (
       <div className="p-6">
-        <div className="card-base p-6 text-sm text-text-muted">
-          {loadingMessage}
+        <div className="card-base p-6">
+          <p className="sr-only" aria-live="polite">
+            {loadingMessage}
+          </p>
+          <TextSkeleton lines={2} lineClassName="h-4 w-full rounded" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full rounded-xl" />
+          </div>
         </div>
       </div>
     );

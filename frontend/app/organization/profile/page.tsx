@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import RoleGate from "@/components/auth/RoleGate";
+import { Skeleton, TextSkeleton } from "@/components/loading";
 import { useAuth } from "@/lib/auth";
 import {
   AuthApiError,
@@ -209,10 +210,21 @@ export default function OrganizationProfilePage() {
 
         <div className="card-base max-w-4xl p-6">
           {isLoadingDetails && !isEditing ? (
-            <p className="text-sm text-text-muted">Loading organization details...</p>
-          ) : null}
-
-          {isEditing ? (
+            <div className="space-y-4">
+              <p className="sr-only" aria-live="polite">
+                Loading organization details...
+              </p>
+              <TextSkeleton lines={2} lineClassName="h-4 w-full rounded" />
+              <div className="grid gap-4 md:grid-cols-2">
+                {Array.from({ length: 6 }, (_, index) => (
+                  <div key={`profile-field-skeleton-${index}`} className="space-y-2">
+                    <Skeleton className="h-3 w-24 rounded" />
+                    <Skeleton className="h-11 w-full rounded-md" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : isEditing ? (
             <div className="grid gap-4 md:grid-cols-2">
               <label className="grid gap-2 text-sm text-text">
                 <span className="font-medium text-heading">Organization name</span>

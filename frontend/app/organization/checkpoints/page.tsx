@@ -6,6 +6,7 @@ import RoleGate from "@/components/auth/RoleGate";
 import MissingValue from "@/components/common/missing-value";
 import StatePanel from "@/components/common/state-panel";
 import StatusBadge from "@/components/common/status-badge";
+import { Skeleton, TextSkeleton } from "@/components/loading";
 import { useAuth } from "@/lib/auth";
 import { listCampaignsByOrganization } from "@/lib/api/campaigns";
 import {
@@ -528,7 +529,28 @@ export default function OrganizationCheckpointsPage() {
               </h3>
 
               {loadingCampaignData ? (
-                <p className="mt-3 text-sm text-text-muted">Loading campaign data...</p>
+                <div className="mt-3 space-y-3">
+                  <p className="sr-only" aria-live="polite">
+                    Loading campaign data...
+                  </p>
+                  {Array.from({ length: 2 }, (_, index) => (
+                    <div
+                      key={`checkpoint-loading-${index}`}
+                      className="rounded-xl border border-border bg-surface-main p-4"
+                    >
+                      <Skeleton className="h-5 w-2/5 rounded-md" />
+                      <TextSkeleton
+                        className="mt-3"
+                        lines={2}
+                        lineClassName="h-3 w-full rounded"
+                      />
+                      <div className="mt-3 flex gap-2">
+                        <Skeleton className="h-8 w-20 rounded-md" />
+                        <Skeleton className="h-8 w-24 rounded-md" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : checkpoints.length > 0 ? (
                 <div className="mt-3 space-y-3">
                   {checkpoints.map((checkpoint) => (

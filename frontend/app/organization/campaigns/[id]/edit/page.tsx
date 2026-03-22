@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import RoleGate from "@/components/auth/RoleGate";
 import Container from "@/components/common/container";
 import SectionTitle from "@/components/common/section-title";
+import { Skeleton, TextSkeleton } from "@/components/loading";
 import { useAuth } from "@/lib/auth";
 import {
   getCampaignById,
@@ -219,7 +220,25 @@ export default function EditCampaignPage() {
 
           <div className="max-w-3xl card-base p-6">
             {isPageLoading ? (
-              <p className="text-sm text-text-muted">Loading campaign data...</p>
+              <div className="space-y-4">
+                <p className="sr-only" aria-live="polite">
+                  Loading campaign data...
+                </p>
+                <TextSkeleton lines={2} lineClassName="h-4 w-full rounded" />
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Array.from({ length: 6 }, (_, index) => (
+                    <div key={`campaign-field-skeleton-${index}`} className="space-y-2">
+                      <Skeleton className="h-3 w-24 rounded" />
+                      <Skeleton className="h-11 w-full rounded-md" />
+                    </div>
+                  ))}
+                </div>
+                <Skeleton className="h-28 w-full rounded-md" />
+                <div className="flex gap-3">
+                  <Skeleton className="h-11 w-44 rounded-md" />
+                  <Skeleton className="h-11 w-28 rounded-md" />
+                </div>
+              </div>
             ) : (
               <form className="grid gap-4" onSubmit={handleSubmit}>
                 <label className="grid gap-2 text-sm text-text">

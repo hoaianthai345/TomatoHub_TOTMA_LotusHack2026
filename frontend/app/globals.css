@@ -7,8 +7,10 @@
   --color-secondary: #ff8c42;
   --color-accent: #ffd166;
   --color-background: #fffaf5;
+  --color-bg: var(--color-background);
   --color-surface: #ffffff;
   --color-surface-muted: #f8f4ef;
+  --color-muted: var(--color-surface-muted);
   --color-surface-strong: #f4ede5;
   --color-border: #eadfd6;
   --color-border-emphasis: #d7c8bc;
@@ -563,4 +565,78 @@ select:focus {
 
 .nearby-map .leaflet-control-attribution {
   font-size: 0.65rem;
+}
+
+@keyframes loading-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes loading-fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.loading-fade-in {
+  animation: loading-fade-in 0.24s ease-in-out;
+}
+
+.skeleton-base {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-muted);
+}
+
+.skeleton-base::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-muted) 82%, transparent),
+    color-mix(in oklab, var(--color-bg) 72%, var(--color-primary)),
+    color-mix(in oklab, var(--color-muted) 82%, transparent)
+  );
+  animation: loading-shimmer 0.6s ease-in-out infinite;
+}
+
+.top-progress-root {
+  pointer-events: none;
+  position: fixed;
+  inset: 0 auto auto 0;
+  z-index: 90;
+  width: 100%;
+  height: 3px;
+  opacity: 0;
+  transition: opacity 0.24s ease-in-out;
+}
+
+.top-progress-root.is-visible {
+  opacity: 1;
+}
+
+.top-progress-track {
+  width: 100%;
+  height: 100%;
+  background: color-mix(in oklab, var(--color-primary) 10%, var(--color-muted));
+}
+
+.top-progress-bar {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(
+    90deg,
+    var(--color-primary),
+    color-mix(in oklab, var(--color-primary) 58%, var(--color-secondary))
+  );
+  transition: width 0.32s ease-in-out;
 }
