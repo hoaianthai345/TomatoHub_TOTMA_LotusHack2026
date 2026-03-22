@@ -4,6 +4,7 @@ import Container from "@/components/common/container";
 import CampaignLocationMap from "@/components/campaign/campaign-location-map";
 import CampaignDetailActionBar from "@/components/campaign/campaign-detail-action-bar";
 import CampaignVolunteerCheckinPanel from "@/components/campaign/campaign-volunteer-checkin-panel";
+import CampaignOrganizationQrSection from "@/components/campaign/campaign-organization-qr-section";
 import MissingValue from "@/components/common/missing-value";
 import StatePanel from "@/components/common/state-panel";
 import StatusBadge from "@/components/common/status-badge";
@@ -238,6 +239,12 @@ export default async function CampaignDetailPage({
 
           {supportsVolunteer ? (
             <CampaignVolunteerCheckinPanel
+              campaignId={campaign.id}
+              campaignOrganizationId={campaign.organizationId}
+            />
+          ) : null}
+          {supportsVolunteer ? (
+            <CampaignOrganizationQrSection
               campaignId={campaign.id}
               campaignOrganizationId={campaign.organizationId}
             />
